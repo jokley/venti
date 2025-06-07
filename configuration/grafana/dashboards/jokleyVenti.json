@@ -1120,7 +1120,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "value {application_name=\"jokley\", dev_eui=\"2ee80bb8e850d8e4\", device_name=\"probe01\", f_port=\"2\"}"
+              "options": "rssi probe01"
             },
             "properties": [
               {
@@ -1132,7 +1132,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "value {application_name=\"jokley\", dev_eui=\"d69427807699892a\", device_name=\"probe02\", f_port=\"2\"}"
+              "options": "rssi probe02"
             },
             "properties": [
               {
@@ -1144,12 +1144,24 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "value {application_name=\"jokley\", dev_eui=\"f27efd1eb2adcb93\", device_name=\"outdoor00\", f_port=\"2\"}"
+              "options": "rssi outdoor00"
             },
             "properties": [
               {
                 "id": "displayName",
                 "value": "Outdoor"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "rssi fan"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Lüfter"
               }
             ]
           }
@@ -1307,7 +1319,7 @@
         },
         "sync": true,
         "update": {
-          "code": "if (context.panel.response && context.panel.response.ok) {\n  context.panel.response.text().then(text => {\n    try {\n      const data = JSON.parse(text);\n\n      context.grafana.notifySuccess([data]);\n\n      if (data === \"Page Refresh\") {\n        const currentUrlWithoutQueryParams = window.location.origin + window.location.pathname;\n        window.location.href = currentUrlWithoutQueryParams;\n      }\n    } catch (err) {\n      context.grafana.notifyError(['Update', 'Failed to parse response.']);\n    }\n  });\n} else {\n  context.grafana.notifyError(['Update', 'An error occurred updating values.']);\n}\n",
+          "code": "if (context.panel.response && context.panel.response.ok) {\n  context.panel.response.text().then(text => {\n    try {\n      const data = JSON.parse(text);\n\n      context.grafana.notifySuccess([data]);\n\n      if (data === \"Page Refresh\") {\n        const currentUrlWithoutQueryParams = window.location.origin + window.location.pathname;\n        window.location.href = currentUrlWithoutQueryParams + '?kiosk=1';;\n      }\n    } catch (err) {\n      context.grafana.notifyError(['Update', 'Failed to parse response.']);\n    }\n  });\n} else {\n  context.grafana.notifyError(['Update', 'An error occurred updating values.']);\n}\n",
           "confirm": false,
           "contentType": "application/json",
           "getPayload": "const payload = {};\ncontext.panel.elements.forEach((element) => {\n  if (!element.value) {\n    return;\n  }\n  payload[element.id] = element.value;\n})\nreturn payload;",
@@ -1789,5 +1801,5 @@
   "timezone": "",
   "title": "jokleyVenti",
   "uid": "47a24cfa-bd5f-415d-96cf-fae2441ecb49",
-  "version": 9
+  "version": 12
 }
