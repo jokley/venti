@@ -2,7 +2,7 @@
 
 set -e
 
-PROJECT_DIR="/home/pi/Projects/chirpstack/reTerminal"
+PROJECT_DIR="/home/pi/Projects/venti/reTerminal"
 START_SCRIPT="$PROJECT_DIR/start.sh"
 ICON_FILE="$PROJECT_DIR/venti.png"
 DESKTOP_FILE="/home/pi/Desktop/venti.desktop"
