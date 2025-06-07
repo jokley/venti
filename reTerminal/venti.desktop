@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Link
+Name=Heulüfter
+Comment=Heulüfter Steuerung
+Icon=/home/pi/Projects/chirpstack/reTerminal/venti.png
+URL=http://172.16.238.19

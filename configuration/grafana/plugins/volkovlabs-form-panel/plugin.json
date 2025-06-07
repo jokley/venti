@@ -1,0 +1,48 @@
+{
+  "$schema": "https://raw.githubusercontent.com/grafana/grafana/master/docs/sources/developers/plugins/plugin.schema.json",
+  "dependencies": {
+    "grafanaDependency": ">=10.3.0",
+    "plugins": []
+  },
+  "id": "volkovlabs-form-panel",
+  "info": {
+    "author": {
+      "name": "Volkov Labs",
+      "url": "https://volkovlabs.io"
+    },
+    "description": "Insert, update application data, and modify configuration",
+    "keywords": ["Form", "JSON", "Data"],
+    "links": [
+      {
+        "name": "Documentation",
+        "url": "https://volkovlabs.io/plugins/business-forms/"
+      },
+      {
+        "name": "GitHub",
+        "url": "https://github.com/VolkovLabs/business-forms"
+      }
+    ],
+    "logos": {
+      "large": "img/logo.svg",
+      "small": "img/logo.svg"
+    },
+    "screenshots": [
+      {
+        "name": "Panel",
+        "path": "img/panel.png"
+      },
+      {
+        "name": "Form Elements",
+        "path": "img/elements.png"
+      },
+      {
+        "name": "Request",
+        "path": "img/request.png"
+      }
+    ],
+    "updated": "2025-02-27",
+    "version": "5.1.0"
+  },
+  "name": "Business Forms",
+  "type": "panel"
+}

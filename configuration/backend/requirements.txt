@@ -1,0 +1,9 @@
+Flask
+Flask-Cors
+gunicorn
+flask_mqtt
+datetime
+pytz
+APScheduler
+influxdb-client
+python-dotenv

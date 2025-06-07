@@ -1,0 +1,112 @@
+version: "3"
+
+services:
+
+  mosquitto:
+    image: eclipse-mosquitto:2
+    restart: unless-stopped
+    ports:
+      - 1883:1883
+    volumes: 
+      - ./configuration/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf
+    networks:
+      example-network:
+        ipv4_address: 172.16.238.15
+
+  influxdb:
+    image: influxdb:2.6-alpine
+    restart: unless-stopped
+    env_file:
+      - venti.env
+    volumes:
+      # Mount for influxdb data directory and configuration
+      - influxdbv2:/var/lib/influxdb2:rw
+    ports:
+      - "8086:8086"
+    networks:
+      example-network:
+        ipv4_address: 172.16.238.16
+
+  grafana:
+    image: grafana/grafana:12.0.0
+    restart: unless-stopped
+    env_file:
+      - venti.env
+    depends_on:
+      - influxdb
+    ports:
+      - '3000:3000'
+    volumes:
+      - ./configuration/grafana/:/etc/grafana
+      - ./configuration/grafana/plugins/:/var/lib/grafana/plugins
+    networks:
+      example-network:
+        ipv4_address: 172.16.238.18
+   
+  nginx:
+    image: arm64v8/nginx
+    container_name: nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+       - ./configuration/nginx/nginx.conf:/etc/nginx/nginx.conf
+    networks:
+      example-network:
+        ipv4_address: 172.16.238.19
+
+  backend:
+    image: flask
+    container_name: flask-backend
+    build:
+      context: ./configuration/backend
+    restart: unless-stopped
+    env_file:
+      - venti.env
+    ports:
+      - "5000:5000"
+    privileged: true
+    volumes:
+      - "/run/dbus:/run/dbus"
+      - "/run/systemd:/run/systemd"
+    pid: "host"
+    depends_on:
+      - influxdb
+    networks:
+      example-network:
+        ipv4_address: 172.16.238.20
+
+  panstamp-i2c:
+    build:
+      context: ./configuration/panstamp-i2c
+    restart: unless-stopped
+    container_name: panstamp-i2c
+    env_file:
+      - venti.env
+    privileged: true  # Required for I2C and USB device access
+    devices:
+      - "/dev/ttyUSB0:/dev/ttyUSB0"     # USB serial for Panstamp
+      - "/dev/i2c-1:/dev/i2c-1"         # I2C relay control
+    tty: true
+    stdin_open: true
+    # mem_limit: 100m         # Limit memory usage to 100MB
+    # cpus: 0.5               # Limit to 50% of one CPU core
+    # pids_limit: 100         # Limit to 100 processes/threads to protect from PID/thread leak
+    depends_on:
+      - influxdb
+    networks:
+      example-network:
+        ipv4_address: 172.16.238.21
+      
+networks:
+  example-network:
+    name: example-network
+    driver: bridge
+    ipam:
+      driver: default
+      config: 
+        - subnet: 172.16.238.0/24
+    
+
+volumes:
+  influxdbv2:

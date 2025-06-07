@@ -1,0 +1,6 @@
+paho-mqtt
+influxdb-client
+smbus2
+pyserial
+python-dotenv
+pytz
