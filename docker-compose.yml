@@ -93,20 +93,6 @@ services:
       example-network:
         ipv4_address: 172.16.238.16
 
-  telegraf:
-    image: arm64v8/telegraf:1.25
-    restart: unless-stopped
-    depends_on:
-      - influxdb
-    volumes:
-      # Mount for telegraf config
-      - ./configuration/telegraf/telegraf.conf:/etc/telegraf/telegraf.conf:ro
-    env_file:
-      - venti.env
-    networks:
-      example-network:
-        ipv4_address: 172.16.238.17
-
   grafana:
     image: grafana/grafana:12.0.0
     restart: unless-stopped
