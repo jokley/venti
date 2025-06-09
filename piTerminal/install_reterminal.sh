@@ -2,12 +2,16 @@
 
 set -e
 
-PROJECT_DIR="/home/pi/Projects/venti/piTerminal"
+# Resolve script directory
+PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 START_SCRIPT="$PROJECT_DIR/start.sh"
 ICON_FILE="$PROJECT_DIR/venti.png"
+BACKGROUND_IMAGE="$PROJECT_DIR/logo.jpg"
 DESKTOP_FILE="/home/pi/Desktop/venti.desktop"
 LXDE_AUTOSTART_DIR="/home/pi/.config/lxsession/LXDE-pi"
 LXDE_AUTOSTART_FILE="$LXDE_AUTOSTART_DIR/autostart"
+PCMANFM_CONF_DIR="/home/pi/.config/pcmanfm/LXDE-pi"
+PCMANFM_CONF_FILE="$PCMANFM_CONF_DIR/desktop-items-0.conf"
 
 echo "==== STARTING INSTALLATION ===="
 
@@ -19,6 +23,11 @@ fi
 
 if [[ ! -f "$ICON_FILE" ]]; then
     echo "❌ ERROR: $ICON_FILE not found"
+    exit 1
+fi
+
+if [[ ! -f "$BACKGROUND_IMAGE" ]]; then
+    echo "❌ ERROR: $BACKGROUND_IMAGE not found"
     exit 1
 fi
 
@@ -52,5 +61,25 @@ URL=http://172.16.238.19?kiosk=1
 EOF
 
 chmod +x "$DESKTOP_FILE"
+
+# Set the desktop background
+echo "🖼️ Setting desktop background to $BACKGROUND_IMAGE"
+mkdir -p "$PCMANFM_CONF_DIR"
+if [[ -f "$PCMANFM_CONF_FILE" ]]; then
+    sed -i "s|^wallpaper=.*|wallpaper=$BACKGROUND_IMAGE|" "$PCMANFM_CONF_FILE"
+else
+    cat <<EOF > "$PCMANFM_CONF_FILE"
+[*]
+wallpaper=$BACKGROUND_IMAGE
+wallpaper_mode=stretch
+desktop_bg=#000000
+desktop_fg=#ffffff
+desktop_shadow=false
+desktop_font=Sans 10
+show_wm_menu=false
+sort=mtime;ascending;
+space_between_icons=32
+EOF
+fi
 
 echo "✅ Setup complete. Please reboot the Raspberry Pi to apply changes."
