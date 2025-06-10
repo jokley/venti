@@ -24,12 +24,17 @@ SERIAL_PORT = "/dev/ttyUSB0"
 BAUDRATE = 38400
 QUEUE_MAXSIZE = 100
 
-NODE_NAME_MAP = {
-    3: "outdoor00",
-    17: "probe01",
-    25: "probe02"
+NODE_NAME_MAP = {}
+env_mapping = {
+    "NODE_OUTDOOR00": "outdoor00",
+    "NODE_PROBE01": "probe01",
+    "NODE_PROBE02": "probe02",
 }
 
+for env_var, name in env_mapping.items():
+    node_id = os.getenv(env_var)
+    if node_id and node_id.isdigit():
+        NODE_NAME_MAP[int(node_id)] = name
 
 def usb_unbind_bind():
     """
