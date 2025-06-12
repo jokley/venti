@@ -36,13 +36,39 @@ for env_var, name in env_mapping.items():
     if node_id and node_id.isdigit():
         NODE_NAME_MAP[int(node_id)] = name
 
-def usb_unbind_bind():
-    """
-    Unbind and bind the USB device at path 1-1.4 (your FTDI adapter).
-    Requires privileged permissions.
-    """
-    usb_path = "1-1.4"
+
+USB_ID = "0403:6015"  # FTDI Panstick device
+
+def get_usb_sys_path(usb_id):
     try:
+        output = subprocess.check_output(["lsusb"]).decode()
+        for line in output.splitlines():
+            if usb_id in line:
+                parts = line.split()
+                bus = parts[1]
+                device = parts[3].rstrip(":")
+                sys_base = "/sys/bus/usb/devices/"
+                # Find the sysfs device matching busnum/devnum
+                for entry in os.listdir(sys_base):
+                    dev_path = os.path.join(sys_base, entry)
+                    try:
+                        with open(os.path.join(dev_path, "busnum")) as f_bus, \
+                             open(os.path.join(dev_path, "devnum")) as f_dev:
+                            if f_bus.read().strip() == str(int(bus)) and f_dev.read().strip() == str(int(device)):
+                                return entry
+                    except FileNotFoundError:
+                        continue
+    except Exception as e:
+        logger.error(f"Error finding USB sys path: {e}")
+    return None
+
+def usb_unbind_bind():
+    try:
+        usb_path = get_usb_sys_path(USB_ID)
+        if usb_path is None:
+            logger.error("Unable to find matching USB device path.")
+            return
+
         logger.warning(f"Unbinding USB device {usb_path}")
         subprocess.run(
             ["tee", "/sys/bus/usb/drivers/usb/unbind"],
@@ -50,17 +76,18 @@ def usb_unbind_bind():
             text=True,
             check=True
         )
-        time.sleep(2)
-        logger.warning(f"Re-binding USB device {usb_path}")
+        time.sleep(3)
+        logger.warning(f"Rebinding USB device {usb_path}")
         subprocess.run(
             ["tee", "/sys/bus/usb/drivers/usb/bind"],
             input=f"{usb_path}\n",
             text=True,
             check=True
         )
-        time.sleep(2)
+        time.sleep(3)
     except Exception as e:
         logger.error(f"USB unbind/bind failed: {e}")
+
 
 def read_serial(serial_port, baudrate, data_queue, reconnect_wait=5, max_retries=None):
     """
