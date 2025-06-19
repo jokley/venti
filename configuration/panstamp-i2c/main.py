@@ -9,7 +9,7 @@ from queue import Queue, Full, Empty
 from collections import defaultdict
 
 from sensor_parser import parse_line
-from influx import write_to_influx
+from influx import write_combined_point
 from mqtt_handler import setup_mqtt
 
 # Configure logging
@@ -170,23 +170,24 @@ def main():
         if all(key in cache[node] for key in required):
             tmp = cache[node]["temperature_c"]
             hum = cache[node]["humidity_percent"]
-
+        
             trockenmasse = -0.0028 * hum**2 + 0.004 * hum + (87 + tmp * 0.2677)
             sdef = ((hum * -0.05) + 5) * math.exp(0.0625 * tmp)
-
+        
             cache[node]["trockenmasse"] = round(trockenmasse, 2)
             cache[node]["sdef"] = round(sdef, 3)
-
-            line_protocol = (
-                f"device_frmpayload_data_temperature,device_name={node_name} value={tmp} {timestamp_s}\n"
-                f"device_frmpayload_data_humidity,device_name={node_name} value={hum} {timestamp_s}\n"
-                f"device_frmpayload_data_trockenmasse,device_name={node_name} value={cache[node]['trockenmasse']} {timestamp_s}\n"
-                f"device_frmpayload_data_sdef,device_name={node_name} value={cache[node]['sdef']} {timestamp_s}\n"
-                f"device_frmpayload_data_battery,device_name={node_name} value={cache[node]['battery_v']} {timestamp_s}\n"
-                f"device_frmpayload_data_rssi,device_name={node_name} rssi={cache[node]['rssi_dbm']} {timestamp_s}"
+        
+            write_combined_point(
+                node_name=node_name,
+                tmp=tmp,
+                hum=hum,
+                trockenmasse=cache[node]["trockenmasse"],
+                sdef=cache[node]["sdef"],
+                battery=cache[node]["battery_v"],
+                rssi=cache[node]["rssi_dbm"],
+                timestamp_s=timestamp_s,
             )
-
-            write_to_influx(line_protocol)
+        
             logger.info(f"Wrote data for node {node_name} to InfluxDB")
             cache.pop(node)
         else:
