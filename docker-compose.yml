@@ -20,7 +20,7 @@ services:
       - 8080:8080
     networks:
       example-network:
-        ipv4_address: 172.16.238.10
+        ipv4_address: 172.16.238.9
 
   chirpstack-gateway-bridge-eu868:
     image: chirpstack/chirpstack-gateway-bridge:4.0.3
@@ -32,6 +32,20 @@ services:
     depends_on: 
       - mosquitto
     networks:
+      example-network:
+        ipv4_address: 172.16.238.10
+
+  chirpstack-gateway-bridge-basicstation:
+    image: chirpstack/chirpstack-gateway-bridge:4
+    restart: unless-stopped
+    command: -c /etc/chirpstack-gateway-bridge/chirpstack-gateway-bridge-basicstation-eu868.toml
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./configuration/chirpstack-gateway-bridge:/etc/chirpstack-gateway-bridge
+    depends_on:
+      - mosquitto
+     networks:
       example-network:
         ipv4_address: 172.16.238.11
 
