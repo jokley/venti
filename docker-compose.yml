@@ -45,7 +45,7 @@ services:
       - ./configuration/chirpstack-gateway-bridge:/etc/chirpstack-gateway-bridge
     depends_on:
       - mosquitto
-     networks:
+   networks:
       example-network:
         ipv4_address: 172.16.238.11
 
