@@ -137,16 +137,16 @@ def venti_control():
 
     pramsVenti = get_venti_control_param_values()
 
-    sdef_on = pramsVenti[0]['sdef_on'][1] / 10
-    sdef_min_offset = pramsVenti[0].get('sdef_min_offset', [None, 40])[1] / 10  # default: 0.5
-    sdef_hys = pramsVenti[0].get('sdef_hys', [None, 5])[1] / 10  # default: 0.5
-    uschutz_on = pramsVenti[0]['uschutz_on'][1] / 10
-    uschutz_hys = pramsVenti[0]['uschutz_hys'][1] / 10
-    ts_hys = pramsVenti[0].get('ts_hys', [None, 2])[1] / 10       # default: 0.2
-    intervall_on = pramsVenti[0]['intervall_on'][1] / 10
-    intervall_time = (pramsVenti[0]['intervall_time'][1] / 10) * 3600
-    intervall_duration = (pramsVenti[0]['intervall_duration'][1] / 10) * 60
-    intervall_enable = pramsVenti[0]['intervall_enable'][1]
+    sdef_on = pramsVenti[0].get('sdef_on', [None, 40])[1] / 10            # default 4.0
+    sdef_min_offset = pramsVenti[0].get('sdef_min_offset', [None, 40])[1] / 10  # default 4.0 (0.4)
+    sdef_hys = pramsVenti[0].get('sdef_hys', [None, 5])[1] / 10          # default 0.5
+    uschutz_on = pramsVenti[0].get('uschutz_on', [None, 40])[1] / 10      # default 4.0
+    uschutz_hys = pramsVenti[0].get('uschutz_hys', [None, 5])[1] / 10     # default 0.5
+    ts_hys = pramsVenti[0].get('ts_hys', [None, 2])[1] / 10              # default 0.2
+    intervall_on = pramsVenti[0].get('intervall_on', [None, 40])[1] / 10  # default 4.0
+    intervall_time = (pramsVenti[0].get('intervall_time', [None, 1])[1] / 10) * 3600    # default 0.1 hours = 360s
+    intervall_duration = (pramsVenti[0].get('intervall_duration', [None, 1])[1] / 10) * 60  # default 0.1 minutes = 6s
+    intervall_enable = pramsVenti[0].get('intervall_enable', [None, 0])[1]               # default off (0)
 
 
     sdefMinThreshold = sDefMin + sdef_min_offset
