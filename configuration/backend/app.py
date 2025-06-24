@@ -136,15 +136,21 @@ def venti_control():
     remainingTimeIntervalDiff =  int(lastTimeOn - lastTimeOff)
 
     pramsVenti = get_venti_control_param_values()
-    #startTime = pramsVenti[0]['sdef_on'][0]
-    sdef_on = pramsVenti[0]['sdef_on'][1]/10
-    sdef_hys = pramsVenti[0]['sdef_hys'][1]/10
-    uschutz_on = pramsVenti[0]['uschutz_on'][1]/10
-    uschutz_hys = pramsVenti[0]['uschutz_hys'][1]/10
-    intervall_on =  pramsVenti[0]['intervall_on'][1]/10
-    intervall_time =  (pramsVenti[0]['intervall_time'][1]/10)*3600
-    intervall_duration =  (pramsVenti[0]['intervall_duration'][1]/10)*60
+
+    sdef_on = pramsVenti[0]['sdef_on'][1] / 10
+    sdef_min_offset = pramsVenti[0]['sdef_min_offset'][1] / 10
+    sdef_hys = pramsVenti[0].get('sdef_hys', [None, 5])[1] / 10  # default: 0.5
+    uschutz_on = pramsVenti[0]['uschutz_on'][1] / 10
+    uschutz_hys = pramsVenti[0]['uschutz_hys'][1] / 10
+    ts_hys = pramsVenti[0].get('ts_hys', [None, 2])[1] / 10       # default: 0.2
+    intervall_on = pramsVenti[0]['intervall_on'][1] / 10
+    intervall_time = (pramsVenti[0]['intervall_time'][1] / 10) * 3600
+    intervall_duration = (pramsVenti[0]['intervall_duration'][1] / 10) * 60
     intervall_enable = pramsVenti[0]['intervall_enable'][1]
+
+
+    sdefMinThreshold = sDefMin + sdef_min_offset
+
 
     # Überhitzungsschutz
     if tempMax >= uschutz_on:
@@ -166,7 +172,8 @@ def venti_control():
             app.logger.info('Restzeit: {}'.format(stock-remainingTimeStock))
 
         # Trockenmasse Automatik
-        elif sDefOut >= sDefMin+sdef_hys and sDefOut >= sdef_on and tsMin+0.2 <= tsSoll:
+        
+        elif  sDefOut >= sdefMinThreshold + sdef_hys and sDefOut >= sdef_on + sdef_hys and tsSoll >= tsMin + ts_hys:
             venti_cmd('on')
             app.logger.info('****************************************')
             app.logger.info('Mode: {}'.format(mode))
@@ -176,9 +183,7 @@ def venti_control():
             app.logger.info('TS ist: {} | TS soll: {}'.format(tsMin,tsSoll))
             app.logger.info('TS diff: {}'.format(tsSoll-tsMin))
             app.logger.info('Dauer aus: {}'.format(remainingTimeInterval))
-    
-        # Intervall Belüftung relLuft > intervall on and intervall Zeit agbelaufen und remainingTimeIntervalOn > 0 und kleiner 720 s  --> // and (timeNowIso >= '08:00' and timeNowIso <= '22:00')
-	#elif humMax > intervall_on and (remainingTimeInterval >= intervall_time or (remainingTimeIntervalOn <= 720 and  remainingTimeIntervalOn > 0) ):    
+     
         elif humMax > intervall_on and (remainingTimeInterval >= intervall_time or (remainingTimeIntervalOn <= intervall_duration and remainingTimeIntervalDiff >0)):
                 venti_cmd('on')
                 app.logger.info('****************************************')
@@ -187,7 +192,8 @@ def venti_control():
                 app.logger.info('Interall Schwelle: {}'.format(intervall_on))
                 app.logger.info('Restzeit: {}'.format(720-remainingTimeIntervalOn))
         
-        elif remainingTimeStock > stock and (sDefOut < sDefMin+sdef_hys-1 or tsMin-0.2 > tsSoll or sDefOut+0.5 < sdef_on):
+         
+        elif remainingTimeStock > stock and (sDefOut < sdefMinThreshold - sdef_hys or sDefOut < sdef_on - sdef_hys or tsSoll < tsMin - ts_hys):
         # Belüftung aus
             venti_cmd('off')
             app.logger.info('****************************************')
@@ -242,30 +248,42 @@ def venti_auto(cmd, trockenMasse,stockAufbau):
     write_api.write(bucket="jokley_bucket", org=ORG, record=record)
     client.close()
 
-def venti_auto_param(sdef_on, sdef_hys,uschutz_on,uschutz_hys,intervall_on,intervall_time,intervall_duration,intervall_enable):
-    
+def venti_auto_param(sdef_on, sdefMinOffset, sdefHys, uschutz_on, uschutz_hys, tsHys,
+                     intervall_on, intervall_time, intervall_duration, intervall_enable):
+
     ORG = os.getenv("DOCKER_INFLUXDB_INIT_ORG")
 
-    sdef_on = int(sdef_on*10)
-    sdef_hys = int(sdef_hys*10)
-    uschutz_on = int(uschutz_on*10)
-    uschutz_hys = int(uschutz_hys*10)
-    intervall_on = int(intervall_on*10)
-    intervall_time = int(intervall_time*10)
-    intervall_duration = int(intervall_duration*10)
-    intervall_enable = intervall_enable
-
+    sdef_on = int(sdef_on * 10)
+    sdefMinOffset = int(sdefMinOffset * 10)
+    sdefHys = int(sdefHys * 10)
+    uschutz_on = int(uschutz_on * 10)
+    uschutz_hys = int(uschutz_hys * 10)
+    tsHys = int(tsHys * 10)
+    intervall_on = int(intervall_on * 10)
+    intervall_time = int(intervall_time * 10)
+    intervall_duration = int(intervall_duration * 10)
+    intervall_enable = int(intervall_enable)
 
     client = get_influxdb_client()
-
     write_api = client.write_api(write_options=SYNCHRONOUS)
 
     record = [
-	Point("venti_param").field("sdef_on", sdef_on).field("sdef_hys", sdef_hys).field("uschutz_on", uschutz_on).field("uschutz_hys", uschutz_hys).field("intervall_on", intervall_on).field("intervall_time", intervall_time).field("intervall_duration", intervall_duration).field("intervall_enable", intervall_enable),
-    ]      
+        Point("venti_param")
+        .field("sdef_on", sdef_on)
+        .field("sdef_min_offset", sdefMinOffset)
+        .field("sdef_hys", sdefHys)
+        .field("uschutz_on", uschutz_on)
+        .field("uschutz_hys", uschutz_hys)
+        .field("ts_hys", tsHys)
+        .field("intervall_on", intervall_on)
+        .field("intervall_time", intervall_time)
+        .field("intervall_duration", intervall_duration)
+        .field("intervall_enable", intervall_enable)
+    ]
 
     write_api.write(bucket="jokley_bucket", org=ORG, record=record)
     client.close()
+
 
 def get_venti_lastTimeOn():
     client = get_influxdb_client()
@@ -605,37 +623,46 @@ def switch():
     #         return jsonify('No command send!')
         
 
-@app.route('/ventiParams',methods = ['POST','GET'])
+@app.route('/ventiParams', methods=['POST', 'GET'])
 def ventiParams():
     if request.method == 'POST':
         data = request.get_json()
         sdef_on = data['sdef_on']
-        sdef_hys = data['sdef_hys']
+        sdefMinOffset = data['sdef_min_offset']
+        sdefHys = data['sdef_hys']
         uschutz_on = data['uschutz_on']
         uschutz_hys = data['uschutz_hys']
-        intervall_on =  data['intervall_on']
-        intervall_time =  data['intervall_time']
+        tsHys = data['ts_hys']
+        intervall_on = data['intervall_on']
+        intervall_time = data['intervall_time']
         intervall_duration = data['intervall_duration']
         intervall_enable = data['intervall_enable']
 
-         
-        
+        venti_auto_param(
+            sdef_on, sdefMinOffset, sdefHys,
+            uschutz_on, uschutz_hys,
+            tsHys,
+            intervall_on, intervall_time,
+            intervall_duration, intervall_enable
+        )
 
-        venti_auto_param(sdef_on, sdef_hys,uschutz_on,uschutz_hys,intervall_on,intervall_time,intervall_duration,intervall_enable)
         app.logger.info('****************************************')
         app.logger.info('Regelparameter geändert:')
         app.logger.info('SDef on: {}'.format(sdef_on))
-        app.logger.info('SDef hys: {}'.format(sdef_hys))
+        app.logger.info('SDef MinOffset: {}'.format(sdefMinOffset))
+        app.logger.info('SDef Hys: {}'.format(sdefHys))
         app.logger.info('ÜSchutz on: {}'.format(uschutz_on))
         app.logger.info('ÜSchutz hys: {}'.format(uschutz_hys))
+        app.logger.info('TS Hys: {}'.format(tsHys))
         app.logger.info('Intervall on: {}'.format(intervall_on))
         app.logger.info('Intervall time: {}'.format(intervall_time))
         app.logger.info('Intervall duration: {}'.format(intervall_duration))
         app.logger.info('Intervall enable: {}'.format(intervall_enable))
-        
+
         venti_control()
 
         return jsonify('Regelparameter geändert')
+
     
 @app.route('/ventiSystem', methods=['POST', 'GET'])
 def ventiSystem():
