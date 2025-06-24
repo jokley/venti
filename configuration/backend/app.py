@@ -138,15 +138,16 @@ def venti_control():
     pramsVenti = get_venti_control_param_values()
 
     sdef_on = pramsVenti[0]['sdef_on'][1] / 10
-    sdef_min_offset = 4 #pramsVenti[0].get('sdef_min_offset', [None, 40])[1] / 10  # default: 0.5
-    sdef_hys = 0.5  #pramsVenti[0].get('sdef_hys', [None, 5])[1] / 10  # default: 0.5
+    sdef_min_offset = pramsVenti[0]['sdef_min_offset'][1] / 10
+    sdef_hys = pramsVenti[0]['sdef_hys'][1] / 10  # falls du den Wert trotzdem weiter nutzt
     uschutz_on = pramsVenti[0]['uschutz_on'][1] / 10
     uschutz_hys = pramsVenti[0]['uschutz_hys'][1] / 10
-    ts_hys =  0.2 #pramsVenti[0].get('ts_hys', [None, 2])[1] / 10       # default: 0.2
+    ts_hys = pramsVenti[0]['ts_hys'][1] / 10
     intervall_on = pramsVenti[0]['intervall_on'][1] / 10
     intervall_time = (pramsVenti[0]['intervall_time'][1] / 10) * 3600
     intervall_duration = (pramsVenti[0]['intervall_duration'][1] / 10) * 60
     intervall_enable = pramsVenti[0]['intervall_enable'][1]
+
 
 
     sdefMinThreshold = sDefMin + sdef_min_offset
