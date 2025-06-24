@@ -138,7 +138,7 @@ def venti_control():
     pramsVenti = get_venti_control_param_values()
 
     sdef_on = pramsVenti[0]['sdef_on'][1] / 10
-    sdef_min_offset = pramsVenti[0]['sdef_min_offset'][1] / 10
+    sdef_min_offset = pramsVenti[0].get('sdef_min_offset', [None, 40])[1] / 10  # default: 0.5
     sdef_hys = pramsVenti[0].get('sdef_hys', [None, 5])[1] / 10  # default: 0.5
     uschutz_on = pramsVenti[0]['uschutz_on'][1] / 10
     uschutz_hys = pramsVenti[0]['uschutz_hys'][1] / 10
