@@ -250,7 +250,7 @@ def venti_auto(cmd, trockenMasse,stockAufbau):
     write_api.write(bucket="jokley_bucket", org=ORG, record=record)
     client.close()
 
-def venti_auto_param(sdef_on, sdefMinOffset, sdefHys, uschutz_on, uschutz_hys, tsHys,
+def venti_auto_param(sdef_on, sdef_min_offset, sdef_hys, uschutz_on, uschutz_hys, ts_hys,
                      intervall_on, intervall_time, intervall_duration, intervall_enable):
 
     ORG = os.getenv("DOCKER_INFLUXDB_INIT_ORG")
