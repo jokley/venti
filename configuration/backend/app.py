@@ -255,11 +255,11 @@ def venti_auto_param(sdef_on, sdefMinOffset, sdefHys, uschutz_on, uschutz_hys, t
     ORG = os.getenv("DOCKER_INFLUXDB_INIT_ORG")
 
     sdef_on = int(sdef_on * 10)
-    sdefMinOffset = int(sdefMinOffset * 10)
-    sdefHys = int(sdefHys * 10)
+    sdef_min_offset = int(sdef_min_offset * 10)
+    sdef_hys = int(sdef_hys * 10)
     uschutz_on = int(uschutz_on * 10)
     uschutz_hys = int(uschutz_hys * 10)
-    tsHys = int(tsHys * 10)
+    ts_hys = int(ts_hys * 10)
     intervall_on = int(intervall_on * 10)
     intervall_time = int(intervall_time * 10)
     intervall_duration = int(intervall_duration * 10)
@@ -271,11 +271,11 @@ def venti_auto_param(sdef_on, sdefMinOffset, sdefHys, uschutz_on, uschutz_hys, t
     record = [
         Point("venti_param")
         .field("sdef_on", sdef_on)
-        .field("sdef_min_offset", sdefMinOffset)
-        .field("sdef_hys", sdefHys)
+        .field("sdef_min_offset", sdef_min_Offset)
+        .field("sdef_hys", sdef_hys)
         .field("uschutz_on", uschutz_on)
         .field("uschutz_hys", uschutz_hys)
-        .field("ts_hys", tsHys)
+        .field("ts_hys", ts_hys)
         .field("intervall_on", intervall_on)
         .field("intervall_time", intervall_time)
         .field("intervall_duration", intervall_duration)
@@ -629,11 +629,11 @@ def ventiParams():
     if request.method == 'POST':
         data = request.get_json()
         sdef_on = data['sdef_on']
-        sdefMinOffset = data['sdef_min_offset']
-        sdefHys = data['sdef_hys']
+        sdef_min_offset = data['sdef_min_offset']
+        sdef_hys = data['sdef_hys']
         uschutz_on = data['uschutz_on']
         uschutz_hys = data['uschutz_hys']
-        tsHys = data['ts_hys']
+        ts_hys = data['ts_hys']
         intervall_on = data['intervall_on']
         intervall_time = data['intervall_time']
         intervall_duration = data['intervall_duration']
@@ -650,11 +650,11 @@ def ventiParams():
         app.logger.info('****************************************')
         app.logger.info('Regelparameter geändert:')
         app.logger.info('SDef on: {}'.format(sdef_on))
-        app.logger.info('SDef MinOffset: {}'.format(sdefMinOffset))
-        app.logger.info('SDef Hys: {}'.format(sdefHys))
+        app.logger.info('SDef MinOffset: {}'.format(sdef_min_offset))
+        app.logger.info('SDef Hys: {}'.format(sdef_hys))
         app.logger.info('ÜSchutz on: {}'.format(uschutz_on))
         app.logger.info('ÜSchutz hys: {}'.format(uschutz_hys))
-        app.logger.info('TS Hys: {}'.format(tsHys))
+        app.logger.info('TS Hys: {}'.format(ts_hys))
         app.logger.info('Intervall on: {}'.format(intervall_on))
         app.logger.info('Intervall time: {}'.format(intervall_time))
         app.logger.info('Intervall duration: {}'.format(intervall_duration))
