@@ -28,12 +28,12 @@ def write_combined_point(
     try:
         # Liste der Messwerte und ihre Measurement-Namen
         measurements = [
-            ("device_frmpayload_data_temperature", tmp),
-            ("device_frmpayload_data_humidity", hum),
-            ("device_frmpayload_data_trockenmasse", trockenmasse),
-            ("device_frmpayload_data_sdef", sdef),
-            ("device_frmpayload_data_battery", battery),
-            ("device_frmpayload_data_rssi", rssi),
+            ("device_frmpayload_data_temperature", float(tmp)),
+            ("device_frmpayload_data_humidity", float(hum)),
+            ("device_frmpayload_data_trockenmasse", float(trockenmasse)),
+            ("device_frmpayload_data_sdef", float(sdef)),
+            ("device_frmpayload_data_battery", float(battery)), 
+            ("device_frmpayload_data_rssi", float(rssi)),
         ]
 
         for measurement, value in measurements:
