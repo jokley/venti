@@ -26,21 +26,30 @@ def write_combined_point(
     timestamp_s: int,
 ):
     try:
-        point = (
-            Point("device_frmpayload_data")
-            .tag("device_name", node_name)
-            .field("temperature", tmp)
-            .field("humidity", hum)
-            .field("trockenmasse", trockenmasse)
-            .field("sdef", sdef)
-            .field("battery", battery)
-            .field("rssi", rssi)
-            .time(timestamp_s, WritePrecision.S)
-        )
-        write_api.write(bucket=bucket, org=org, record=point)
-        logger.info(f"[influx] ✅ Wrote combined point for {node_name}")
+        # Liste der Messwerte und ihre Measurement-Namen
+        measurements = [
+            ("device_frmpayload_data_temperature", tmp),
+            ("device_frmpayload_data_humidity", hum),
+            ("device_frmpayload_data_trockenmasse", trockenmasse),
+            ("device_frmpayload_data_sdef", sdef),
+            ("device_frmpayload_data_battery", battery),
+            ("device_frmpayload_data_rssi", rssi),
+        ]
+
+        for measurement, value in measurements:
+            point = (
+                Point(measurement)
+                .tag("device_name", node_name)
+                .field("_value", value)
+                .time(timestamp_s, WritePrecision.S)
+            )
+            write_api.write(bucket=bucket, org=org, record=point)
+
+        logger.info(f"[influx] ✅ Wrote ChirpStack-style points for {node_name}")
+
     except Exception as e:
-        logger.error(f"[influx] ❌ Failed to write point: {e}")
+        logger.error(f"[influx] ❌ Failed to write points: {e}")
+
 
 def write_relay_state(relay_id: int, state: str):
     """
