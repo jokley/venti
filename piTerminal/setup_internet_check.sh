@@ -63,7 +63,9 @@ echo "Script created and made executable."
 
 # Step 3: Add to cronjob
 echo "Installing cronjob..."
-(crontab -l 2>/dev/null; echo "*/5 * * * * /usr/local/bin/check_internet.sh") | crontab -
+# Only add cronjob if it doesn't already exist
+(crontab -l 2>/dev/null | grep -q "/usr/local/bin/check_internet.sh") || \
+  (crontab -l 2>/dev/null; echo "*/5 * * * * /usr/local/bin/check_internet.sh") | crontab -
 
 # Step 4: Set up logrotate
 echo "Setting up logrotate config..."
