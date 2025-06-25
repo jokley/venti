@@ -40,7 +40,7 @@ def write_combined_point(
             point = (
                 Point(measurement)
                 .tag("device_name", node_name)
-                .field("_value", value)
+                .field("value", value)
                 .time(timestamp_s, WritePrecision.S)
             )
             write_api.write(bucket=bucket, org=org, record=point)
