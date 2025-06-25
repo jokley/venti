@@ -3,7 +3,7 @@ import json
 import time
 import logging
 import paho.mqtt.client as mqtt
-from influx import write_relay_string_state  # Neue Funktion importieren
+from influx import write_relay_state  # Neue Funktion importieren
 from i2c_IO import set_relay  # Relay-Steuerung
 
 # Logger setup
@@ -31,7 +31,7 @@ def on_message(client, userdata, message):
             set_relay(relay_id, state.lower() == 'on')
 
             # Neue InfluxDB-Schreibweise über Client-Funktion
-            write_relay_string_state(relay_id, state)
+            write_relay_state(relay_id, state)
 
         else:
             logger.warning("Invalid message format, expected 'id' and 'relay'.")
