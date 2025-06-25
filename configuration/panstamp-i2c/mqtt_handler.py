@@ -3,8 +3,8 @@ import json
 import time
 import logging
 import paho.mqtt.client as mqtt
-from influx import write_to_influx
-from i2c_IO import set_relay  # Importing the relay control function
+from influx import write_relay_string_state  # Neue Funktion importieren
+from i2c_IO import set_relay  # Relay-Steuerung
 
 # Logger setup
 logger = logging.getLogger("mqtt_handler")
@@ -30,32 +30,14 @@ def on_message(client, userdata, message):
             logger.info(f"Control Relay {relay_id}: {state}")
             set_relay(relay_id, state.lower() == 'on')
 
-            # Build measurement name
-            measurement = f"device_frmpayload_data_RO{relay_id}_status"
-            value = "ON" if state.lower() == "on" else "OFF"
-
-            # Format line protocol
-            timestamp = int(time.time())  # seconds precision
-            line_protocol = f'{measurement},device_name=fan _value="{value}" {timestamp}'
-
-            # Write to InfluxDB using your wrapper
-            write_to_influx(line_protocol)
+            # Neue InfluxDB-Schreibweise über Client-Funktion
+            write_relay_string_state(relay_id, state)
 
         else:
             logger.warning("Invalid message format, expected 'id' and 'relay'.")
 
     except Exception as e:
         logger.error(f"Error processing message: {e}", exc_info=True)
-
-
-
-# Write relay state to InfluxDB
-def write_relay_state_to_influx(relay_id, state):
-    timestamp_s = int(time.time())
-    line_protocol = (
-        f"relay_state,relay_id={relay_id} state={1 if state.lower() == 'on' else 0} {timestamp_s}"
-    )
-    write_to_influx(line_protocol)
 
 def on_connect(client, userdata, flags, rc):
     logger.info(f"Connected to MQTT Broker with result code {rc}")
