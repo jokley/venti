@@ -641,9 +641,9 @@ def ventiParams():
         intervall_enable = data['intervall_enable']
 
         venti_auto_param(
-            sdef_on, sdefMinOffset, sdefHys,
+            sdef_on, sdef_min_offset, sdef_hys,
             uschutz_on, uschutz_hys,
-            tsHys,
+            ts_hys,
             intervall_on, intervall_time,
             intervall_duration, intervall_enable
         )
