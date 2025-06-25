@@ -24,7 +24,7 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 2,
+  "id": 3,
   "links": [],
   "panels": [
     {
@@ -409,7 +409,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "device_frmpayload_data_humidity value {application_name=\"jokley\", dev_eui=\"fea9c950b52158f5\", device_name=\"outdoor00\", f_port=\"2\"}"
+              "options": "device_frmpayload_data_humidity value {application_name=\"jokley\", dev_eui=\"5ae65de83af383c3\", device_name=\"outdoor00\", f_port=\"2\"}"
             },
             "properties": [
               {
@@ -428,7 +428,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "device_frmpayload_data_temperature value {application_name=\"jokley\", dev_eui=\"fea9c950b52158f5\", device_name=\"outdoor00\", f_port=\"2\"}"
+              "options": "device_frmpayload_data_temperature value {application_name=\"jokley\", dev_eui=\"5ae65de83af383c3\", device_name=\"outdoor00\", f_port=\"2\"}"
             },
             "properties": [
               {
@@ -447,7 +447,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "device_frmpayload_data_trockenmasse value {application_name=\"jokley\", dev_eui=\"fea9c950b52158f5\", device_name=\"outdoor00\", f_port=\"2\"}"
+              "options": "device_frmpayload_data_trockenmasse value {application_name=\"jokley\", dev_eui=\"5ae65de83af383c3\", device_name=\"outdoor00\", f_port=\"2\"}"
             },
             "properties": [
               {
@@ -679,7 +679,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "device_frmpayload_data_humidity value {application_name=\"jokley\", dev_eui=\"04084b774a4c8e66\", device_name=\"probe01\", f_port=\"2\"}"
+              "options": "device_frmpayload_data_humidity value {application_name=\"jokley\", dev_eui=\"7a0f523557face5b\", device_name=\"probe01\", f_port=\"2\"}"
             },
             "properties": [
               {
@@ -698,7 +698,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "device_frmpayload_data_humidity value {application_name=\"jokley\", dev_eui=\"1e58b2a3fc9f5b17\", device_name=\"probe02\", f_port=\"2\"}"
+              "options": "Time"
             },
             "properties": [
               {
@@ -717,7 +717,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "device_frmpayload_data_temperature value {application_name=\"jokley\", dev_eui=\"04084b774a4c8e66\", device_name=\"probe01\", f_port=\"2\"}"
+              "options": "device_frmpayload_data_temperature value {application_name=\"jokley\", dev_eui=\"7a0f523557face5b\", device_name=\"probe01\", f_port=\"2\"}"
             },
             "properties": [
               {
@@ -755,7 +755,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "device_frmpayload_data_trockenmasse value {application_name=\"jokley\", dev_eui=\"04084b774a4c8e66\", device_name=\"probe01\", f_port=\"2\"}"
+              "options": "device_frmpayload_data_trockenmasse value {application_name=\"jokley\", dev_eui=\"7a0f523557face5b\", device_name=\"probe01\", f_port=\"2\"}"
             },
             "properties": [
               {
@@ -778,7 +778,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "device_frmpayload_data_trockenmasse value {application_name=\"jokley\", dev_eui=\"1e58b2a3fc9f5b17\", device_name=\"probe02\", f_port=\"2\"}"
+              "options": "Time"
             },
             "properties": [
               {
@@ -805,7 +805,6 @@
               "options": {
                 "mode": "exclude",
                 "names": [
-                  "Trockenmasse_02",
                   "Trockenmasse_01"
                 ],
                 "prefix": "All except:",
@@ -997,7 +996,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "value {application_name=\"jokley\", dev_eui=\"04084b774a4c8e66\", device_name=\"probe01\", f_port=\"2\"}"
+              "options": "value {application_name=\"jokley\", dev_eui=\"5ae65de83af383c3\", device_name=\"outdoor00\", f_port=\"2\"}"
             },
             "properties": [
               {
@@ -1009,7 +1008,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "value {application_name=\"jokley\", dev_eui=\"1e58b2a3fc9f5b17\", device_name=\"probe02\", f_port=\"2\"}"
+              "options": "Time"
             },
             "properties": [
               {
@@ -1021,7 +1020,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "value {application_name=\"jokley\", dev_eui=\"fea9c950b52158f5\", device_name=\"outdoor00\", f_port=\"2\"}"
+              "options": "value {application_name=\"jokley\", dev_eui=\"7a0f523557face5b\", device_name=\"probe01\", f_port=\"2\"}"
             },
             "properties": [
               {
@@ -1402,22 +1401,54 @@
             "title": "SDef on",
             "tooltip": "",
             "type": "slider",
+            "uid": "31f57ce1-8753-4a91-b87f-efc9a30e8272",
             "unit": "  ",
             "value": 7,
             "width": 0
           },
           {
-            "id": "sdef_hys",
+            "id": "sdef_min_offset",
             "labelWidth": 20,
             "max": 10,
             "min": 0,
             "section": "",
-            "step": 0.5,
+            "step": 1,
+            "title": "SDef min Offset",
+            "tooltip": "",
+            "type": "slider",
+            "uid": "98463518-b2e1-47e2-abf5-55035a3f3b65",
+            "unit": " ",
+            "value": 0,
+            "width": 0
+          },
+          {
+            "id": "sdef_hys",
+            "labelWidth": 20,
+            "max": 3,
+            "min": 0,
+            "section": "",
+            "step": 0.2,
             "title": "SDef hys",
             "tooltip": "",
             "type": "slider",
+            "uid": "71a3e057-5ff3-40dd-93e3-6d377efdd9e6",
             "unit": " ",
             "value": 5.5
+          },
+          {
+            "id": "ts_hys",
+            "labelWidth": 20,
+            "max": 2,
+            "min": 0,
+            "section": "",
+            "step": 0.2,
+            "title": "Trockenmasse Hys",
+            "tooltip": "",
+            "type": "slider",
+            "uid": "874c29b1-1785-4fdf-b7e0-e2b285e0c16a",
+            "unit": " ",
+            "value": 0,
+            "width": 0
           },
           {
             "id": "uschutz_on",
@@ -1429,6 +1460,7 @@
             "title": "ÜSchutz on",
             "tooltip": "",
             "type": "slider",
+            "uid": "8e5e6ff8-00ba-436a-a893-d5006cafd69d",
             "unit": "°C",
             "value": 35
           },
@@ -1442,6 +1474,7 @@
             "title": "ÜSchutz hys",
             "tooltip": "",
             "type": "slider",
+            "uid": "01dc341a-526e-47c9-9e0c-047ba396342e",
             "unit": "°C",
             "value": 2
           },
@@ -1455,6 +1488,7 @@
             "title": "Intervall on",
             "tooltip": "",
             "type": "slider",
+            "uid": "60d76354-ffbf-4b40-af3a-3a32a2ffb99b",
             "unit": " %",
             "value": 50
           },
@@ -1468,6 +1502,7 @@
             "title": "Intervall Time",
             "tooltip": "",
             "type": "slider",
+            "uid": "814b4340-2c3d-410e-86a3-c720c7ef1272",
             "unit": "h",
             "value": 1
           },
@@ -1481,6 +1516,7 @@
             "title": "Intervall Duration",
             "tooltip": "",
             "type": "slider",
+            "uid": "1feda1d4-c03d-4959-ad38-c4d597a994ec",
             "unit": "min",
             "value": 12,
             "width": 0
@@ -1492,6 +1528,7 @@
             "title": "Intervall enable",
             "tooltip": "",
             "type": "boolean",
+            "uid": "fbda7218-cd20-4c66-a12d-f1d1c7a52cff",
             "value": false,
             "width": 20
           }
@@ -1794,12 +1831,12 @@
     "list": []
   },
   "time": {
-    "from": "now-1h",
+    "from": "now-12h",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "",
   "title": "jokleyVenti",
   "uid": "47a24cfa-bd5f-415d-96cf-fae2441ecb49",
-  "version": 12
+  "version": 10
 }
