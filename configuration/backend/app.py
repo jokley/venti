@@ -149,7 +149,8 @@ def venti_control():
     intervall_enable = pramsVenti[0]['intervall_enable'][1]
 
 
-
+    sdef_hys_half = sdef_hys / 2
+    ts_hys_half = ts_hys / 2
     sdefMinThreshold = sDefMin + sdef_min_offset
 
 
@@ -174,7 +175,7 @@ def venti_control():
 
         # Trockenmasse Automatik
         
-        elif  sDefOut >= sdefMinThreshold + sdef_hys and sDefOut >= sdef_on + sdef_hys and tsSoll >= tsMin + ts_hys:
+        elif  sDefOut >= sdefMinThreshold + sdef_hys_half and sDefOut >= sdef_on + sdef_hys_half and tsSoll >= tsMin + ts_hys_half:
             venti_cmd('on')
             app.logger.info('****************************************')
             app.logger.info('Mode: {}'.format(mode))
@@ -194,7 +195,7 @@ def venti_control():
                 app.logger.info('Restzeit: {}'.format(720-remainingTimeIntervalOn))
         
          
-        elif remainingTimeStock > stock and (sDefOut < sdefMinThreshold - sdef_hys or sDefOut < sdef_on - sdef_hys or tsSoll < tsMin - ts_hys):
+        elif remainingTimeStock > stock and (sDefOut < sdefMinThreshold - sdef_hys_half or sDefOut < sdef_on - sdef_hys_half or tsSoll < tsMin - ts_hys_half):
         # Belüftung aus
             venti_cmd('off')
             app.logger.info('****************************************')
