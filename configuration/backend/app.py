@@ -139,7 +139,7 @@ def venti_control():
 
     sdef_on = pramsVenti[0]['sdef_on'][1] / 10
     sdef_min_offset = pramsVenti[0]['sdef_min_offset'][1] / 10
-    sdef_hys = pramsVenti[0]['sdef_hys'][1] / 10  # falls du den Wert trotzdem weiter nutzt
+    sdef_hys = pramsVenti[0]['sdef_hys'][1] / 10  
     uschutz_on = pramsVenti[0]['uschutz_on'][1] / 10
     uschutz_hys = pramsVenti[0]['uschutz_hys'][1] / 10
     ts_hys = pramsVenti[0]['ts_hys'][1] / 10
@@ -581,21 +581,33 @@ def controlValues():
 
 @app.route('/controlParamValues')
 def controlParamValues():
-   
     pramsVenti = get_venti_control_param_values()
-    #startTime = pramsVenti[0]['sdef_on'][0]
-    sdef_on = pramsVenti[0]['sdef_on'][1]/10
-    sdef_hys = pramsVenti[0]['sdef_hys'][1]/10
-    uschutz_on = pramsVenti[0]['uschutz_on'][1]/10
-    uschutz_hys = pramsVenti[0]['uschutz_hys'][1]/10
-    intervall_on =  pramsVenti[0]['intervall_on'][1]/10
-    intervall_time =  pramsVenti[0]['intervall_time'][1]/10
-    intervall_duration = pramsVenti[0]['intervall_duration'][1]/10
+
+    sdef_on = pramsVenti[0]['sdef_on'][1] / 10
+    sdef_hys = pramsVenti[0]['sdef_hys'][1] / 10
+    sdef_min_offset = pramsVenti[0]['sdef_min_offset'][1] / 10
+    ts_hys = pramsVenti[0]['ts_hys'][1] / 10
+    uschutz_on = pramsVenti[0]['uschutz_on'][1] / 10
+    uschutz_hys = pramsVenti[0]['uschutz_hys'][1] / 10
+    intervall_on = pramsVenti[0]['intervall_on'][1] / 10
+    intervall_time = pramsVenti[0]['intervall_time'][1] / 10
+    intervall_duration = pramsVenti[0]['intervall_duration'][1] / 10
     intervall_enable = pramsVenti[0]['intervall_enable'][1]
 
+    iniDict = {
+        'intervall_duration': intervall_duration,
+        'intervall_enable': intervall_enable,
+        'intervall_on': intervall_on,
+        'intervall_time': intervall_time,
+        'sdef_hys': sdef_hys,
+        'sdef_min_offset': sdef_min_offset,
+        'sdef_on': sdef_on,
+        'ts_hys': ts_hys,
+        'uschutz_hys': uschutz_hys,
+        'uschutz_on': uschutz_on
+    }
 
-    iniDict = {'sdef_on':sdef_on, 'sdef_hys':sdef_hys , 'uschutz_on':uschutz_on,  'uschutz_hys':uschutz_hys,'intervall_on':intervall_on,'intervall_time':intervall_time,'intervall_duration':intervall_duration,'intervall_enable':intervall_enable} 
-    return (iniDict)
+    return iniDict
 
 @app.route('/venti',methods = ['POST', 'GET'])
 def switch():
