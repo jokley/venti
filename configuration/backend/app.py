@@ -356,10 +356,10 @@ def get_venti_control_param_values():
     client = get_influxdb_client()
 
     query = ''' from(bucket: "jokley_bucket")
-                    |> range(start: 1970-01-01T00:00:00Z)
-                    |> filter(fn: (r) => r["_measurement"] == "venti_param")
-		            |> last()
-                '''
+                |> range(start: 1970-01-01T00:00:00Z)
+                |> filter(fn: (r) => r["_measurement"] == "venti_param")
+                |> last()
+            '''
 
     result = client.query_api().query(query=query)
 
@@ -368,15 +368,31 @@ def get_venti_control_param_values():
         for record in table.records:
             results.append((record.get_time(), record.get_value()))
     
+    # Updated list of names, alphabetically ordered
+    names = [
+        'intervall_duration',
+        'intervall_enable',
+        'intervall_on',
+        'intervall_time',
+        'sdef_hys',
+        'sdef_min_offset',
+        'sdef_on',
+        'ts_hys',
+        'uschutz_hys',
+        'uschutz_on'
+    ]
+
+    # Make sure the number of results matches the number of names
+    if len(results) != len(names):
+        raise ValueError(f"Expected {len(names)} parameters, got {len(results)} from InfluxDB")
+
     results2 = []
-    names = ['intervall_duration','intervall_enable','intervall_on','intervall_time','sdef_hys', 'sdef_on','uschutz_hys','uschutz_on']
-    results2.append(dict(zip(names,results)))
-    dicti={}
+    results2.append(dict(zip(names, results)))
     dicti = results2
 
     client.close()
 
-    return (dicti)
+    return dicti
     
 
 def get_outdoor_values():
