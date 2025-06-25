@@ -272,7 +272,7 @@ def venti_auto_param(sdef_on, sdef_min_offset, sdef_hys, uschutz_on, uschutz_hys
     record = [
         Point("venti_param")
         .field("sdef_on", sdef_on)
-        .field("sdef_min_offset", sdef_min_Offset)
+        .field("sdef_min_offset", sdef_min_offset)
         .field("sdef_hys", sdef_hys)
         .field("uschutz_on", uschutz_on)
         .field("uschutz_hys", uschutz_hys)
