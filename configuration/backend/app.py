@@ -264,7 +264,7 @@ def venti_auto_param(sdef_on, sdef_min_offset, sdef_hys, uschutz_on, uschutz_hys
     intervall_on = int(intervall_on * 10)
     intervall_time = int(intervall_time * 10)
     intervall_duration = int(intervall_duration * 10)
-    intervall_enable = int(intervall_enable)
+    intervall_enable = intervall_enable
 
     client = get_influxdb_client()
     write_api = client.write_api(write_options=SYNCHRONOUS)
