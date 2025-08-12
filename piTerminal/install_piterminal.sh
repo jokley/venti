@@ -122,8 +122,8 @@ EOF
 chmod u+rw "$SYSTEMD_SERVICE_FILE"
 
 echo "🔄 Reloading systemd user daemon and enabling kiosk.service"
-# Run systemctl commands as user pi without sudo:
-sudo -u pi systemctl --user daemon-reload || true
-sudo -u pi systemctl --user enable kiosk.service || true
+echo "Please run these commands as user 'pi' after login:"
+echo " systemctl --user daemon-reload"
+echo " systemctl --user enable kiosk.service"
 
 echo "✅ Setup complete. Please reboot the Raspberry Pi to apply changes."
