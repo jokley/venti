@@ -8,16 +8,26 @@ START_SCRIPT="$PROJECT_DIR/start.sh"
 ICON_FILE="$PROJECT_DIR/venti.png"
 BACKGROUND_IMAGE="$PROJECT_DIR/logo.jpg"
 DESKTOP_FILE="/home/pi/Desktop/venti.desktop"
-
-SYSTEMD_USER_DIR="/home/pi/.config/systemd/user"
-SYSTEMD_SERVICE_FILE="$SYSTEMD_USER_DIR/kiosk.service"
-
+LXDE_AUTOSTART_DIR="/home/pi/.config/lxsession/LXDE-pi"
+LXDE_AUTOSTART_FILE="$LXDE_AUTOSTART_DIR/autostart"
 PCMANFM_CONF_DIR="/home/pi/.config/pcmanfm/LXDE-pi"
 PCMANFM_CONF_FILE="$PCMANFM_CONF_DIR/desktop-items-0.conf"
 
 echo "==== STARTING INSTALLATION ===="
 
-# Ensure required files exist
+echo "🔧 Fixing ownership and permissions for project and Desktop..."
+
+# Fix ownership and permissions so user pi can write everything needed
+sudo chown -R pi:pi "$PROJECT_DIR"
+sudo chown -R pi:pi /home/pi/Desktop
+
+chmod -R u+rwX,go+rX,go-w "$PROJECT_DIR"
+chmod -R u+rwX,go+rX,go-w /home/pi/Desktop
+
+# Ensure start.sh is executable (even if permissions got changed)
+chmod +x "$START_SCRIPT"
+
+# Check required files exist
 if [[ ! -f "$START_SCRIPT" ]]; then
     echo "❌ ERROR: $START_SCRIPT not found"
     exit 1
@@ -33,9 +43,18 @@ if [[ ! -f "$BACKGROUND_IMAGE" ]]; then
     exit 1
 fi
 
-# Make start script executable
-echo "🚀 Making start.sh executable"
-chmod +x "$START_SCRIPT"
+# Create autostart directory if needed
+echo "📁 Ensuring LXDE autostart directory exists..."
+mkdir -p "$LXDE_AUTOSTART_DIR"
+
+# Write LXDE autostart file without trailing &
+echo "📝 Writing LXDE autostart file to $LXDE_AUTOSTART_FILE"
+cat <<EOF > "$LXDE_AUTOSTART_FILE"
+@lxpanel --profile LXDE-pi
+@pcmanfm --desktop --profile LXDE-pi
+@xscreensaver -no-splash
+@bash $START_SCRIPT
+EOF
 
 # Create desktop shortcut
 echo "🖥️ Creating desktop shortcut at $DESKTOP_FILE"
@@ -71,33 +90,31 @@ space_between_icons=32
 EOF
 fi
 
-# Create systemd user service directory
+# Setup systemd user service
+SYSTEMD_USER_DIR="/home/pi/.config/systemd/user"
+SYSTEMD_SERVICE_FILE="$SYSTEMD_USER_DIR/kiosk.service"
+
 echo "📁 Ensuring systemd user directory exists..."
 mkdir -p "$SYSTEMD_USER_DIR"
 
-# Write systemd service file
 echo "📝 Writing systemd user service file to $SYSTEMD_SERVICE_FILE"
 cat <<EOF > "$SYSTEMD_SERVICE_FILE"
 [Unit]
 Description=Start Chromium Kiosk Browser
-After=network.target
+After=graphical.target
 
 [Service]
 ExecStart=$START_SCRIPT
 Restart=on-failure
 Environment=DISPLAY=:0
-Environment=XDG_SESSION_TYPE=x11
-# Add other environment variables here if needed
+Environment=XDG_RUNTIME_DIR=/run/user/$(id -u pi)
 
 [Install]
 WantedBy=default.target
 EOF
 
-# Reload systemd user daemon and enable service
-echo "🔄 Reloading systemd user daemon and enabling kiosk.service"
-systemctl --user daemon-reload
-systemctl --user enable kiosk.service
+echo "✅ Setup complete. Please reboot the Raspberry Pi to apply changes."
 
-echo "✅ Setup complete."
-echo "👉 To start kiosk now: systemctl --user start kiosk.service"
-echo "👉 The kiosk will auto-start on login after reboot."
+echo "⚠️ Reminder: Enable systemd user service manually after reboot with:"
+echo "      systemctl --user enable kiosk.service"
+echo "      systemctl --user start kiosk.service"
