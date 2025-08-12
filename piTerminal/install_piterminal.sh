@@ -8,8 +8,10 @@ START_SCRIPT="$PROJECT_DIR/start.sh"
 ICON_FILE="$PROJECT_DIR/venti.png"
 BACKGROUND_IMAGE="$PROJECT_DIR/logo.jpg"
 DESKTOP_FILE="/home/pi/Desktop/venti.desktop"
-LXDE_AUTOSTART_DIR="/home/pi/.config/lxsession/LXDE-pi"
-LXDE_AUTOSTART_FILE="$LXDE_AUTOSTART_DIR/autostart"
+
+SYSTEMD_USER_DIR="/home/pi/.config/systemd/user"
+SYSTEMD_SERVICE_FILE="$SYSTEMD_USER_DIR/kiosk.service"
+
 PCMANFM_CONF_DIR="/home/pi/.config/pcmanfm/LXDE-pi"
 PCMANFM_CONF_FILE="$PCMANFM_CONF_DIR/desktop-items-0.conf"
 
@@ -30,19 +32,6 @@ if [[ ! -f "$BACKGROUND_IMAGE" ]]; then
     echo "❌ ERROR: $BACKGROUND_IMAGE not found"
     exit 1
 fi
-
-# Create autostart directory if needed
-echo "📁 Ensuring LXDE autostart directory exists..."
-mkdir -p "$LXDE_AUTOSTART_DIR"
-
-# Write LXDE autostart file
-echo "📝 Writing LXDE autostart file to $LXDE_AUTOSTART_FILE"
-cat <<EOF > "$LXDE_AUTOSTART_FILE"
-@lxpanel --profile LXDE-pi
-@pcmanfm --desktop --profile LXDE-pi
-@xscreensaver -no-splash
-@bash $START_SCRIPT &
-EOF
 
 # Make start script executable
 echo "🚀 Making start.sh executable"
@@ -82,4 +71,33 @@ space_between_icons=32
 EOF
 fi
 
-echo "✅ Setup complete. Please reboot the Raspberry Pi to apply changes."
+# Create systemd user service directory
+echo "📁 Ensuring systemd user directory exists..."
+mkdir -p "$SYSTEMD_USER_DIR"
+
+# Write systemd service file
+echo "📝 Writing systemd user service file to $SYSTEMD_SERVICE_FILE"
+cat <<EOF > "$SYSTEMD_SERVICE_FILE"
+[Unit]
+Description=Start Chromium Kiosk Browser
+After=network.target
+
+[Service]
+ExecStart=$START_SCRIPT
+Restart=on-failure
+Environment=DISPLAY=:0
+Environment=XDG_SESSION_TYPE=x11
+# Add other environment variables here if needed
+
+[Install]
+WantedBy=default.target
+EOF
+
+# Reload systemd user daemon and enable service
+echo "🔄 Reloading systemd user daemon and enabling kiosk.service"
+systemctl --user daemon-reload
+systemctl --user enable kiosk.service
+
+echo "✅ Setup complete."
+echo "👉 To start kiosk now: systemctl --user start kiosk.service"
+echo "👉 The kiosk will auto-start on login after reboot."
