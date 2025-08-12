@@ -72,26 +72,29 @@ fi
 echo "📁 Ensuring systemd user directory exists..."
 mkdir -p "$SYSTEMD_USER_DIR"
 
-echo "📝 Writing systemd user service file to $SYSTEMD_SERVICE_FILE"
-cat > "$SYSTEMD_SERVICE_FILE" <<EOF
+echo "📁 Creating system-wide systemd service at /etc/systemd/system/kiosk.service..."
+
+sudo tee /etc/systemd/system/kiosk.service > /dev/null <<EOF
 [Unit]
 Description=Start Chromium Kiosk Browser
-After=graphical-session.target
+After=graphical.target
 
 [Service]
 Type=simple
-ExecStart=$START_SCRIPT
+User=pi
+ExecStart=$PROJECT_DIR/start.sh
 Restart=on-failure
 Environment=DISPLAY=:0
 
 [Install]
-WantedBy=default.target
+WantedBy=multi-user.target
 EOF
 
-echo "🔄 Reloading systemd user daemon and enabling kiosk.service"
-# Run as user pi, no sudo, so switch user inside script:
-sudo -u pi systemctl --user daemon-reload || true
-sudo -u pi systemctl --user enable kiosk.service || true
+echo "🔄 Reloading systemd daemon and enabling kiosk.service..."
+sudo systemctl daemon-reload
+sudo systemctl enable kiosk.service
+
+echo "✅ System-wide kiosk.service installed and enabled."
 
 echo "✅ Setup complete. Please reboot the Raspberry Pi to apply changes."
 
