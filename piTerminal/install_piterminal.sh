@@ -2,7 +2,8 @@
 
 set -e
 
-# Resolve script directory
+echo "==== STARTING INSTALLATION ===="
+
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 START_SCRIPT="$PROJECT_DIR/start.sh"
 ICON_FILE="$PROJECT_DIR/venti.png"
@@ -15,57 +16,31 @@ PCMANFM_CONF_FILE="$PCMANFM_CONF_DIR/desktop-items-0.conf"
 SYSTEMD_USER_DIR="/home/pi/.config/systemd/user"
 SYSTEMD_SERVICE_FILE="$SYSTEMD_USER_DIR/kiosk.service"
 
-echo "==== STARTING INSTALLATION ===="
+# Check required files
+for f in "$START_SCRIPT" "$ICON_FILE" "$BACKGROUND_IMAGE"; do
+  if [[ ! -f "$f" ]]; then
+    echo "❌ ERROR: Required file not found: $f"
+    exit 1
+  fi
+done
 
-# Fix ownership and permissions for project and Desktop (to avoid permission errors)
 echo "🔧 Fixing ownership and permissions for project and Desktop..."
-sudo chown -R pi:pi "$PROJECT_DIR"
-sudo chown -R pi:pi /home/pi/Desktop
-chmod -R u+rwX "$PROJECT_DIR"
-chmod -R u+rwX /home/pi/Desktop
+chown -R pi:pi /home/pi/Desktop "$PROJECT_DIR"
+chmod +x "$START_SCRIPT"
 
-# Ensure required files exist
-if [[ ! -f "$START_SCRIPT" ]]; then
-    echo "❌ ERROR: $START_SCRIPT not found"
-    exit 1
-fi
-
-if [[ ! -f "$ICON_FILE" ]]; then
-    echo "❌ ERROR: $ICON_FILE not found"
-    exit 1
-fi
-
-if [[ ! -f "$BACKGROUND_IMAGE" ]]; then
-    echo "❌ ERROR: $BACKGROUND_IMAGE not found"
-    exit 1
-fi
-
-# Create autostart directory if needed
 echo "📁 Ensuring LXDE autostart directory exists..."
 mkdir -p "$LXDE_AUTOSTART_DIR"
-sudo chown -R pi:pi "$LXDE_AUTOSTART_DIR"
-chmod u+rwX "$LXDE_AUTOSTART_DIR"
 
-# Write LXDE autostart file
 echo "📝 Writing LXDE autostart file to $LXDE_AUTOSTART_FILE"
-cat <<EOF > "$LXDE_AUTOSTART_FILE"
+cat > "$LXDE_AUTOSTART_FILE" <<EOF
 @lxpanel --profile LXDE-pi
 @pcmanfm --desktop --profile LXDE-pi
 @xscreensaver -no-splash
-@bash $START_SCRIPT
 EOF
-chmod u+rw "$LXDE_AUTOSTART_FILE"
 
-# Make start script executable
-echo "🚀 Making start.sh executable"
-chmod +x "$START_SCRIPT"
-
-# Create desktop shortcut
 echo "🖥️ Creating desktop shortcut at $DESKTOP_FILE"
 mkdir -p "/home/pi/Desktop"
-sudo chown -R pi:pi /home/pi/Desktop
-chmod u+rwX /home/pi/Desktop
-cat <<EOF > "$DESKTOP_FILE"
+cat > "$DESKTOP_FILE" <<EOF
 [Desktop Entry]
 Type=Link
 Name=Heulüfter
@@ -75,15 +50,12 @@ URL=http://172.16.238.19?kiosk=1
 EOF
 chmod +x "$DESKTOP_FILE"
 
-# Set the desktop background
 echo "🖼️ Setting desktop background to $BACKGROUND_IMAGE"
 mkdir -p "$PCMANFM_CONF_DIR"
-sudo chown -R pi:pi "$PCMANFM_CONF_DIR"
-chmod u+rwX "$PCMANFM_CONF_DIR"
 if [[ -f "$PCMANFM_CONF_FILE" ]]; then
-    sed -i "s|^wallpaper=.*|wallpaper=$BACKGROUND_IMAGE|" "$PCMANFM_CONF_FILE"
+  sed -i "s|^wallpaper=.*|wallpaper=$BACKGROUND_IMAGE|" "$PCMANFM_CONF_FILE"
 else
-    cat <<EOF > "$PCMANFM_CONF_FILE"
+  cat > "$PCMANFM_CONF_FILE" <<EOF
 [*]
 wallpaper=$BACKGROUND_IMAGE
 wallpaper_mode=stretch
@@ -96,34 +68,30 @@ sort=mtime;ascending;
 space_between_icons=32
 EOF
 fi
-chmod u+rw "$PCMANFM_CONF_FILE"
 
-# Setup systemd user service
 echo "📁 Ensuring systemd user directory exists..."
 mkdir -p "$SYSTEMD_USER_DIR"
-sudo chown -R pi:pi "$SYSTEMD_USER_DIR"
-chmod u+rwX "$SYSTEMD_USER_DIR"
 
 echo "📝 Writing systemd user service file to $SYSTEMD_SERVICE_FILE"
-cat <<EOF > "$SYSTEMD_SERVICE_FILE"
+cat > "$SYSTEMD_SERVICE_FILE" <<EOF
 [Unit]
 Description=Start Chromium Kiosk Browser
-After=network.target
+After=graphical-session.target
 
 [Service]
+Type=simple
 ExecStart=$START_SCRIPT
-Restart=always
-User=pi
+Restart=on-failure
 Environment=DISPLAY=:0
 
 [Install]
 WantedBy=default.target
 EOF
-chmod u+rw "$SYSTEMD_SERVICE_FILE"
 
 echo "🔄 Reloading systemd user daemon and enabling kiosk.service"
-echo "Please run these commands as user 'pi' after login:"
-echo " systemctl --user daemon-reload"
-echo " systemctl --user enable kiosk.service"
+# Run as user pi, no sudo, so switch user inside script:
+sudo -u pi systemctl --user daemon-reload || true
+sudo -u pi systemctl --user enable kiosk.service || true
 
 echo "✅ Setup complete. Please reboot the Raspberry Pi to apply changes."
+
