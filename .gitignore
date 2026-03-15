@@ -1,0 +1,13 @@
+# Environment-Variablen
+.env
+.env.local
+.env.*.local
+.env.development.local
+.env.test.local
+.env.production.local
+.venti.env
+
+# Falls du ein Python-Virtual-Environment-Verzeichnis (env/) nutzt
+env/
+venv/
+ENV/
