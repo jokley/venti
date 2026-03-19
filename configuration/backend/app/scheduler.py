@@ -1,5 +1,6 @@
 from .extensions.extensions import scheduler
-from .services.venti_service import venti_control
+# from .services.venti_service import venti_control
+from .controller.venti.controller import venti_control
 
 
 def start_scheduler():
