@@ -1,5 +1,6 @@
 from flask import Blueprint, jsonify, request
-from  ..services.venti_service import venti_cmd, venti_auto, venti_auto_param, venti_control
+from  ..services.venti_service import venti_cmd, venti_auto, venti_auto_param
+from ..controller.venti.controller import venti_control
 from ..extensions.extensions import scheduler
 from ..utils.logger import logger
 
