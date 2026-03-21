@@ -1,4 +1,5 @@
 from flask import Blueprint, jsonify, request
+from datetime import datetime
 from  ..services.venti_service import venti_cmd, venti_auto, venti_auto_param
 from ..controller.venti.controller import venti_control
 from ..extensions.extensions import scheduler
@@ -27,8 +28,8 @@ def switch():
         return jsonify('Venti off')
     elif CMD == 'auto':
         venti_auto(CMD, TM, STOCK)
-        venti_control()
-        scheduler.reschedule_job('venti_control', trigger='interval', minutes=4)
+        # venti_control()
+        scheduler.modify_job('venti_control',next_run_time=datetime.now())
         return jsonify('Venti auto')
     return jsonify('No command sent!')
 
