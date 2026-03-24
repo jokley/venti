@@ -1,4 +1,8 @@
 from flask import Blueprint, jsonify,request,send_file
+
+from app.controller.venti.context import VentiContext
+from app.controller.venti.controller import evaluate
+from app.services.control_data import build_control_data
 from ..utils.logger import logger
 import threading
 import os
@@ -41,3 +45,18 @@ def default_route():
 def download():
     path = 'debug.log'
     return send_file(path, as_attachment=True)
+
+
+@system_bp.route("/trace")
+def rule_trace():
+    data = build_control_data()
+    ctx = VentiContext(data)
+
+    decision = evaluate(ctx)
+
+    return jsonify({
+        "mode": ctx.mode,
+        "final_decision": decision.command,
+        "reason": decision.reason,
+        "trace": decision.details.get("trace", [])
+    })

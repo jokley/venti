@@ -3,6 +3,10 @@ from .decision import Decision
 from .context import VentiContext
 from app.services.control_data import build_control_data
 from app.services.venti_service import venti_cmd
+from app.notifications.transitions import detect_transition
+from app.notifications.message_builder import build_message
+from app.notifications.notifier import send_notification
+from app.notifications.system_alerts import process_system_alerts
 from app.utils.logger import logger
 
 # IMPORTANT: load rules
@@ -10,11 +14,32 @@ from .rules import *
 
 
 def evaluate(ctx):
+    trace = []
+
     for priority, rule_func in rules:
-        decision = rule_func(ctx)
-        if decision:
-            return decision
-    return Decision("off", "NO_CONDITION")
+        result = rule_func(ctx)
+
+        trace.append({
+            "rule": rule_func.__name__,
+            "priority": priority,
+            "matched": result is not None,
+            "decision": result.command if result else None,
+            "reason": result.reason if result else None
+        })
+
+        if result:
+            # attach trace to decision
+            result.details["trace"] = trace
+            return result
+
+    # fallback if no rule matches
+    return Decision(
+        "off",
+        "NO_CONDITION",
+        {
+            "trace": trace
+        }
+    )
 
 def log_decision(ctx, decision):
 
@@ -78,9 +103,24 @@ def venti_control():
 
     decision = evaluate(ctx)
 
+    # 👉 execute command
     venti_cmd(decision.command)
 
+    # 👉 logging (your nice readable logs)
     log_decision(ctx, decision)
+
+    # 👉 🔥 ONLY notify on real change
+    changed, prev = detect_transition(decision)
+
+    if changed:
+        msg = build_message(decision)
+        send_notification(
+            title=decision.reason,
+            message=msg
+        )
+
+    # 🔥 NEW: system alerts
+    # process_system_alerts(ctx, decision)
 
     # logger.info(
     #     f"VENTI | mode={ctx.mode} | cmd={decision.command} | reason={decision.reason}"

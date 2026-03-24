@@ -17,3 +17,6 @@ class Config:
     PANSTAMP = os.getenv("PANSTAMP", "false").lower() == "true"
     APPLICATION_ID = os.getenv("APPLICATION_ID")
     DEVICE_ID = os.getenv("DEVICE_ID")
+
+    NTFY_BASE_URL = os.getenv("NTFY_BASE_URL", "https://ntfy.sh")
+    NTFY_TOPIC = os.getenv("NTFY_TOPIC")

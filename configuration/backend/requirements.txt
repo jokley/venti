@@ -7,3 +7,4 @@ pytz
 APScheduler
 influxdb-client
 python-dotenv
+requests
