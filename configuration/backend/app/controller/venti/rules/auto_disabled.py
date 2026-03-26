@@ -1,7 +1,7 @@
 from ..rule_engine import rule
 from ..decision import Decision
 
-@rule(priority=55)
+@rule(priority=25)
 def auto_disable(ctx):
 
     if ctx.mode != "auto":
