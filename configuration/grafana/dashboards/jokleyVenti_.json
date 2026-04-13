@@ -24,7 +24,7 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 4,
+  "id": 1,
   "links": [],
   "panels": [
     {
@@ -37,7 +37,7 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 6,
+        "h": 7,
         "w": 12,
         "x": 0,
         "y": 0
@@ -72,22 +72,26 @@
             "labelWidth": 15,
             "options": [
               {
-                "label": "on",
+                "id": "on",
+                "label": "EIN",
                 "value": "on"
               },
               {
-                "label": "off",
+                "id": "off",
+                "label": "AUS",
                 "value": "off"
               },
               {
-                "label": "auto",
+                "id": "auto",
+                "label": "AUTO",
                 "value": "auto"
               }
             ],
             "section": "",
-            "title": "Venti",
+            "title": "Lüfter",
             "tooltip": "",
             "type": "radio",
+            "uid": "157b7f0a-13b7-44a9-ab00-b4c80a637696",
             "unit": " ",
             "value": "auto"
           },
@@ -101,6 +105,7 @@
             "title": "Trockenmasse",
             "tooltip": "",
             "type": "slider",
+            "uid": "f3be725c-fd6f-4c26-a1c6-a798776cc3ea",
             "unit": "%",
             "value": 87
           },
@@ -110,30 +115,37 @@
             "labelWidth": 15,
             "options": [
               {
+                "id": "0",
                 "label": "0",
                 "value": "0"
               },
               {
+                "id": "1",
                 "label": "1",
                 "value": "1"
               },
               {
+                "id": "2",
                 "label": "2",
                 "value": "2"
               },
               {
+                "id": "4",
                 "label": "4",
                 "value": "4"
               },
               {
+                "id": "6",
                 "label": "16",
                 "value": "6"
               },
               {
+                "id": "12",
                 "label": "12",
                 "value": "12"
               },
               {
+                "id": "24",
                 "label": "24",
                 "value": "24"
               }
@@ -142,6 +154,7 @@
             "title": "Stockaufbau",
             "tooltip": "",
             "type": "select",
+            "uid": "eb251e6b-c7be-4207-af12-699dd90dbfa4",
             "unit": "h",
             "value": "0"
           }
@@ -186,12 +199,12 @@
           "backgroundColor": "#0b90b9",
           "foregroundColor": "#000000",
           "icon": "check-circle",
-          "text": "confirm",
+          "text": "Bestätigen",
           "variant": "custom"
         },
         "sync": true,
         "update": {
-          "code": "if (context.panel.response && context.panel.response.ok) {\n  context.grafana.notifySuccess([\"Update\", \"Values updated successfully.\"]);\n  setTimeout(() => {\n    context.grafana.locationService.reload(); // <- correct\n  }, 7500);\n} else {\n  context.grafana.notifyError([\"Update\", \"An error occurred updating values.\"]);\n}\n",
+          "code": "if (context.panel.response && context.panel.response.ok) {\n  context.grafana.notifySuccess([\"Update\", \"Values updated successfully.\"]);\n  setTimeout(() => {\n    // context.grafana.locationService.reload(); // <- correct\n    context.grafana.refresh();\n  }, 5000);\n} else {\n  context.grafana.notifyError([\"Update\", \"An error occurred updating values.\"]);\n}\n",
           "confirm": false,
           "contentType": "application/json",
           "getPayload": "const payload = {};\ncontext.panel.elements.forEach((element) => {\n  if (!element.value) {\n    return;\n  }\n  payload[element.id] = element.value;\n})\nreturn payload;",
@@ -211,6 +224,101 @@
       ],
       "title": "Lüfter Steuerung",
       "type": "volkovlabs-form-panel"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "P5697886F9CA74929"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "green",
+            "mode": "fixed"
+          },
+          "displayName": ".",
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "#19d2ff",
+                  "index": 1,
+                  "text": " 𖣘"
+                },
+                "1": {
+                  "color": "#3fedc2",
+                  "index": 0,
+                  "text": " 𖣘"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "value {application_name=\"jokley\", dev_eui=\"a840418c51868361\", device_name=\"fan\", f_port=\"2\"}"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": []
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 2,
+        "x": 12,
+        "y": 0
+      },
+      "id": 26,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "12.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "P5697886F9CA74929"
+          },
+          "query": "from(bucket: \"jokley_bucket\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"device_name\"] == \"fan\")\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"device_frmpayload_data_RO1_status\")\r\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)\r\n  |> map(fn: (r) => ({\r\n      r with\r\n      _value: if r._value == \"ON\" then 1 else 0\r\n  }))\r\n  |> yield(name: \"last\")",
+          "refId": "A"
+        }
+      ],
+      "title": "Lüfter Status",
+      "type": "stat"
     },
     {
       "datasource": {
@@ -291,8 +399,8 @@
       },
       "gridPos": {
         "h": 3,
-        "w": 12,
-        "x": 12,
+        "w": 9,
+        "x": 14,
         "y": 0
       },
       "id": 15,
@@ -466,30 +574,6 @@
                 "value": "right"
               }
             ]
-          },
-          {
-            "__systemRef": "hideSeriesFrom",
-            "matcher": {
-              "id": "byNames",
-              "options": {
-                "mode": "exclude",
-                "names": [
-                  "Trocknemasse"
-                ],
-                "prefix": "All except:",
-                "readOnly": true
-              }
-            },
-            "properties": [
-              {
-                "id": "custom.hideFrom",
-                "value": {
-                  "legend": false,
-                  "tooltip": false,
-                  "viz": true
-                }
-              }
-            ]
           }
         ]
       },
@@ -509,7 +593,7 @@
         },
         "tooltip": {
           "hideZeros": false,
-          "mode": "single",
+          "mode": "multi",
           "sort": "none"
         }
       },
@@ -520,7 +604,7 @@
             "type": "influxdb",
             "uid": "P5697886F9CA74929"
           },
-          "query": "from(bucket: \"jokley_bucket\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"device_name\"] == \"outdoor00\")\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"device_frmpayload_data_temperature\" or r[\"_measurement\"] == \"device_frmpayload_data_humidity\" or r[\"_measurement\"] == \"device_frmpayload_data_trockenmasse\")\r\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\r\n  |> yield(name: \"mean\")",
+          "query": "from(bucket: \"jokley_bucket\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"device_name\"] == \"outdoor00\")\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"device_frmpayload_data_temperature\" or r[\"_measurement\"] == \"device_frmpayload_data_humidity\" or r[\"_measurement\"] == \"device_frmpayload_data_trockenmasse\")\r\n  |> group(columns: [\"device_name\", \"_measurement\", \"_field\"])\r\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\r\n  |> yield(name: \"mean\")",
           "refId": "A"
         }
       ],
@@ -582,7 +666,7 @@
         "h": 4,
         "w": 12,
         "x": 0,
-        "y": 6
+        "y": 7
       },
       "id": 4,
       "options": {
@@ -614,250 +698,6 @@
       ],
       "title": "Lüfter Status",
       "type": "state-timeline"
-    },
-    {
-      "datasource": {
-        "type": "influxdb",
-        "uid": "P5697886F9CA74929"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "continuous-BlPu"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "barWidthFactor": 0.6,
-            "drawStyle": "line",
-            "fillOpacity": 53,
-            "gradientMode": "opacity",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "smooth",
-            "lineStyle": {
-              "fill": "solid"
-            },
-            "lineWidth": 2,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green"
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "device_frmpayload_data_humidity value probe01"
-            },
-            "properties": [
-              {
-                "id": "displayName",
-                "value": "Humidity_01"
-              },
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "#2027dc",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "device_frmpayload_data_humidity value probe02"
-            },
-            "properties": [
-              {
-                "id": "displayName",
-                "value": "Humidity_02"
-              },
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "#105ddc",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "device_frmpayload_data_temperature value probe01"
-            },
-            "properties": [
-              {
-                "id": "displayName",
-                "value": "Temperature_01"
-              },
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "#bf1ce9",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "device_frmpayload_data_temperature value probe02"
-            },
-            "properties": [
-              {
-                "id": "displayName",
-                "value": "Temperature_02"
-              },
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "#771c3c",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "device_frmpayload_data_trockenmasse value probe01"
-            },
-            "properties": [
-              {
-                "id": "displayName",
-                "value": "Trockenmasse_01"
-              },
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "#0edad9",
-                  "mode": "fixed"
-                }
-              },
-              {
-                "id": "custom.axisPlacement",
-                "value": "right"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "device_frmpayload_data_trockenmasse value probe02"
-            },
-            "properties": [
-              {
-                "id": "displayName",
-                "value": "Trockenmasse_02"
-              },
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "#09dabe",
-                  "mode": "fixed"
-                }
-              },
-              {
-                "id": "custom.axisPlacement",
-                "value": "right"
-              }
-            ]
-          },
-          {
-            "__systemRef": "hideSeriesFrom",
-            "matcher": {
-              "id": "byNames",
-              "options": {
-                "mode": "exclude",
-                "names": [
-                  "Trockenmasse_01",
-                  "Trockenmasse_02"
-                ],
-                "prefix": "All except:",
-                "readOnly": true
-              }
-            },
-            "properties": [
-              {
-                "id": "custom.hideFrom",
-                "value": {
-                  "legend": false,
-                  "tooltip": false,
-                  "viz": true
-                }
-              }
-            ]
-          }
-        ]
-      },
-      "gridPos": {
-        "h": 7,
-        "w": 12,
-        "x": 0,
-        "y": 10
-      },
-      "id": 5,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "pluginVersion": "12.0.0",
-      "targets": [
-        {
-          "datasource": {
-            "type": "influxdb",
-            "uid": "P5697886F9CA74929"
-          },
-          "query": "from(bucket: \"jokley_bucket\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"device_name\"] != \"outdoor00\")\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"device_frmpayload_data_temperature\" or r[\"_measurement\"] == \"device_frmpayload_data_humidity\" or r[\"_measurement\"] == \"device_frmpayload_data_trockenmasse\")\r\n  |> filter(fn: (r) => r._value <= 150 and r._value >= -150)\r\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\r\n  |> yield(name: \"mean\")",
-          "refId": "A"
-        }
-      ],
-      "title": "Sonden Temperatur / Luftfeuchte / Trockenmasse",
-      "type": "timeseries"
     },
     {
       "datasource": {
@@ -947,7 +787,7 @@
             "type": "influxdb",
             "uid": "P5697886F9CA74929"
           },
-          "query": "from(bucket: \"jokley_bucket\")\r\n  |> range(start: -31d)\r\n  |> filter(fn: (r) => r[\"device_name\"] == \"fan\")\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"device_frmpayload_data_RO1_status\")\r\n  |> elapsed(unit: 1s)\r\n  |> map(fn: (r) => ({ r with elapsedFloat: float(v: r.elapsed)/3600.0 }))\r\n  |> filter(fn: (r) => r[\"_value\"] == \"ON\")\r\n  |> aggregateWindow(every: 1d, fn: sum, column:\"elapsedFloat\")\r\n  |> yield(name: \"sum\")\r\n\r\n\r\n",
+          "query": "option v = {timeRangeStart: v.timeRangeStart, timeRangeStop: v.timeRangeStop}\r\n\r\ntimeRangeSeconds = int(v: uint(v: v.timeRangeStop) - uint(v: v.timeRangeStart)) / 1000000000\r\n\r\nwindowSize =\r\n    if timeRangeSeconds < 3 * 24 * 3600 then 1h\r\n    else if timeRangeSeconds < 30 * 24 * 3600 then 1d\r\n    else 30d\r\n\r\nfrom(bucket: \"jokley_bucket\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) =>\r\n      r[\"device_name\"] == \"fan\" and\r\n      r[\"_measurement\"] == \"device_frmpayload_data_RO1_status\"\r\n  )\r\n  |> elapsed(unit: 1s)\r\n  |> map(fn: (r) => ({ r with elapsedFloat: float(v: r.elapsed)/3600.0 }))\r\n  |> filter(fn: (r) => r[\"_value\"] == \"ON\")\r\n  |> aggregateWindow(every: windowSize, fn: sum, column: \"elapsedFloat\")\r\n  |> yield(name: \"sum\")\r\n",
           "refId": "A"
         }
       ],
@@ -962,106 +802,207 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "continuous-RdYlGr"
+            "mode": "continuous-BlPu"
           },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "opacity",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "smooth",
+            "lineStyle": {
+              "fill": "solid"
+            },
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "fieldMinMax": false,
           "mappings": [],
-          "max": 3000,
-          "min": 2200,
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "red"
+                "color": "green"
               },
               {
-                "color": "light-red",
-                "value": 2200
-              },
-              {
-                "color": "super-light-orange",
-                "value": 2400
-              },
-              {
-                "color": "super-light-yellow",
-                "value": 2600
-              },
-              {
-                "color": "blue",
-                "value": 3000
+                "color": "red",
+                "value": 80
               }
             ]
-          },
-          "unit": "mvolt"
+          }
         },
         "overrides": [
           {
             "matcher": {
               "id": "byName",
-              "options": "value probe01"
+              "options": "device_frmpayload_data_humidity value probe01"
             },
             "properties": [
               {
                 "id": "displayName",
-                "value": "Sonde 1"
+                "value": "Humidity_01"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#2027dc",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
               }
             ]
           },
           {
             "matcher": {
               "id": "byName",
-              "options": "value probe02"
+              "options": "Time"
             },
             "properties": [
               {
                 "id": "displayName",
-                "value": "Sonde 2"
+                "value": "Humidity_02"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#105ddc",
+                  "mode": "fixed"
+                }
               }
             ]
           },
           {
             "matcher": {
               "id": "byName",
-              "options": "value outdoor00"
+              "options": "device_frmpayload_data_temperature value probe01"
             },
             "properties": [
               {
                 "id": "displayName",
-                "value": "Outdoor"
+                "value": "Temperature_01"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#bf1ce9",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "device_frmpayload_data_temperature value {application_name=\"jokley\", dev_eui=\"1e58b2a3fc9f5b17\", device_name=\"probe02\", f_port=\"2\"}"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Temperature_02"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#771c3c",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "device_frmpayload_data_trockenmasse value probe01"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Trockenmasse_01"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#0edad9",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Time"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Trockenmasse_02"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#09dabe",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
               }
             ]
           }
         ]
       },
       "gridPos": {
-        "h": 4,
+        "h": 7,
         "w": 12,
         "x": 0,
-        "y": 17
+        "y": 11
       },
-      "id": 7,
+      "id": 5,
       "options": {
-        "displayMode": "gradient",
         "legend": {
           "calcs": [],
           "displayMode": "list",
           "placement": "bottom",
-          "showLegend": false
+          "showLegend": true
         },
-        "maxVizHeight": 300,
-        "minVizHeight": 10,
-        "minVizWidth": 0,
-        "namePlacement": "auto",
-        "orientation": "horizontal",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showUnfilled": true,
-        "sizing": "auto",
-        "valueMode": "color"
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "multi",
+          "sort": "none"
+        }
       },
       "pluginVersion": "12.0.0",
       "targets": [
@@ -1070,12 +1011,12 @@
             "type": "influxdb",
             "uid": "P5697886F9CA74929"
           },
-          "query": "from(bucket: \"jokley_bucket\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"device_frmpayload_data_battery\")\r\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\r\n  |> yield(name: \"last\")",
-          "refId": "Probe_01"
+          "query": "from(bucket: \"jokley_bucket\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"device_name\"] != \"outdoor00\")\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"device_frmpayload_data_temperature\" or r[\"_measurement\"] == \"device_frmpayload_data_humidity\" or r[\"_measurement\"] == \"device_frmpayload_data_trockenmasse\")\r\n  |> group(columns: [\"device_name\", \"_measurement\", \"_field\"])\r\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\r\n  |> yield(name: \"mean\")",
+          "refId": "A"
         }
       ],
-      "title": "Batterie",
-      "type": "bargauge"
+      "title": "Sonden Temperatur / Luftfeuchte / Trockenmasse",
+      "type": "timeseries"
     },
     {
       "datasource": {
@@ -1120,7 +1061,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "value probe01"
+              "options": "rssi probe01"
             },
             "properties": [
               {
@@ -1132,7 +1073,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "value probe02"
+              "options": "rssi probe02"
             },
             "properties": [
               {
@@ -1144,7 +1085,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "value outdoor00"
+              "options": "rssi outdoor00"
             },
             "properties": [
               {
@@ -1205,11 +1146,329 @@
             "type": "influxdb",
             "uid": "P5697886F9CA74929"
           },
-          "query": "from(bucket: \"jokley_bucket\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"device_frmpayload_data_rssi\")\r\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\r\n  |> yield(name: \"last\")",
+          "query": "from(bucket: \"jokley_bucket\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"device_name\"] == \"outdoor00\" or r[\"device_name\"] == \"fan\" or r[\"device_name\"] == \"probe01\" or r[\"device_name\"] == \"probe02\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"rssi\")\r\n  |> group(columns: [\"device_name\", \"_measurement\", \"_field\"])\r\n  |> aggregateWindow(every: 1h, fn: mean, createEmpty: false)\r\n  |> yield(name: \"last\")",
           "refId": "Probe_01"
         }
       ],
       "title": "Empfang RSSI",
+      "type": "bargauge"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "P5697886F9CA74929"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "continuous-BlPu"
+          },
+          "fieldMinMax": false,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "device_frmpayload_data_humidity value probe01"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Humidity_01"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#2027dc",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Time"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Humidity_02"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#105ddc",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "device_frmpayload_data_temperature value probe01"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Temperature_01"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#bf1ce9",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "device_frmpayload_data_temperature value {application_name=\"jokley\", dev_eui=\"1e58b2a3fc9f5b17\", device_name=\"probe02\", f_port=\"2\"}"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Temperature_02"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#771c3c",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "device_frmpayload_data_trockenmasse value probe01"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Trockenmasse_01"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#0edad9",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Time"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Trockenmasse_02"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#09dabe",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "__systemRef": "hideSeriesFrom",
+            "matcher": {
+              "id": "byNames",
+              "options": {
+                "mode": "exclude",
+                "names": [
+                  "Trockenmasse_01"
+                ],
+                "prefix": "All except:",
+                "readOnly": true
+              }
+            },
+            "properties": []
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 12,
+        "x": 0,
+        "y": 18
+      },
+      "id": 25,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "12.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "P5697886F9CA74929"
+          },
+          "query": "from(bucket: \"jokley_bucket\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"device_name\"] != \"outdoor00\")\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"device_frmpayload_data_temperature\" or r[\"_measurement\"] == \"device_frmpayload_data_humidity\" or r[\"_measurement\"] == \"device_frmpayload_data_trockenmasse\")\r\n  |> group(columns: [\"device_name\", \"_measurement\", \"_field\"])\r\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\r\n  |> yield(name: \"mean\")",
+          "refId": "A"
+        }
+      ],
+      "title": "Sonden Temperatur / Luftfeuchte / Trockenmasse",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "P5697886F9CA74929"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "continuous-RdYlGr"
+          },
+          "mappings": [],
+          "max": 4200,
+          "min": 3500,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red"
+              },
+              {
+                "color": "light-red",
+                "value": 3600
+              },
+              {
+                "color": "super-light-orange",
+                "value": 3700
+              },
+              {
+                "color": "super-light-yellow",
+                "value": 3800
+              },
+              {
+                "color": "blue",
+                "value": 3900
+              }
+            ]
+          },
+          "unit": "mvolt"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "value probe01"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Sonde 1"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Time"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Sonde 2"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "value outdoor00"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Outdoor"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 12,
+        "x": 0,
+        "y": 22
+      },
+      "id": 7,
+      "options": {
+        "displayMode": "gradient",
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "maxVizHeight": 300,
+        "minVizHeight": 10,
+        "minVizWidth": 0,
+        "namePlacement": "auto",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showUnfilled": true,
+        "sizing": "auto",
+        "valueMode": "color"
+      },
+      "pluginVersion": "12.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "P5697886F9CA74929"
+          },
+          "query": "from(bucket: \"jokley_bucket\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"device_name\"] == \"outdoor00\" or r[\"device_name\"] == \"fan\" or r[\"device_name\"] == \"probe01\" or r[\"device_name\"] == \"probe02\")\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"device_frmpayload_data_battery\")\r\n    |> group(columns: [\"device_name\", \"_measurement\", \"_field\"])\r\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\r\n  |> yield(name: \"last\")\r\n\r\n",
+          "refId": "Probe_01"
+        }
+      ],
+      "title": "Batterie",
       "type": "bargauge"
     },
     {
@@ -1225,7 +1484,7 @@
         "h": 5,
         "w": 12,
         "x": 0,
-        "y": 21
+        "y": 26
       },
       "id": 22,
       "options": {
@@ -1345,7 +1604,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 26
+        "y": 31
       },
       "id": 17,
       "panels": [],
@@ -1362,10 +1621,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 11,
+        "h": 13,
         "w": 18,
         "x": 0,
-        "y": 27
+        "y": 32
       },
       "id": 20,
       "options": {
@@ -1455,7 +1714,7 @@
             "id": "uschutz_on",
             "labelWidth": 20,
             "max": 40,
-            "min": 25,
+            "min": 20,
             "section": "",
             "step": 1,
             "title": "ÜSchutz on",
@@ -1652,10 +1911,10 @@
         ]
       },
       "gridPos": {
-        "h": 11,
+        "h": 13,
         "w": 2,
         "x": 18,
-        "y": 27
+        "y": 32
       },
       "id": 13,
       "options": {
@@ -1672,7 +1931,7 @@
           "values": false
         },
         "showPercentChange": false,
-        "textMode": "value",
+        "textMode": "value_and_name",
         "wideLayout": true
       },
       "pluginVersion": "12.0.0",
@@ -1682,7 +1941,7 @@
             "type": "influxdb",
             "uid": "P5697886F9CA74929"
           },
-          "query": "from(bucket: \"jokley_bucket\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"device_name\"] == \"outdoor00\")\r\n  |> filter(fn: (r) =>  r[\"_measurement\"] == \"device_frmpayload_data_temperature\" or r[\"_measurement\"] == \"device_frmpayload_data_humidity\"  or r[\"_measurement\"] == \"device_frmpayload_data_trockenmasse\" or r[\"_measurement\"] == \"device_frmpayload_data_sdef\" )\r\n  |> filter(fn: (r) => r._value <= 100 and r._value >= -100)\r\n  |> last()\r\n\r\n  \r\n    \r\n",
+          "query": "from(bucket: \"jokley_bucket\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) =>\r\n    (r[\"device_name\"] == \"outdoor00\" or r[\"device_name\"] == \"outdoor01\") and\r\n    (\r\n      r[\"_measurement\"] == \"device_frmpayload_data_temperature\" or\r\n      r[\"_measurement\"] == \"device_frmpayload_data_humidity\" or\r\n      r[\"_measurement\"] == \"device_frmpayload_data_trockenmasse\" or\r\n      r[\"_measurement\"] == \"device_frmpayload_data_sdef\"\r\n    ) and\r\n    r[\"_value\"] <= 100 and r[\"_value\"] >= -100\r\n  )\r\n  |> last()\r\n  |> map(fn: (r) => ({\r\n    _time: r._time,\r\n    _value: r._value,\r\n    _field:\r\n      if r._measurement == \"device_frmpayload_data_temperature\" then \"Temperature (°C)\"\r\n      else if r._measurement == \"device_frmpayload_data_humidity\" then \"Humidity (%)\"\r\n      else if r._measurement == \"device_frmpayload_data_trockenmasse\" then \"Trockenmasse (%)\"\r\n      else if r._measurement == \"device_frmpayload_data_sdef\" then \"SDEF\"\r\n      else r._measurement\r\n  }))\r\n  |> group(columns: [\"_field\"])  // only group by field name to make it appear in Grafana correctly\r\n  |> max()\r\n",
           "refId": "A"
         }
       ],
@@ -1717,10 +1976,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 11,
+        "h": 13,
         "w": 2,
         "x": 20,
-        "y": 27
+        "y": 32
       },
       "id": 10,
       "options": {
@@ -1738,7 +1997,7 @@
         },
         "showPercentChange": false,
         "text": {},
-        "textMode": "value",
+        "textMode": "value_and_name",
         "wideLayout": true
       },
       "pluginVersion": "12.0.0",
@@ -1749,7 +2008,7 @@
             "uid": "P5697886F9CA74929"
           },
           "hide": false,
-          "query": "                from(bucket: \"jokley_bucket\")\r\n                |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n                |> filter(fn: (r) => r[\"device_name\"] == \"probe01\" or r[\"device_name\"] == \"probe02\")\r\n                |> filter(fn: (r) =>  r[\"_measurement\"] == \"device_frmpayload_data_temperature\" or r[\"_measurement\"] == \"device_frmpayload_data_humidity\"  or r[\"_measurement\"] == \"device_frmpayload_data_trockenmasse\" or r[\"_measurement\"] == \"device_frmpayload_data_sdef\" )\r\n                |> filter(fn: (r) => r._value <= 100 and r._value >= -100)\r\n                |> last()\r\n                |> group(columns: [\"_measurement\"])\r\n                |> min()",
+          "query": "from(bucket: \"jokley_bucket\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) =>\r\n    (r[\"device_name\"] == \"probe01\" or r[\"device_name\"] == \"probe02\") and\r\n    (\r\n      r[\"_measurement\"] == \"device_frmpayload_data_temperature\" or\r\n      r[\"_measurement\"] == \"device_frmpayload_data_humidity\" or\r\n      r[\"_measurement\"] == \"device_frmpayload_data_trockenmasse\" or\r\n      r[\"_measurement\"] == \"device_frmpayload_data_sdef\"\r\n    ) and\r\n    r[\"_value\"] <= 100 and r[\"_value\"] >= -100\r\n  )\r\n  |> last()\r\n  |> map(fn: (r) => ({\r\n    _time: r._time,\r\n    _value: r._value,\r\n    _field:\r\n      if r._measurement == \"device_frmpayload_data_temperature\" then \"Temperature (°C)\"\r\n      else if r._measurement == \"device_frmpayload_data_humidity\" then \"Humidity (%)\"\r\n      else if r._measurement == \"device_frmpayload_data_trockenmasse\" then \"Trockenmasse (%)\"\r\n      else if r._measurement == \"device_frmpayload_data_sdef\" then \"SDEF\"\r\n      else r._measurement\r\n  }))\r\n  |> group(columns: [\"_field\"])  // only group by field name to make it appear in Grafana correctly\r\n  |> min()\r\n",
           "refId": "A"
         }
       ],
@@ -1784,10 +2043,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 11,
+        "h": 13,
         "w": 2,
         "x": 22,
-        "y": 27
+        "y": 32
       },
       "id": 24,
       "options": {
@@ -1805,7 +2064,7 @@
         },
         "showPercentChange": false,
         "text": {},
-        "textMode": "value",
+        "textMode": "value_and_name",
         "wideLayout": true
       },
       "pluginVersion": "12.0.0",
@@ -1816,12 +2075,37 @@
             "uid": "P5697886F9CA74929"
           },
           "hide": false,
-          "query": "                from(bucket: \"jokley_bucket\")\r\n                |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n                |> filter(fn: (r) => r[\"device_name\"] == \"probe01\" or r[\"device_name\"] == \"probe02\")\r\n                |> filter(fn: (r) =>  r[\"_measurement\"] == \"device_frmpayload_data_temperature\" or r[\"_measurement\"] == \"device_frmpayload_data_humidity\"  or r[\"_measurement\"] == \"device_frmpayload_data_trockenmasse\" or r[\"_measurement\"] == \"device_frmpayload_data_sdef\" )\r\n                |> filter(fn: (r) => r._value <= 100 and r._value >= -100)\r\n                |> last()\r\n                |> group(columns: [\"_measurement\"])\r\n                |> max()",
+          "query": "from(bucket: \"jokley_bucket\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) =>\r\n    (r[\"device_name\"] == \"probe01\" or r[\"device_name\"] == \"probe02\") and\r\n    (\r\n      r[\"_measurement\"] == \"device_frmpayload_data_temperature\" or\r\n      r[\"_measurement\"] == \"device_frmpayload_data_humidity\" or\r\n      r[\"_measurement\"] == \"device_frmpayload_data_trockenmasse\" or\r\n      r[\"_measurement\"] == \"device_frmpayload_data_sdef\"\r\n    ) and\r\n    r[\"_value\"] <= 100 and r[\"_value\"] >= -100\r\n  )\r\n  |> last()\r\n  |> map(fn: (r) => ({\r\n    _time: r._time,\r\n    _value: r._value,\r\n    _field:\r\n      if r._measurement == \"device_frmpayload_data_temperature\" then \"Temperature (°C)\"\r\n      else if r._measurement == \"device_frmpayload_data_humidity\" then \"Humidity (%)\"\r\n      else if r._measurement == \"device_frmpayload_data_trockenmasse\" then \"Trockenmasse (%)\"\r\n      else if r._measurement == \"device_frmpayload_data_sdef\" then \"SDEF\"\r\n      else r._measurement\r\n  }))\r\n  |> group(columns: [\"_field\"])  // only group by field name to make it appear in Grafana correctly\r\n  |> max()\r\n",
           "refId": "A"
         }
       ],
       "title": "Probe max Values",
       "type": "stat"
+    },
+    {
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 5,
+        "x": 0,
+        "y": 45
+      },
+      "id": 27,
+      "options": {
+        "code": {
+          "language": "plaintext",
+          "showLineNumbers": false,
+          "showMiniMap": false
+        },
+        "content": "<div style=\"text-align: center; display: flex; flex-direction: column; align-items: center; gap: 15px;\">\n  <!-- QR-Code zum Scannen (für User vor dem Display) -->\n  <div style=\"background: white; padding: 10px; border-radius: 8px;\">\n    <img src=\"/backend/qr/ntfy\" alt=\"Scan QR Code\" style=\"width: 200px; height: 200px; display: block;\" />\n  </div>\n\n  <!-- Button zum Klicken (für User am Smartphone) -->\n  <a href=\"/backend/qr/ntfy/open\" target=\"_blank\" \n     style=\"background-color: #3274D9; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);\">\n     🔔 In ntfy App abonnieren\n  </a>\n  \n  <p style=\"font-size: 0.85em; color: #8e8e8e; max-width: 250px;\">\n    Scannen Sie den Code oder klicken Sie auf den Button, um Benachrichtigungen direkt auf Ihr Handy zu erhalten.\n  </p>\n</div>\n",
+        "mode": "html"
+      },
+      "pluginVersion": "12.0.0",
+      "title": "New panel",
+      "type": "text"
     }
   ],
   "preload": false,
@@ -1832,12 +2116,12 @@
     "list": []
   },
   "time": {
-    "from": "now-12h",
+    "from": "now-15m",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "",
-  "title": "jokleyVenti_",
-  "uid": "47a24cfa-bd5f-415d-96cf-fae2441ecb48",
-  "version": 13
+  "title": "jokleyVenti",
+  "uid": "47a24cfa-bd5f-415d-96cf-fae2441ecb49",
+  "version": 4
 }
