@@ -1,58 +1,44 @@
-class BatteryEngine:
+BATTERY_WARNINGS = [30, 20, 10]
+
+
+class BatteryAlertState:
     def __init__(self):
-        pass
+        self.last_level = {}   # device -> last bucket (30/20/10)
 
 
-def check_battery_alerts(data, state):
-    """
-    data = {"battery": {"probe01": 23, ...}}
-    """
+def check_battery_alerts(ctx, state):
 
     events = []
-    battery_map = data.get("battery", {})
 
-    for device, value in battery_map.items():
+    for device, value in ctx.battery.items():
 
         if value is None:
             continue
 
-        level = int(value)
-
-        # -------------------------
-        # BAND LOGIC
-        # -------------------------
-        if level <= 10:
-            band = "CRITICAL"
-        elif level <= 20:
-            band = "LOW"
-        elif level <= 30:
-            band = "WARNING"
+        # determine bucket
+        level = None
+        if value <= 10:
+            level = 10
+        elif value <= 20:
+            level = 20
+        elif value <= 30:
+            level = 30
         else:
-            band = "OK"
+            level = None
 
-        last = state.level_band.get(device)
+        last = state.last_level.get(device)
 
-        # -------------------------
-        # ALERT
-        # -------------------------
-        if band != last and band != "OK":
-            events.append((
-                "BATTERY_ALERT",
-                device,
-                level,
-                band
-            ))
+        # no repeated spam
+        if level is None or level == last:
+            continue
 
-        # -------------------------
-        # RECOVERY
-        # -------------------------
-        if last in ["CRITICAL", "LOW", "WARNING"] and band == "OK":
-            events.append((
-                "BATTERY_RECOVERY",
-                device,
-                level
-            ))
+        state.last_level[device] = level
 
-        state.level_band[device] = band
+        events.append((
+            "BATTERY_LOW",
+            device,
+            value,
+            level
+        ))
 
     return events

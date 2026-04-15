@@ -1,34 +1,65 @@
 class VentiContext:
 
-    def __init__(self, d):
-        self.mode = d["mode"]
+    def __init__(self, d, battery=None, rssi=None, sensor_age=None):
 
-        self.tempMax = d["tempMax"]
+        # =========================
+        # 🌬 CORE CONTROL STATE
+        # =========================
+        self.mode = d.get("mode")
 
-        self.sDefOut = d["sDefOut"]
-        self.sDefMin = d["sDefMin"]
+        self.tempMax = d.get("tempMax")
 
-        self.tsMin = d["tsMin"]
-        self.tsSoll = d["tsSoll"]
+        self.sDefOut = d.get("sDefOut")
+        self.sDefMin = d.get("sDefMin")
 
-        self.remainingTimeStock = d["remainingTimeStock"]
-        self.stock = d["stock"]
+        self.tsMin = d.get("tsMin")
+        self.tsSoll = d.get("tsSoll")
 
-        self.humMax = d["humMax"]
+        self.humMax = d.get("humMax")
 
-        self.sdef_on = d["sdef_on"]
-        self.sdef_hys_half = d["sdef_hys_half"]
-        self.sdefMinThreshold = d["sdefMinThreshold"]
+        # =========================
+        # 🌾 STOCK
+        # =========================
+        self.stock = d.get("stock")
+        self.remainingTimeStock = d.get("remainingTimeStock")
 
-        self.ts_hys_half = d["ts_hys_half"]
+        # =========================
+        # 💨 SENSOR STATE (drying logic)
+        # =========================
+        self.sdef_on = d.get("sdef_on")
+        self.sdef_hys_half = d.get("sdef_hys_half")
+        self.sdefMinThreshold = d.get("sdefMinThreshold")
 
-        self.intervall_on = d["intervall_on"]
-        self.remainingTimeInterval = d["remainingTimeInterval"]
-        self.remainingTimeIntervalOn = d["remainingTimeIntervalOn"]
-        self.remainingTimeIntervalDiff = d["remainingTimeIntervalDiff"]
+        self.ts_hys_half = d.get("ts_hys_half")
 
-        self.intervall_time = d["intervall_time"]
-        self.intervall_duration = d["intervall_duration"]
+        # =========================
+        # ⏱ INTERVAL LOGIC
+        # =========================
+        self.intervall_on = d.get("intervall_on")
 
-        self.uschutz_on = d["uschutz_on"]
-        self.uschutz_hys = d["uschutz_hys"]
+        self.remainingTimeInterval = d.get("remainingTimeInterval")
+        self.remainingTimeIntervalOn = d.get("remainingTimeIntervalOn")
+        self.remainingTimeIntervalDiff = d.get("remainingTimeIntervalDiff")
+
+        self.intervall_time = d.get("intervall_time")
+        self.intervall_duration = d.get("intervall_duration")
+
+        # =========================
+        # 🔥 PROTECTION
+        # =========================
+        self.uschutz_on = d.get("uschutz_on")
+        self.uschutz_hys = d.get("uschutz_hys")
+
+        # =========================
+        # ⏰ TIME (IMPORTANT for alerts & summary)
+        # =========================
+        self.now = d.get("now")
+
+        # =========================
+        # 🔋 SYSTEM HEALTH (NEW)
+        # =========================
+        self.battery = battery or {}       # {device: %}
+
+        self.rssi = rssi or {}             # {device: dBm}
+
+        self.sensor_age = sensor_age or {} # {device: seconds since last update}

@@ -1,43 +1,45 @@
-class RSSIEngine:
-    pass
+RSSI_LOW = -85
+RSSI_CRITICAL = -95
+RSSI_RECOVER = -75
 
 
-def check_rssi_alerts(data, state):
+class RSSIAlertState:
+    def __init__(self):
+        self.state = {}  # device -> "OK / LOW / CRITICAL"
+
+
+def check_rssi_alerts(ctx, state):
 
     events = []
-    rssi_map = data.get("rssi", {})
 
-    for device, value in rssi_map.items():
+    for device, value in ctx.rssi.items():
 
         if value is None:
             continue
 
-        # -------------------------
-        # STATES (with hysteresis)
-        # -------------------------
-        if value <= -85:
-            status = "WEAK"
-        elif value <= -75:
-            status = "DEGRADED"
-        else:
-            status = "OK"
-
-        last = state.signal_state.get(device)
+        prev = state.state.get(device, "OK")
 
         # -------------------------
-        # ALERTS
+        # CRITICAL
         # -------------------------
-        if status != last:
+        if value <= RSSI_CRITICAL and prev != "CRITICAL":
+            state.state[device] = "CRITICAL"
+            events.append(("RSSI_CRITICAL", device, value))
+            continue
 
-            if status == "WEAK":
-                events.append(("RSSI_WEAK", device, value))
+        # -------------------------
+        # LOW
+        # -------------------------
+        if value <= RSSI_LOW and prev == "OK":
+            state.state[device] = "LOW"
+            events.append(("RSSI_LOW", device, value))
+            continue
 
-            elif status == "DEGRADED":
-                events.append(("RSSI_DEGRADED", device, value))
-
-            elif status == "OK" and last in ["WEAK", "DEGRADED"]:
-                events.append(("RSSI_RECOVERY", device, value))
-
-        state.signal_state[device] = status
+        # -------------------------
+        # RECOVERY (hysteresis)
+        # -------------------------
+        if value >= RSSI_RECOVER and prev != "OK":
+            state.state[device] = "OK"
+            events.append(("RSSI_RECOVER", device, value))
 
     return events

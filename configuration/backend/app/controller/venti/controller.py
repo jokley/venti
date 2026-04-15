@@ -4,12 +4,12 @@ from .context import VentiContext
 from app.services.control_data import build_control_data
 from app.services.venti_service import venti_cmd
 from app.notifications.transitions import TransitionDetector
-from app.notifications.message_builder import build_event_message,build_message
+from app.notifications.event_message_builder import build_event_message
 from app.notifications.notifier import send_notification
 from app.notifications.alerts.state import alert_state
 from app.notifications.alerts.battery_engine import check_battery_alerts
 from app.notifications.alerts.rssi_engine import check_rssi_alerts
-from app.notifications.alerts.message_builder import build_system_alert_message
+from app.notifications.alerts.alert_message_builder import build_system_alert_message
 
 from app.utils.logger import logger
 
@@ -144,8 +144,8 @@ def venti_control():
     # =========================
    
 
-    battery_events = check_battery_alerts(data, alert_state.battery)
-    rssi_events = check_rssi_alerts(data, alert_state.rssi)
+    battery_events = check_battery_alerts(ctx, alert_state.battery)
+    rssi_events = check_rssi_alerts(ctx, alert_state.rssi)
 
     system_events = battery_events + rssi_events
 
