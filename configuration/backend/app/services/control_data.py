@@ -3,7 +3,10 @@ from .influx_service import (
     get_min_max_values,
     get_outdoor_values,
     get_venti_lastTimeOn,
-    get_venti_control_param_values
+    get_venti_control_param_values,
+    get_battery_data,
+    get_rssi_data,
+    get_sensor_age
 )
 
 from datetime import timedelta, timezone
@@ -27,6 +30,9 @@ def build_control_data():
     dataOut = get_outdoor_values()
     dataLastTime = get_venti_lastTimeOn()
     params = get_venti_control_param_values()
+    battery = get_battery_data()  # or your shared client
+    rssi = get_rssi_data()
+    sensor_age = get_sensor_age()
 
     # =========================
     # ⏱ TIME
@@ -86,4 +92,11 @@ def build_control_data():
 
         "uschutz_on": params[0]['uschutz_on'][1] / 10,
         "uschutz_hys": params[0]['uschutz_hys'][1] / 10,
+
+        # =========================
+        # 🧠 SYSTEM HEALTH (NEW LAYER)
+        # =========================
+        "battery": battery,
+        "rssi": rssi,
+        "sensor_age": sensor_age,
     }

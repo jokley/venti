@@ -126,7 +126,8 @@ def get_venti_lastTimeOn():
     client.close()
     return [dict(zip(names, times))]
 
-def get_battery_data(influx_client):
+def get_battery_data():
+    client = get_influxdb_client()
     query = '''
     from(bucket: "jokley_bucket")
     |> range(start: -1h)
@@ -135,7 +136,7 @@ def get_battery_data(influx_client):
     |> last()
     '''
 
-    result = influx_client.query_api().query(org="your_org", query=query)
+    result = client.query_api().query(query=query)
 
     battery = {}
 
@@ -147,7 +148,8 @@ def get_battery_data(influx_client):
     return battery
 
 
-def get_rssi_data(influx_client):
+def get_rssi_data():
+    client = get_influxdb_client()
     query = '''
     from(bucket: "jokley_bucket")
       |> range(start: -2h)
@@ -156,7 +158,7 @@ def get_rssi_data(influx_client):
       |> last()
     '''
 
-    result = influx_client.query_api().query(org="your_org", query=query)
+    result = client.query_api().query(query=query)
 
     rssi = {}
 
@@ -167,7 +169,8 @@ def get_rssi_data(influx_client):
 
     return rssi
 
-def get_sensor_age(influx_client):
+def get_sensor_age():
+    client = get_influxdb_client()
     query = '''
     from(bucket: "jokley_bucket")
       |> range(start: -6h)
@@ -176,7 +179,7 @@ def get_sensor_age(influx_client):
       |> last()
     '''
 
-    result = influx_client.query_api().query(org="your_org", query=query)
+    result = client.query_api().query(query=query)
 
     now = datetime.utcnow().timestamp()
     age = {}

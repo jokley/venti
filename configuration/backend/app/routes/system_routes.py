@@ -55,8 +55,25 @@ def rule_trace():
     decision = evaluate(ctx)
 
     return jsonify({
-        "mode": ctx.mode,
-        "final_decision": decision.command,
-        "reason": decision.reason,
+        "context": {
+            "mode": ctx.mode,
+            "tempMax": ctx.tempMax,
+            "humMax": ctx.humMax,
+            "tsMin": ctx.tsMin,
+            "tsSoll": ctx.tsSoll,
+            "stock": ctx.stock,
+            "remainingTimeStock": ctx.remainingTimeStock,
+
+            # health layer (VERY useful for debugging)
+            "battery": data.get("battery", {}),
+            "rssi": data.get("rssi", {}),
+            "sensor_age": data.get("sensor_age", {}),
+        },
+
+        "final_decision": {
+            "command": decision.command,
+            "reason": decision.reason,
+        },
+
         "trace": decision.details.get("trace", [])
     })
