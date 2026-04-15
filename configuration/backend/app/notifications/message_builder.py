@@ -1,17 +1,31 @@
+# =========================
+# 🔧 FORMAT HELPERS
+# =========================
+
 def fmt_float(value, digits=1):
+    if value is None:
+        return "-"
     try:
         return round(float(value), digits)
     except:
         return value
 
+
 def fmt_temp(value):
-    return f"{fmt_float(value)}°C"
+    v = fmt_float(value)
+    return f"{v}°C" if v != "-" else "-"
+
 
 def fmt_percent(value):
-    return f"{fmt_float(value)}%"
+    v = fmt_float(value)
+    return f"{v}%" if v != "-" else "-"
+
 
 def fmt_duration(seconds):
     try:
+        if seconds is None:
+            return "-"
+
         seconds = int(seconds)
 
         if seconds < 60:
@@ -25,54 +39,199 @@ def fmt_duration(seconds):
     except:
         return str(seconds)
 
+
+# =========================
+# 🧠 HUMAN READABLE TEXT
+# =========================
+
+def pretty_reason(reason):
+    mapping = {
+        "INTERVAL_ACTIVE": "Intervalllüftung",
+        "DRYING_ACTIVE": "Trocknung",
+        "STOCK_BUILDING": "Stockaufbau",
+        "OVERHEAT": "Überhitzung",
+        "AUTO_IDLE": "Automatik pausiert",
+        "MANUAL_MODE": "Manueller Modus"
+    }
+    return mapping.get(reason, reason)
+
+
+def pretty_detail_reason(reason):
+    mapping = {
+        "drying_conditions_not_met": "Trocknung nicht möglich",
+        "humidity_low": "Feuchte zu niedrig",
+        "ts_target_reached": "TS Ziel erreicht",
+        "interval_wait": "Warte auf Intervall",
+    }
+    return mapping.get(reason, reason)
+
+
+# =========================
+# 🔔 STATE MESSAGE (optional / debug)
+# =========================
+
 def build_message(decision):
-    reason = decision.reason
+    """
+    Optional: only for debugging / logs
+    Main system uses event messages!
+    """
+
+    state = decision.reason
     d = decision.details or {}
 
-    if reason == "OVERHEAT":
+    if state == "OVERHEAT":
         return (
-            f"🔥 Überhitzung – Lüfter EIN\n"
+            f"🔥 Überhitzung aktiv\n"
             f"🌡 Temp: {fmt_temp(d.get('tempMax'))} "
             f"(Limit: {fmt_temp(d.get('threshold'))}, Δ {fmt_float(d.get('diff'))})"
         )
 
-    elif reason == "STOCK_BUILD":
+    elif state == "STOCK_BUILDING":
         return (
             f"🌾 Stockaufbau aktiv\n"
-            f"⏳ Restzeit: {fmt_duration(d.get('restzeit'))} | "
-            f"Remaining: {d.get('remaining')} / {d.get('stock')}"
+            f"⏳ Restzeit: {fmt_duration(d.get('restzeit'))}\n"
+            f"📦 {d.get('remaining')} / {d.get('stock')}"
         )
 
-    elif reason == "AUTO_DISABLED":
+    elif state == "INTERVAL_ACTIVE":
         return (
-            f"🛑 Automatik beendet\n"
-            f"⏱ Runtime: {fmt_duration(d.get('runtime'))}\n"
+            f"⏱ Intervall aktiv\n"
+            f"💧 Feuchte: {fmt_percent(d.get('humMax'))}\n"
+            f"📉 Limit: {fmt_percent(d.get('threshold'))}"
+        )
+
+    elif state == "DRYING_ACTIVE":
+        return (
+            f"💨 Trocknung läuft\n"
+            f"🌬 SDef: {fmt_float(d.get('sDefOut'))} "
+            f"(Δ {fmt_float(d.get('sDefDiff'))})\n"
             f"📉 TS Diff: {fmt_float(d.get('tsDiff'))}"
         )
 
-    elif reason == "INTERVAL":
-        return (
-            f"⏱ Intervalllüftung\n"
-            f"💧 Hum: {fmt_percent(d.get('humMax'))} (Limit: {fmt_percent(d.get('threshold'))})\n"
-            f"🕒 Seit letztem ON: {fmt_duration(d.get('since_last_on'))}"
+    elif state == "AUTO_IDLE":
+        return "😴 Automatik pausiert"
+
+    elif state == "MANUAL_MODE":
+        return "🛑 Manueller Modus"
+
+    return f"ℹ️ Status: {state}"
+
+
+# =========================
+# 🔄 EVENT MESSAGE (MAIN)
+# =========================
+
+def build_event_message(event):
+    etype = event[0]
+
+    if etype != "STATE_CHANGE":
+        return None
+
+    old, new, duration, data = event[1], event[2], event[3], event[4]
+
+    old_d = data.get("old_details", {})
+    new_d = data.get("new_details", {})
+
+    msg = ""
+
+    # =========================
+    # 🔴 OLD STATE (ended)
+    # =========================
+
+    if old == "INTERVAL_ACTIVE":
+        msg += (
+            f"⏱ Intervall beendet\n"
+            f"⏱ Dauer: {fmt_duration(duration)}\n"
+            f"💧 Feuchte: {fmt_percent(old_d.get('humMax'))}\n\n"
         )
 
-    elif reason == "DRYING":
-        return (
-            f"💨 Trocknung läuft\n"
-            f"🌡 SDefOut: {fmt_float(d.get('sDefOut'))} | "
-            f"Min: {fmt_float(d.get('sDefMin'))} (Δ {fmt_float(d.get('sDefDiff'))})\n"
-            f"🌡 TS Diff: {fmt_float(d.get('tsDiff'))}"
+    elif old == "STOCK_BUILDING":
+        msg += (
+            f"🌾 Stockaufbau beendet\n"
+            f"⏱ Dauer: {fmt_duration(duration)}\n"
+            f"⏳ Restzeit: {fmt_duration(old_d.get('restzeit'))}\n\n"
         )
 
-    elif reason == "DRYING_STOP":
-        return (
+    elif old == "DRYING_ACTIVE":
+        msg += (
             f"✅ Trocknung beendet\n"
-            f"🌡 SDefOut: {fmt_float(d.get('sDefOut'))} (Threshold: {fmt_float(d.get('threshold'))})\n"
-            f"🌡 TS Diff: {fmt_float(d.get('tsDiff'))}"
+            f"⏱ Dauer: {fmt_duration(duration)}\n"
+            f"🌬 SDef: {fmt_float(old_d.get('sDefOut'))}\n"
+            f"📉 TS Diff: {fmt_float(old_d.get('tsDiff'))}\n\n"
         )
 
-    elif reason == "DEFAULT_OFF":
-        return "😴 Lüfter aus (Default)"
+    elif old == "OVERHEAT":
+        msg += (
+            f"🔥 Überhitzung beendet\n"
+            f"⏱ Dauer: {fmt_duration(duration)}\n\n"
+        )
 
-    return f"ℹ️ Status: {reason}"
+    # =========================
+    # 🟢 NEW STATE (started)
+    # =========================
+
+    if new == "AUTO_IDLE":
+        msg += f"➡️ {pretty_reason(new)}\n"
+    else:
+        msg += f"➡️ {pretty_reason(new)} gestartet\n"
+
+    # --- INTERVAL ---
+    if new == "INTERVAL_ACTIVE":
+        msg += (
+            f"💧 Feuchte: {fmt_percent(new_d.get('humMax'))}\n"
+            f"📉 Limit: {fmt_percent(new_d.get('threshold'))}\n"
+            f"🕒 Pause: {fmt_duration(new_d.get('since_last_on'))}"
+        )
+
+    # --- DRYING ---
+    elif new == "DRYING_ACTIVE":
+        msg += (
+            f"🌬 SDef Δ: {fmt_float(new_d.get('sDefDiff'))}\n"
+            f"🌬 SDef: {fmt_float(new_d.get('sDefOut'))} "
+            f"(Min: {fmt_float(new_d.get('sDefMin'))})\n"
+            f"📉 TS Diff: {fmt_float(new_d.get('tsDiff'))}"
+        )
+
+    # --- STOCK BUILD ---
+    elif new == "STOCK_BUILDING":
+        msg += (
+            f"🌾 Ziel: {fmt_duration(new_d.get('stock'))}\n"
+            f"⏳ Restzeit: {fmt_duration(new_d.get('restzeit'))}"
+        )
+
+    # --- AUTO IDLE ---
+    elif new == "AUTO_IDLE":
+        reason = pretty_detail_reason(new_d.get("reason"))
+
+        msg += f"📌 Grund: {reason}\n"
+
+        if new_d.get("sDefOut") is not None:
+            msg += f"🌬 SDef: {fmt_float(new_d.get('sDefOut'))}\n"
+
+        if new_d.get("tsDiff") is not None:
+            msg += f"📉 TS Diff: {fmt_float(new_d.get('tsDiff'))}\n"
+
+    # --- MANUAL MODE ---
+    elif new == "MANUAL_MODE":
+        msg += (
+            f"🛑 Automatik deaktiviert\n"
+            f"⏱ Laufzeit: {fmt_duration(new_d.get('runtime'))}\n"
+            f"📉 TS Diff: {fmt_float(new_d.get('tsDiff'))}"
+        )
+
+    # --- OVERHEAT ---
+    elif new == "OVERHEAT":
+        msg += (
+            f"🔥 Temp: {fmt_temp(new_d.get('tempMax'))}\n"
+            f"📈 Limit: {fmt_temp(new_d.get('threshold'))}\n"
+            f"Δ {fmt_float(new_d.get('diff'))}"
+        )
+
+    # --- fallback ---
+    else:
+        msg += (
+            f"🌡 Temp: {fmt_temp(new_d.get('tempMax'))}\n"
+            f"💧 Feuchte: {fmt_percent(new_d.get('humMax'))}"
+        )
+
+    return msg

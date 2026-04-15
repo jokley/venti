@@ -2,7 +2,7 @@ from ..rule_engine import rule
 from ..decision import Decision
 
 @rule(priority=40)
-def interval(ctx):
+def interval_active(ctx):
 
     if ctx.mode != "auto":
         return None
@@ -18,7 +18,7 @@ def interval(ctx):
         ):
             return Decision(
                 "on",
-                "INTERVAL",
+                "INTERVAL_ACTIVE",
                 {
                     "humMax": ctx.humMax,
                     "threshold": ctx.intervall_on,

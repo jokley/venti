@@ -52,6 +52,7 @@ def build_control_data():
         "remainingTimeInterval": int(now - lastOn),
         "remainingTimeIntervalOn": int(now - lastOff),
         "remainingTimeIntervalDiff": int(lastOn - lastOff),
+        "now": now,
 
         # params
         "sdef_on": params[0]['sdef_on'][1] / 10,

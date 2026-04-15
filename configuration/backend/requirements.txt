@@ -8,3 +8,5 @@ APScheduler
 influxdb-client
 python-dotenv
 requests
+qrcode
+pillow

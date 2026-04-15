@@ -3,14 +3,19 @@ from .decision import Decision
 from .context import VentiContext
 from app.services.control_data import build_control_data
 from app.services.venti_service import venti_cmd
-from app.notifications.transitions import detect_transition
-from app.notifications.message_builder import build_message
+from app.notifications.transitions import TransitionDetector
+from app.notifications.message_builder import build_event_message,build_message
 from app.notifications.notifier import send_notification
-from app.notifications.system_alerts import process_system_alerts
+from app.notifications.alerts.state import alert_state
+from app.notifications.alerts.battery_engine import check_battery_alerts
+from app.notifications.alerts.rssi_engine import check_rssi_alerts
+from app.notifications.alerts.message_builder import build_system_alert_message
+
 from app.utils.logger import logger
 
 # IMPORTANT: load rules
 from .rules import *
+
 
 
 def evaluate(ctx):
@@ -95,37 +100,59 @@ def log_decision(ctx, decision):
         logger.info("Standardzustand: Lüfter aus")
         logger.info(f"Mode: {d.get('mode')}")
 
+detector = TransitionDetector()
+
 
 def venti_control():
-
+    # =========================
+    # 1. BUILD CONTEXT
+    # =========================
     data = build_control_data()
     ctx = VentiContext(data)
 
+    # =========================
+    # 2. RULE ENGINE
+    # =========================
     decision = evaluate(ctx)
 
-    # 👉 execute command
+    # =========================
+    # 3. EXECUTE CONTROL
+    # =========================
     venti_cmd(decision.command)
 
-    # 👉 logging (your nice readable logs)
+    # =========================
+    # 4. LOGGING
+    # =========================
     log_decision(ctx, decision)
 
-    # 👉 🔥 ONLY notify on real change
-    changed, prev = detect_transition(decision)
+    # =========================
+    # 5. TRANSITION EVENTS
+    # =========================
+    events = detector.detect(decision, data)
 
-    if changed:
-        msg = build_message(decision)
+    for event in events:
+        msg = build_event_message(event)
+
+        if msg:
+            send_notification(
+                title=event[0],
+                message=msg
+            )
+
+    # =========================
+    # 6. SYSTEM ALERTS (NEW LAYER)
+    # =========================
+   
+
+    battery_events = check_battery_alerts(data, alert_state.battery)
+    rssi_events = check_rssi_alerts(data, alert_state.rssi)
+
+    system_events = battery_events + rssi_events
+
+    for alert in system_events:
+        msg = build_system_alert_message(alert)
+
         send_notification(
-            title=decision.reason,
+            title=alert[0],
             message=msg
         )
-
-    # 🔥 NEW: system alerts
-    # process_system_alerts(ctx, decision)
-
-    # logger.info(
-    #     f"VENTI | mode={ctx.mode} | cmd={decision.command} | reason={decision.reason}"
-    # )
-
-    # # 🔥 detailed debug logging
-    # if decision.details:
-    #     logger.debug(f"DETAILS | {decision.details}")

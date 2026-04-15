@@ -2,7 +2,7 @@ from ..rule_engine import rule
 from ..decision import Decision
 
 @rule(priority=25)
-def auto_disable(ctx):
+def manual_mode(ctx):
 
     if ctx.mode != "auto":
         return None
@@ -17,7 +17,7 @@ def auto_disable(ctx):
 
         return Decision(
             "off",
-            "AUTO_DISABLED",
+            "MANUAL_MODE",
             {
                 "runtime": ctx.remainingTimeInterval,
                 "tsDiff": ctx.tsSoll - ctx.tsMin

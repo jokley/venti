@@ -1,4 +1,5 @@
 from ..db.influx_client import get_influxdb_client
+from datetime import datetime
 
 def get_venti_control_values():
     client = get_influxdb_client()
@@ -124,3 +125,68 @@ def get_venti_lastTimeOn():
     names = ['lastTimeOff','lastTimeOn']
     client.close()
     return [dict(zip(names, times))]
+
+def get_battery_data(influx_client):
+    query = '''
+    from(bucket: "jokley_bucket")
+    |> range(start: -1h)
+    |> filter(fn: (r) => r["_measurement"] == "device_frmpayload_data_battery")
+    |> filter(fn: (r) => r["device_name"] == "outdoor00" or r["device_name"] == "fan" or r["device_name"] == "probe01" or r["device_name"] == "probe02")
+    |> last()
+    '''
+
+    result = influx_client.query_api().query(org="your_org", query=query)
+
+    battery = {}
+
+    for table in result:
+        for record in table.records:
+            device = record["device_name"]
+            battery[device] = record.get_value()
+
+    return battery
+
+
+def get_rssi_data(influx_client):
+    query = '''
+    from(bucket: "jokley_bucket")
+      |> range(start: -2h)
+      |> filter(fn: (r) => r["_field"] == "rssi")
+      |> filter(fn: (r) => r["device_name"] == "outdoor00" or r["device_name"] == "fan" or r["device_name"] == "probe01" or r["device_name"] == "probe02")
+      |> last()
+    '''
+
+    result = influx_client.query_api().query(org="your_org", query=query)
+
+    rssi = {}
+
+    for table in result:
+        for record in table.records:
+            device = record["device_name"]
+            rssi[device] = record.get_value()
+
+    return rssi
+
+def get_sensor_age(influx_client):
+    query = '''
+    from(bucket: "jokley_bucket")
+      |> range(start: -6h)
+      |> filter(fn: (r) => r["_field"] == "temperature")
+      |> filter(fn: (r) => r["device_name"] == "outdoor00" or r["device_name"] == "probe01" or r["device_name"] == "probe02")
+      |> last()
+    '''
+
+    result = influx_client.query_api().query(org="your_org", query=query)
+
+    now = datetime.utcnow().timestamp()
+    age = {}
+
+    for table in result:
+        for record in table.records:
+            device = record["device_name"]
+            ts = record.get_time().timestamp()
+            age[device] = int(now - ts)
+
+    return age
+
+

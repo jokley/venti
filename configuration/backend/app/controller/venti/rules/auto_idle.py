@@ -2,7 +2,7 @@ from ..rule_engine import rule
 from ..decision import Decision
 
 @rule(priority=50)
-def drying_stop(ctx):
+def auto_idle(ctx):
 
     if ctx.mode != "auto":
         return None
@@ -17,8 +17,9 @@ def drying_stop(ctx):
     ):
         return Decision(
             "off",
-            "DRYING_STOP",
+            "AUTO_IDLE",
             {
+                "reason": "drying_conditions_not_met",
                 "sDefOut": ctx.sDefOut,
                 "threshold": ctx.sdefMinThreshold,
                 "tsDiff": ctx.tsSoll - ctx.tsMin

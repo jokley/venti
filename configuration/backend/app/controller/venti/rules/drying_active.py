@@ -2,7 +2,7 @@ from ..rule_engine import rule
 from ..decision import Decision
 
 @rule(priority=30)
-def drying(ctx):
+def drying_active(ctx):
 
     if ctx.mode != "auto":
         return None
@@ -14,7 +14,7 @@ def drying(ctx):
     ):
         return Decision(
             "on",
-            "DRYING",
+            "DRYING_ACTIVE",
             {
                 "sDefOut": ctx.sDefOut,
                 "sDefMin": ctx.sDefMin,

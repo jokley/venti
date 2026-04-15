@@ -1,23 +1,54 @@
-last_state = {
-    "command": None,
-    "reason": None
-}
+class TransitionDetector:
+    def __init__(self):
+        self.last_command = None
+        self.last_reason = None
+        self.last_details = None   # 👈 NEW
+        self.state_start_ts = None
 
-def detect_transition(decision):
-    global last_state
+    def detect(self, decision, data):
+        events = []
 
-    changed = (
-        decision.command != last_state.get("command") or
-        decision.reason != last_state.get("reason")
-    )
+        now = data.get("now")
+        if now is None:
+            return events
 
-    if changed:
-        prev = last_state.copy()
+        command = decision.command
+        reason = decision.reason
+        details = decision.details or {}
 
-        last_state["command"] = decision.command
-        last_state["reason"] = decision.reason
+        # =========================
+        # INIT
+        # =========================
+        if self.state_start_ts is None:
+            self.state_start_ts = now
+            self.last_reason = reason
+            self.last_command = command
+            self.last_details = details   # 👈 NEW
+            return events
 
-        return True, prev
+        # =========================
+        # STATE CHANGE
+        # =========================
+        if self.last_reason != reason:
+            duration = now - self.state_start_ts
 
-    # ✅ ALWAYS return something
-    return False, None
+            events.append((
+                "STATE_CHANGE",
+                self.last_reason,
+                reason,
+                duration,
+                {
+                    "old_details": self.last_details,   # 👈 OLD
+                    "new_details": details,             # 👈 NEW
+                    **data
+                }
+            ))
+
+            self.state_start_ts = now
+
+        # update
+        self.last_command = command
+        self.last_reason = reason
+        self.last_details = details   # 👈 IMPORTANT
+
+        return events
