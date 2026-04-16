@@ -20,3 +20,5 @@ class Config:
 
     NTFY_BASE_URL = os.getenv("NTFY_BASE_URL", "https://ntfy.sh")
     NTFY_TOPIC = os.getenv("NTFY_TOPIC")
+    URL_IOS_STORE = "https://apps.apple.com/us/app/ntfy/id1625396347"
+    URL_ANDROID_STORE = "https://play.google.com/store/apps/details?id=io.heckel.ntfy"
