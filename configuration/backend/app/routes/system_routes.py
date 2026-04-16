@@ -3,6 +3,9 @@ from flask import Blueprint, jsonify,request,send_file
 from app.controller.venti.context import VentiContext
 from app.controller.venti.controller import evaluate
 from app.services.control_data import build_control_data
+from app.notifications.notifier import send_notification
+from app.notifications.summary.daily_summary import build_daily_summary
+  
 from ..utils.logger import logger
 import threading
 import os
@@ -76,4 +79,20 @@ def rule_trace():
         },
 
         "trace": decision.details.get("trace", [])
+    })
+
+@system_bp.route("/summary", methods=["GET"])
+def force_daily_summary():
+    data = build_control_data()
+    ctx = VentiContext(data)
+
+    msg = build_daily_summary(ctx)
+
+    send_notification(
+        title="Tagesübersicht (forced)",
+        message=msg
+    )
+
+    return jsonify({
+        "status": "forced_sent"
     })
