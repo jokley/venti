@@ -136,7 +136,7 @@
               },
               {
                 "id": "6",
-                "label": "16",
+                "label": "6",
                 "value": "6"
               },
               {
@@ -1621,7 +1621,7 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 11,
+        "h": 13,
         "w": 18,
         "x": 0,
         "y": 32
@@ -1714,7 +1714,7 @@
             "id": "uschutz_on",
             "labelWidth": 20,
             "max": 40,
-            "min": 25,
+            "min": 20,
             "section": "",
             "step": 1,
             "title": "ÜSchutz on",
@@ -1911,7 +1911,7 @@
         ]
       },
       "gridPos": {
-        "h": 11,
+        "h": 13,
         "w": 2,
         "x": 18,
         "y": 32
@@ -1976,7 +1976,7 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 11,
+        "h": 13,
         "w": 2,
         "x": 20,
         "y": 32
@@ -2043,7 +2043,7 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 11,
+        "h": 13,
         "w": 2,
         "x": 22,
         "y": 32
@@ -2081,6 +2081,31 @@
       ],
       "title": "Probe max Values",
       "type": "stat"
+    },
+    {
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 18,
+        "w": 5,
+        "x": 0,
+        "y": 45
+      },
+      "id": 29,
+      "options": {
+        "code": {
+          "language": "plaintext",
+          "showLineNumbers": false,
+          "showMiniMap": false
+        },
+        "content": "<div style=\"text-align: center; display: flex; flex-direction: column; align-items: center; gap: 20px; font-family: sans-serif;\">\n  \n  <!-- 1. HAUPT-BEREICH: DAS ABONNEMENT -->\n  <div style=\"display: flex; flex-direction: column; align-items: center; gap: 10px;\">\n    <div style=\"background: white; padding: 10px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.3);\">\n      <!-- QR-Code für das direkte Abo (Deep Link) -->\n      <img src=\"/backend/qr/ntfy\" alt=\"Abo QR\" style=\"width: 180px; height: 180px; display: block;\" />\n    </div>\n    <a href=\"/backend/qr/ntfy/open\" target=\"_blank\" \n       style=\"background-color: #3274D9; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold; width: 220px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);\">\n       🔔 Jetzt abonnieren\n    </a>\n  </div>\n\n  <hr style=\"border: 0; border-top: 1px dotted #555; width: 90%;\">\n\n  <!-- 2. DOWNLOAD-BEREICH: APP STORES -->\n  <p style=\"font-size: 0.85em; color: #8e8e8e; margin: 0;\">App noch nicht installiert? Hier scannen oder klicken:</p>\n  \n  <div style=\"display: flex; flex-direction: column; gap: 15px; width: 100%; align-items: center;\">\n    \n    <!-- iOS Sektion -->\n    <div style=\"display: flex; align-items: center; gap: 12px;\">\n      <div style=\"background: white; padding: 5px; border-radius: 4px; border: 1px solid #ddd;\">\n        <!-- Feste Route für den iOS Store QR -->\n        <img src=\"/backend/qr/ios\" style=\"width: 65px; height: 65px; display: block;\" />\n      </div>\n      <a href=\"https://apps.apple.com/us/app/ntfy/id1625396347\" target=\"_blank\" \n         style=\"background: #000; color: white; border: 1px solid #555; padding: 8px 12px; border-radius: 6px; text-decoration: none; display: flex; align-items: center; gap: 8px; width: 160px;\">\n         <span style=\"font-size: 1.2em;\">🍎</span>\n         <div style=\"text-align: left; line-height: 1;\">\n           <small style=\"font-size: 0.55em; display: block; text-transform: uppercase;\">Laden im</small>\n           <span style=\"font-size: 0.85em; font-weight: bold;\">App Store</span>\n         </div>\n      </a>\n    </div>\n\n    <!-- Android Sektion -->\n    <div style=\"display: flex; align-items: center; gap: 12px;\">\n      <div style=\"background: white; padding: 5px; border-radius: 4px; border: 1px solid #ddd;\">\n        <!-- Feste Route für den Android Store QR -->\n        <img src=\"/backend/qr/android\" style=\"width: 65px; height: 65px; display: block;\" />\n      </div>\n      <a href=\"https://play.google.com/store/apps/details?id=io.heckel.ntfy\" target=\"_blank\" \n         style=\"background: #000; color: white; border: 1px solid #555; padding: 8px 12px; border-radius: 6px; text-decoration: none; display: flex; align-items: center; gap: 8px; width: 160px;\">\n         <span style=\"font-size: 1.2em;\">🤖</span>\n         <div style=\"text-align: left; line-height: 1;\">\n           <small style=\"font-size: 0.55em; display: block; text-transform: uppercase;\">Jetzt bei</small>\n           <span style=\"font-size: 0.85em; font-weight: bold;\">Google Play</span>\n         </div>\n      </a>\n    </div>\n\n  </div>\n\n  <p style=\"font-size: 0.75em; color: #555; max-width: 250px; margin-top: 10px;\">\n    Nutzen Sie die QR-Codes zum schnellen Download oder Abonnieren direkt vor dem Monitor.\n  </p>\n</div>\n",
+        "mode": "html"
+      },
+      "pluginVersion": "12.0.0",
+      "title": "New panel",
+      "type": "text"
     }
   ],
   "preload": false,
@@ -2091,12 +2116,12 @@
     "list": []
   },
   "time": {
-    "from": "now-12h",
+    "from": "now-1h",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "",
   "title": "jokleyVenti",
   "uid": "47a24cfa-bd5f-415d-96cf-fae2441ecb49",
-  "version": 24
+  "version": 10
 }
