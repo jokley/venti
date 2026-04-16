@@ -6,7 +6,8 @@ from .influx_service import (
     get_venti_control_param_values,
     get_battery_data,
     get_rssi_data,
-    get_sensor_age
+    get_sensor_age,
+    get_fan_runtime_today
 )
 
 from datetime import timedelta, timezone
@@ -14,6 +15,26 @@ from app.utils.time_utils import (
     get_timestamp_now_epoche,
     get_timestamp_now_offset
 )
+
+def battery_mv_to_percent(mv):
+    if mv is None:
+        return None
+
+    try:
+        mv = float(mv)
+
+        MIN_V = 3500
+        MAX_V = 4200
+
+        pct = (mv - MIN_V) / (MAX_V - MIN_V) * 100
+
+        # clamp 0–100
+        pct = max(0, min(100, pct))
+
+        return round(pct, 1)
+
+    except:
+        return None
 
 
 def build_control_data():
@@ -30,9 +51,15 @@ def build_control_data():
     dataOut = get_outdoor_values()
     dataLastTime = get_venti_lastTimeOn()
     params = get_venti_control_param_values()
-    battery = get_battery_data()  # or your shared client
+    
+    raw_battery = get_battery_data()
+    battery = {
+        device: battery_mv_to_percent(value)
+        for device, value in raw_battery.items()
+}
     rssi = get_rssi_data()
     sensor_age = get_sensor_age()
+    fan_runtime = get_fan_runtime_today()
 
     # =========================
     # ⏱ TIME
@@ -93,10 +120,18 @@ def build_control_data():
         "uschutz_on": params[0]['uschutz_on'][1] / 10,
         "uschutz_hys": params[0]['uschutz_hys'][1] / 10,
 
+
         # =========================
         # 🧠 SYSTEM HEALTH (NEW LAYER)
         # =========================
         "battery": battery,
         "rssi": rssi,
         "sensor_age": sensor_age,
+
+        # =========================
+        # 🧠 FAN Runtime 
+        # =========================
+
+        "fan_runtime_today": fan_runtime,
+
     }

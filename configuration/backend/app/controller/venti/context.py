@@ -1,6 +1,6 @@
 class VentiContext:
 
-    def __init__(self, d, battery=None, rssi=None, sensor_age=None):
+    def __init__(self, d):
 
         # =========================
         # 🌬 CORE CONTROL STATE
@@ -58,8 +58,11 @@ class VentiContext:
         # =========================
         # 🔋 SYSTEM HEALTH (NEW)
         # =========================
-        self.battery = battery or {}       # {device: %}
+        self.battery = d.get("battery", {})
+        self.rssi = d.get("rssi", {})
+        self.sensor_age = d.get("sensor_age", {})
 
-        self.rssi = rssi or {}             # {device: dBm}
-
-        self.sensor_age = sensor_age or {} # {device: seconds since last update}
+        # =========================
+        # FAN Runtime
+        # =========================
+        self.fan_runtime_today = d.get("fan_runtime_today")

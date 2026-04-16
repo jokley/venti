@@ -173,10 +173,17 @@ def get_sensor_age():
     client = get_influxdb_client()
     query = '''
     from(bucket: "jokley_bucket")
-      |> range(start: -6h)
-      |> filter(fn: (r) => r["_field"] == "temperature")
-      |> filter(fn: (r) => r["device_name"] == "outdoor00" or r["device_name"] == "probe01" or r["device_name"] == "probe02")
-      |> last()
+            |> range(start: -6h)
+            |> filter(fn: (r) =>
+                r["device_name"] == "outdoor00" or
+                r["device_name"] == "probe01" or
+                r["device_name"] == "probe02"
+            )
+            |> filter(fn: (r) =>
+                r["_measurement"] == "device_frmpayload_data_temperature"
+            )
+            |> group(columns: ["device_name"])
+            |> last()
     '''
 
     result = client.query_api().query(query=query)
@@ -191,5 +198,34 @@ def get_sensor_age():
             age[device] = int(now - ts)
 
     return age
+
+def get_fan_runtime_today():
+    client = get_influxdb_client()
+
+    query = '''
+    import "date"
+
+    from(bucket: "jokley_bucket")
+      |> range(start: date.truncate(t: now(), unit: 1d))
+      |> filter(fn: (r) =>
+          r["_measurement"] == "device_frmpayload_data_RO1_status" and
+          r["device_name"] == "fan"
+      )
+      |> elapsed(unit: 1s)
+      |> map(fn: (r) => ({
+          r with elapsedHours: float(v: r.elapsed) / 3600.0
+      }))
+      |> filter(fn: (r) => r["_value"] == "ON")
+      |> sum(column: "elapsedHours")
+      |> map(fn: (r) => ({ r with _value: r.elapsedHours }))
+    '''
+
+    result = client.query_api().query(query=query)
+
+    for table in result:
+        for record in table.records:
+            return round(record.get_value(), 2)
+
+    return 0
 
 

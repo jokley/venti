@@ -1,15 +1,27 @@
 from .rule_engine import rules
 from .decision import Decision
 from .context import VentiContext
+
 from app.services.control_data import build_control_data
 from app.services.venti_service import venti_cmd
+
 from app.notifications.transitions import TransitionDetector
 from app.notifications.event_message_builder import build_event_message
 from app.notifications.notifier import send_notification
-from app.notifications.alerts.state import alert_state
+
+# 🔥 central state (singleton)
+from app.notifications.state_registry import alert_state
+
+# 🔋 system alerts
 from app.notifications.alerts.battery_engine import check_battery_alerts
 from app.notifications.alerts.rssi_engine import check_rssi_alerts
 from app.notifications.alerts.alert_message_builder import build_system_alert_message
+
+# 📊 summary
+from app.notifications.summary.daily_summary import (
+    build_daily_summary,
+    should_send_summary
+)
 
 from app.utils.logger import logger
 
@@ -154,5 +166,15 @@ def venti_control():
 
         send_notification(
             title=alert[0],
+            message=msg
+        )
+
+    # =========================
+    # 7. DAILY SUMMARY
+    # =========================
+    if should_send_summary(ctx, alert_state.summary):
+        msg = build_daily_summary(ctx)
+        send_notification(
+            title="Tagesübersicht",
             message=msg
         )
