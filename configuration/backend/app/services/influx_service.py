@@ -229,3 +229,80 @@ def get_fan_runtime_today():
     return 0
 
 
+def get_last_auto_start():
+    client = get_influxdb_client()
+
+    query = '''
+    from(bucket: "jokley_bucket")
+      |> range(start: -7d)
+      |> filter(fn: (r) =>
+          r["_measurement"] == "venti" and
+          r["_field"] == "mode" and
+          r["_value"] == "auto"
+      )
+      |> last()
+    '''
+
+    result = client.query_api().query(query=query)
+
+    for table in result:
+        for record in table.records:
+            return record.get_time()
+
+    return None
+
+def get_last_auto_start():
+    client = get_influxdb_client()
+
+    query = '''
+    from(bucket: "jokley_bucket")
+      |> range(start: -7d)
+      |> filter(fn: (r) =>
+          r["_measurement"] == "venti" and
+          r["_field"] == "mode" and
+          r["_value"] == "auto"
+      )
+      |> last()
+    '''
+
+    result = client.query_api().query(query=query)
+
+    for table in result:
+        for record in table.records:
+            return record.get_time()
+
+    return None
+
+def get_fan_runtime_since(start_time):
+    client = get_influxdb_client()
+
+    if start_time is None:
+        return 0
+
+    start_iso = start_time.isoformat()
+
+    query = f'''
+    from(bucket: "jokley_bucket")
+      |> range(start: {start_iso})
+      |> filter(fn: (r) =>
+          r["_measurement"] == "device_frmpayload_data_RO1_status" and
+          r["device_name"] == "fan"
+      )
+      |> elapsed(unit: 1s)
+      |> filter(fn: (r) => exists r.elapsed)
+      |> filter(fn: (r) => r["_value"] == "ON")
+      |> map(fn: (r) => ({{
+          r with _value: float(v: r.elapsed) / 3600.0
+      }}))
+      |> sum()
+    '''
+
+    result = client.query_api().query(query=query)
+
+    for table in result:
+        for record in table.records:
+            return round(record.get_value(), 2)
+
+    return 0
+
+

@@ -7,7 +7,9 @@ from .influx_service import (
     get_battery_data,
     get_rssi_data,
     get_sensor_age,
-    get_fan_runtime_today
+    get_fan_runtime_today,
+    get_last_auto_start,
+    get_fan_runtime_since
 )
 
 from datetime import timedelta, timezone
@@ -60,6 +62,8 @@ def build_control_data():
     rssi = get_rssi_data()
     sensor_age = get_sensor_age()
     fan_runtime = get_fan_runtime_today()
+    auto_start = get_last_auto_start()
+    fan_runtime_auto = get_fan_runtime_since(auto_start)
 
     # =========================
     # ⏱ TIME
@@ -133,5 +137,7 @@ def build_control_data():
         # =========================
 
         "fan_runtime_today": fan_runtime,
+        "fan_runtime_auto": fan_runtime_auto,
+        "auto_start": auto_start,
 
     }

@@ -66,3 +66,5 @@ class VentiContext:
         # FAN Runtime
         # =========================
         self.fan_runtime_today = d.get("fan_runtime_today")
+        self.fan_runtime_auto = d.get("fan_runtime_auto")
+        self.auto_start = d.get("auto_start")

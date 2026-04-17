@@ -22,6 +22,7 @@ from app.notifications.summary.daily_summary import (
     build_daily_summary,
     should_send_summary
 )
+from app.notifications.summary.auto_summary import build_auto_summary
 
 from app.utils.logger import logger
 
@@ -176,5 +177,15 @@ def venti_control():
         msg = build_daily_summary(ctx)
         send_notification(
             title="Tagesübersicht",
+            message=msg
+        )
+    
+    # =========================
+    # 7. AUTO SUMMARY
+    # ========================= 
+    if decision.reason == "AUTO_DISABLED":
+        msg = build_auto_summary(ctx)
+        send_notification(
+            title="AUTO SUMMARY",
             message=msg
         )
