@@ -34,8 +34,12 @@ def evaluate(ctx):
     return Decision("off", "NO_CONDITION", {"trace": trace})
 
 detector = TransitionDetector()
+previous_mode = None
+previous_state = None
 
 def venti_control():
+    global previous_mode, previous_state
+    
     # 1. BUILD CONTEXT
     data = build_control_data()
     ctx = VentiContext(data)
@@ -52,7 +56,24 @@ def venti_control():
         data={"decision": decision, "ctx": ctx}
     ))
 
-    # 5. PUBLISH TRANSITION EVENTS
+    # 5. DETECT MODE CHANGES
+    if previous_mode != ctx.mode:
+        event_bus.publish(Event(
+            type=EventType.MODE_CHANGE,
+            data={"old_mode": previous_mode, "new_mode": ctx.mode, "ctx": ctx, "decision": decision}
+        ))
+        previous_mode = ctx.mode
+
+    # 6. DETECT STATE INITIATION (state started without transition)
+    current_state = decision.reason
+    if previous_state != current_state:
+        event_bus.publish(Event(
+            type=EventType.STATE_INITIATED,
+            data={"state": current_state, "ctx": ctx, "decision": decision}
+        ))
+        previous_state = current_state
+
+    # 7. PUBLISH TRANSITION EVENTS
     events = detector.detect(decision, data)
     
     for event in events:
@@ -67,7 +88,7 @@ def venti_control():
                 data={"name": "AUTO_SUMMARY", "ctx": ctx}
             ))
 
-    # 6. SYSTEM ALERTS
+    # 8. SYSTEM ALERTS
     battery_events = check_battery_alerts(ctx, alert_state.battery)
     rssi_events = check_rssi_alerts(ctx, alert_state.rssi)
 
@@ -77,7 +98,7 @@ def venti_control():
             data=alert
         ))
 
-    # 7. DAILY SUMMARY
+    # 9. DAILY SUMMARY
     if should_send_summary(ctx, alert_state.summary):
         msg = build_daily_summary(ctx)
         event_bus.publish(Event(

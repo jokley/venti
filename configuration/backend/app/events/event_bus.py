@@ -5,9 +5,11 @@ from app.utils.logger import logger
 
 class EventType(Enum):
     TRANSITION = "transition"
+    MODE_CHANGE = "mode_change"
     DECISION_LOG = "decision_log"
     SYSTEM_ALERT = "system_alert"
     DAILY_SUMMARY = "daily_summary"
+    STATE_INITIATED = "state_initiated"  # NEW: when a state starts
 
 @dataclass
 class Event:

@@ -1,5 +1,11 @@
 from .event_bus import event_bus, EventType, Event
-from app.notifications.event_message_builder import build_event_message
+from app.notifications.event_message_builder import (
+    build_event_message,
+    fmt_duration,
+    fmt_percent,
+    fmt_float,
+    pretty_reason
+)
 from app.notifications.notifier import send_notification
 from app.notifications.summary.auto_summary import build_auto_summary
 from app.notifications.alerts.alert_message_builder import build_system_alert_message
@@ -115,8 +121,88 @@ def handle_decision_log(event: Event):
         logger.info("Standardzustand: Lüfter aus")
         logger.info(f"Mode: {details.get('mode')}")
 
+def handle_mode_change(event: Event):
+    """Handle mode changes (Manual -> Auto, etc)"""
+    try:
+        old_mode = event.data["old_mode"]
+        new_mode = event.data["new_mode"]
+        decision = event.data["decision"]
+        ctx = event.data["ctx"]
+        
+        d = decision.details or {}
+        
+        if new_mode == "auto":
+            state = decision.reason
+            
+            if state == "STOCK_BUILDING":
+                msg = (
+                    f"🤖 Automatik ein\n"
+                    f"🌾 Stockaufbau gestartet\n"
+                    f"🌾 Ziel: {fmt_duration(d.get('stock'))}\n"
+                    f"⏳ Restzeit: {fmt_duration(d.get('restzeit'))}"
+                )
+            elif state == "INTERVAL_ACTIVE":
+                msg = (
+                    f"🤖 Automatik ein\n"
+                    f"⏱ Intervallbelüftung gestartet\n"
+                    f"💧 Feuchte: {fmt_percent(d.get('humMax'))}\n"
+                    f"📉 Limit: {fmt_percent(d.get('threshold'))}"
+                )
+            elif state == "DRYING_ACTIVE":
+                msg = (
+                    f"🤖 Automatik ein\n"
+                    f"💨 Trocknung gestartet\n"
+                    f"🌬 SDef: {fmt_float(d.get('sDefOut'))}"
+                )
+            else:
+                msg = f"🤖 Automatik ein\n➡️ {pretty_reason(state)}"
+            
+            send_notification(
+                title="MODE CHANGE",
+                message=msg
+            )
+        
+        elif new_mode == "manual":
+            msg = f"🛑 Manueller Modus aktiviert"
+            send_notification(
+                title="MODE CHANGE",
+                message=msg
+            )
+    
+    except Exception as e:
+        logger.error(f"Error in handle_mode_change: {e}", exc_info=True)
+
+
+def handle_state_initiated(event: Event):
+    """Handle when a state starts (without STATE_CHANGE event)"""
+    try:
+        state = event.data["state"]
+        decision = event.data["decision"]
+        d = decision.details or {}
+        
+        # Only send if it's a mode change scenario
+        # (don't double-notify STATE_CHANGE events)
+        ctx = event.data["ctx"]
+        
+        if state == "STOCK_BUILDING":
+            msg = (
+                f"🌾 Stockaufbau gestartet\n"
+                f"🌾 Ziel: {fmt_duration(d.get('stock'))}\n"
+                f"⏳ Restzeit: {fmt_duration(d.get('restzeit'))}"
+            )
+            send_notification(
+                title="STATE START",
+                message=msg
+            )
+    
+    except Exception as e:
+        logger.error(f"Error in handle_state_initiated: {e}", exc_info=True)
+
+
 def register_handlers():
     event_bus.subscribe(EventType.TRANSITION, handle_transition_event)
+    event_bus.subscribe(EventType.MODE_CHANGE, handle_mode_change)
+    event_bus.subscribe(EventType.STATE_INITIATED, handle_state_initiated)
     event_bus.subscribe(EventType.DECISION_LOG, handle_decision_log)
     event_bus.subscribe(EventType.SYSTEM_ALERT, handle_system_alert)
     event_bus.subscribe(EventType.DAILY_SUMMARY, handle_daily_summary)
