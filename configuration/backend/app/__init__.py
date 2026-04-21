@@ -8,6 +8,8 @@ from .routes.influx_routes import influx_bp
 from .routes.system_routes import system_bp
 from .routes.notification_routes import notification_bp
 
+from app.events.handlers import register_handlers
+
 def register_routes(app):
     app.register_blueprint(venti_bp)
     app.register_blueprint(influx_bp)
@@ -31,5 +33,7 @@ def create_app():
     # Register routes
     register_routes(app)
 
+    # Register event handlers on startup
+    register_handlers()
 
     return app
