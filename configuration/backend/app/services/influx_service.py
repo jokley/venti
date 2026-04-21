@@ -45,13 +45,49 @@ def get_venti_control_param_values():
 
 def get_outdoor_values():
     client = get_influxdb_client()
-    query = '''from(bucket: "jokley_bucket")
-                |> range(start: -1h)
-                |> filter(fn: (r) => r["device_name"] == "outdoor00")
-                |> filter(fn: (r) =>  r["_measurement"] == "device_frmpayload_data_temperature" or r["_measurement"] == "device_frmpayload_data_humidity"  or r["_measurement"] == "device_frmpayload_data_trockenmasse" or r["_measurement"] == "device_frmpayload_data_sdef" )
-                |> filter(fn: (r) => r._value <= 150 and r._value >= -150)
-                |> last()
-            '''
+    query = '''
+        // Get humidity (minimum from all outdoor sensors)
+        humidity = from(bucket: "jokley_bucket")
+            |> range(start: -1h)
+            |> filter(fn: (r) => r["device_name"] =~ /^outdoor/)
+            |> filter(fn: (r) => r["_measurement"] == "device_frmpayload_data_humidity")
+            |> filter(fn: (r) => r._value <= 150 and r._value >= -150)
+            |> last()
+            |> group(columns: ["_measurement"])
+            |> min()
+
+        // Get temperature (maximum from all outdoor sensors)
+        temperature = from(bucket: "jokley_bucket")
+            |> range(start: -1h)
+            |> filter(fn: (r) => r["device_name"] =~ /^outdoor/)
+            |> filter(fn: (r) => r["_measurement"] == "device_frmpayload_data_temperature")
+            |> filter(fn: (r) => r._value <= 150 and r._value >= -150)
+            |> last()
+            |> group(columns: ["_measurement"])
+            |> max()
+
+        // Get sDef (maximum from all outdoor sensors)
+        sdef = from(bucket: "jokley_bucket")
+            |> range(start: -1h)
+            |> filter(fn: (r) => r["device_name"] =~ /^outdoor/)
+            |> filter(fn: (r) => r["_measurement"] == "device_frmpayload_data_sdef")
+            |> filter(fn: (r) => r._value <= 150 and r._value >= -150)
+            |> last()
+            |> group(columns: ["_measurement"])
+            |> max()
+
+        // Get trockenmasse (maximum from all outdoor sensors)
+        trockenmasse = from(bucket: "jokley_bucket")
+            |> range(start: -1h)
+            |> filter(fn: (r) => r["device_name"] =~ /^outdoor/)
+            |> filter(fn: (r) => r["_measurement"] == "device_frmpayload_data_trockenmasse")
+            |> filter(fn: (r) => r._value <= 150 and r._value >= -150)
+            |> last()
+            |> group(columns: ["_measurement"])
+            |> max()
+
+        union(tables: [humidity, temperature, sdef, trockenmasse])
+    '''
     result = client.query_api().query(query=query)
 
     records = []
@@ -304,5 +340,85 @@ def get_fan_runtime_since(start_time):
             return round(record.get_value(), 2)
 
     return 0
+
+def get_measurement_change_over_hours(measurement, device_filter, hours, use_min=True):
+    """
+    Get the change in a measurement over the last 'hours' hours.
+    Returns current_value - past_value
+    """
+    client = get_influxdb_client()
+    
+    # Get current value
+    query_current = f'''
+    from(bucket: "jokley_bucket")
+    |> range(start: -1h)
+    |> filter(fn: (r) => {device_filter})
+    |> filter(fn: (r) => r["_measurement"] == "{measurement}")
+    |> filter(fn: (r) => r._value <= 150 and r._value >= -150)
+    |> last()
+    '''
+    
+    if use_min:
+        query_current += '|> group(columns: ["_measurement"]) |> min()'
+    else:
+        query_current += '|> group(columns: ["_measurement"]) |> max()'
+    
+    # Get past value
+    query_past = f'''
+    from(bucket: "jokley_bucket")
+    |> range(start: -{hours + 1}h, stop: -{hours}h)
+    |> filter(fn: (r) => {device_filter})
+    |> filter(fn: (r) => r["_measurement"] == "{measurement}")
+    |> filter(fn: (r) => r._value <= 150 and r._value >= -150)
+    |> last()
+    '''
+    
+    if use_min:
+        query_past += '|> group(columns: ["_measurement"]) |> min()'
+    else:
+        query_past += '|> group(columns: ["_measurement"]) |> max()'
+    
+    try:
+        result_current = client.query_api().query(query=query_current)
+        result_past = client.query_api().query(query=query_past)
+        
+        current_value = None
+        past_value = None
+        
+        for table in result_current:
+            for r in table.records:
+                current_value = r.get_value()
+                break
+        
+        for table in result_past:
+            for r in table.records:
+                past_value = r.get_value()
+                break
+        
+        if current_value is not None and past_value is not None:
+            return current_value - past_value
+        else:
+            return 0.0
+    except Exception as e:
+        print(f"Error getting change for {measurement}: {e}")
+        return 0.0
+    finally:
+        client.close()
+
+def get_temperature_change_over_hours(hours):
+    device_filter = 'r["device_name"] == "probe01" or r["device_name"] == "probe02"'
+    return get_measurement_change_over_hours("device_frmpayload_data_temperature", device_filter, hours, use_min=True)
+
+def get_sdef_change_over_hours(hours):
+    device_filter = 'r["device_name"] == "probe01" or r["device_name"] == "probe02"'
+    return get_measurement_change_over_hours("device_frmpayload_data_sdef", device_filter, hours, use_min=True)
+
+def get_ts_change_over_hours(hours):
+    device_filter = 'r["device_name"] == "probe01" or r["device_name"] == "probe02"'
+    return get_measurement_change_over_hours("device_frmpayload_data_trockenmasse", device_filter, hours, use_min=True)
+
+def get_outdoor_temperature_change_over_hours(hours):
+    device_filter = 'r["device_name"] == "outdoor00"'
+    return get_measurement_change_over_hours("device_frmpayload_data_temperature", device_filter, hours, use_min=False)
 
 

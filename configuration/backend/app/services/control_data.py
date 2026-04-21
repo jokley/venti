@@ -9,7 +9,11 @@ from .influx_service import (
     get_sensor_age,
     get_fan_runtime_today,
     get_last_auto_start,
-    get_fan_runtime_since
+    get_fan_runtime_since,
+    get_temperature_change_over_hours,
+    get_sdef_change_over_hours,
+    get_ts_change_over_hours,
+    get_outdoor_temperature_change_over_hours
 )
 
 from datetime import timedelta, timezone
@@ -64,6 +68,12 @@ def build_control_data():
     fan_runtime = get_fan_runtime_today()
     auto_start = get_last_auto_start()
     fan_runtime_auto = get_fan_runtime_since(auto_start)
+
+    # Duration-based changes
+    temp_change_2h = get_temperature_change_over_hours(2)
+    sdef_change_2h = get_sdef_change_over_hours(2)
+    ts_change_2h = get_ts_change_over_hours(2)
+    outdoor_temp_change_2h = get_outdoor_temperature_change_over_hours(2)
 
     # =========================
     # ⏱ TIME
@@ -139,5 +149,13 @@ def build_control_data():
         "fan_runtime_today": fan_runtime,
         "fan_runtime_auto": fan_runtime_auto,
         "auto_start": auto_start,
+
+        # =========================
+        # 📈 Duration Changes (2 hours)
+        # =========================
+        "temp_change_2h": temp_change_2h,
+        "sdef_change_2h": sdef_change_2h,
+        "ts_change_2h": ts_change_2h,
+        "outdoor_temp_change_2h": outdoor_temp_change_2h,
 
     }

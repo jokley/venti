@@ -68,7 +68,7 @@ def handle_daily_summary(event: Event):
     )
 
 def handle_decision_log(event: Event):
-    """Handle decision logging"""
+    """Handle decision logging for debugging (not user notifications)"""
     decision = event.data["decision"]
     ctx = event.data["ctx"]
     details = decision.details or {}
@@ -83,41 +83,52 @@ def handle_decision_log(event: Event):
         logger.info(f"Temperatur: {details.get('tempMax')} | Schwelle: {details.get('threshold')}")
         logger.info(f"Differenz: {details.get('diff')}")
 
-    elif decision.reason == "STOCK_BUILD":
+    elif decision.reason == "STOCK_BUILDING":
         logger.info("Stockaufbau")
         logger.info(f"Restzeit aktuell: {details.get('remaining')}")
         logger.info(f"Stock-Ziel: {details.get('stock')}")
         logger.info(f"Restzeit bis Ende: {details.get('restzeit')}")
 
-    # --- DRYING (Lüfter ein) ---
-    elif decision.reason == "DRYING":
+    # --- DRYING_ACTIVE (Lüfter ein) ---
+    elif decision.reason == "DRYING_ACTIVE":
         logger.info("Lüfter ein")
         logger.info(f"SDef min: {details.get('sDefMin')} | SDef out: {details.get('sDefOut')}")
         logger.info(f"SDef diff: {details.get('sDefDiff')}")
         logger.info(f"TS ist: {details.get('tsMin')} | TS soll: {details.get('tsSoll')}")
         logger.info(f"TS diff: {details.get('tsDiff')}")
 
-    # --- INTERVAL ---
-    elif decision.reason == "INTERVAL":
+    # --- INTERVAL_ACTIVE ---
+    elif decision.reason == "INTERVAL_ACTIVE":
         logger.info("Intervall Belüftung")
         logger.info(f"Hum max: {details.get('humMax')} | Schwelle: {details.get('threshold')}")
         logger.info(f"Intervall Zeit: {details.get('interval_time')}")
         logger.info(f"Seit letztem Einschalten: {details.get('since_last_on')}")
 
-    # --- DRYING STOP / Lüfter aus ---
-    elif decision.reason == "DRYING_STOP":
-        logger.info("Lüfter aus (Trockenphase beendet / Bedingungen nicht erfüllt)")
-        logger.info(f"SDef out: {details.get('sDefOut')} | Schwelle: {details.get('threshold')}")
-        logger.info(f"TS diff: {details.get('tsDiff')}")
+    # --- TEMPERATURE_RISING ---
+    elif decision.reason == "TEMPERATURE_RISING":
+        logger.info("Temperaturanstieg erkannt")
+        logger.info(f"Temp Change 2h: {details.get('temp_change_2h')}")
 
-    # --- AUTO DISABLED ---
-    elif decision.reason == "AUTO_DISABLED":
+    # --- INEFFICIENT_DRYING ---
+    elif decision.reason == "INEFFICIENT_DRYING":
+        logger.info("Ineffiziente Trocknung erkannt")
+        logger.info(f"SDEF Change 2h: {details.get('sdef_change_2h')}")
+        logger.info(f"TS Change 2h: {details.get('ts_change_2h')}")
+        logger.info(f"Reason: {details.get('reason')}")
+
+    # --- MANUAL_MODE ---
+    elif decision.reason == "MANUAL_MODE":
         logger.info("Automatik deaktiviert")
         logger.info(f"Laufzeit Intervall: {details.get('runtime')}")
         logger.info(f"TS diff: {details.get('tsDiff')}")
 
-    # --- DEFAULT OFF ---
-    elif decision.reason == "DEFAULT_OFF":
+    # --- AUTO_IDLE ---
+    elif decision.reason == "AUTO_IDLE":
+        logger.info("Automatik im Leerlauf")
+        logger.info(f"Mode: {details.get('mode')}")
+
+    # --- NO_CONDITION ---
+    elif decision.reason == "NO_CONDITION":
         logger.info("Standardzustand: Lüfter aus")
         logger.info(f"Mode: {details.get('mode')}")
 

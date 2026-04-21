@@ -10,6 +10,7 @@ from app.notifications.alerts.battery_engine import check_battery_alerts
 from app.notifications.alerts.rssi_engine import check_rssi_alerts
 from app.notifications.state_registry import alert_state
 from app.notifications.summary.daily_summary import build_daily_summary, should_send_summary
+from app.notifications.summary.auto_summary import build_auto_summary
 
 from app.events.event_bus import event_bus, EventType, Event
 from app.utils.logger import logger
@@ -58,22 +59,22 @@ def venti_control():
 
     # 5. DETECT MODE CHANGES
     if previous_mode != ctx.mode:
+        # AUTO MODE DISABLED -> send summary
+        if previous_mode == "auto" and ctx.mode == "manual":
+            logger.info("🛑 AUTO mode disabled -> sending summary")
+            msg = build_auto_summary(ctx)
+            event_bus.publish(Event(
+                type=EventType.DAILY_SUMMARY,
+                data={"message": msg}
+            ))
+        
         event_bus.publish(Event(
             type=EventType.MODE_CHANGE,
             data={"old_mode": previous_mode, "new_mode": ctx.mode, "ctx": ctx, "decision": decision}
         ))
         previous_mode = ctx.mode
 
-    # 6. DETECT STATE INITIATION (state started without transition)
-    current_state = decision.reason
-    if previous_state != current_state:
-        event_bus.publish(Event(
-            type=EventType.STATE_INITIATED,
-            data={"state": current_state, "ctx": ctx, "decision": decision}
-        ))
-        previous_state = current_state
-
-    # 7. PUBLISH TRANSITION EVENTS
+    # 6. PUBLISH TRANSITION EVENTS
     events = detector.detect(decision, data)
     
     for event in events:
@@ -88,7 +89,7 @@ def venti_control():
                 data={"name": "AUTO_SUMMARY", "ctx": ctx}
             ))
 
-    # 8. SYSTEM ALERTS
+    # 7. SYSTEM ALERTS
     battery_events = check_battery_alerts(ctx, alert_state.battery)
     rssi_events = check_rssi_alerts(ctx, alert_state.rssi)
 
@@ -98,7 +99,7 @@ def venti_control():
             data=alert
         ))
 
-    # 9. DAILY SUMMARY
+    # 8. DAILY SUMMARY
     if should_send_summary(ctx, alert_state.summary):
         msg = build_daily_summary(ctx)
         event_bus.publish(Event(

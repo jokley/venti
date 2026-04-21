@@ -68,3 +68,11 @@ class VentiContext:
         self.fan_runtime_today = d.get("fan_runtime_today")
         self.fan_runtime_auto = d.get("fan_runtime_auto")
         self.auto_start = d.get("auto_start")
+
+        # =========================
+        # 📈 Duration Changes (2 hours)
+        # =========================
+        self.temp_change_2h = d.get("temp_change_2h", 0.0)
+        self.sdef_change_2h = d.get("sdef_change_2h", 0.0)
+        self.ts_change_2h = d.get("ts_change_2h", 0.0)
+        self.outdoor_temp_change_2h = d.get("outdoor_temp_change_2h", 0.0)
