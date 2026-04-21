@@ -144,6 +144,10 @@ def venti_control():
     events = detector.detect(decision, data)
 
     for event in events:
+
+        # =========================
+        # 🔄 NORMAL EVENT MESSAGE
+        # =========================
         msg = build_event_message(event)
 
         if msg:
@@ -151,6 +155,21 @@ def venti_control():
                 title=event[0],
                 message=msg
             )
+
+        # =========================
+        # 📊 AUTO SUMMARY (ON TRANSITION)
+        # =========================
+        if event[0] == "STATE_CHANGE":
+            old_state = event[1]
+            new_state = event[2]
+
+            if new_state == "AUTO_DISABLED":
+                msg = build_auto_summary(ctx)
+
+                send_notification(
+                    title="AUTO SUMMARY",
+                    message=msg
+                )
 
     # =========================
     # 6. SYSTEM ALERTS (NEW LAYER)
@@ -180,12 +199,3 @@ def venti_control():
             message=msg
         )
     
-    # =========================
-    # 7. AUTO SUMMARY
-    # ========================= 
-    if decision.reason == "AUTO_DISABLED":
-        msg = build_auto_summary(ctx)
-        send_notification(
-            title="AUTO SUMMARY",
-            message=msg
-        )
