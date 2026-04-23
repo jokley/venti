@@ -51,7 +51,9 @@ def pretty_reason(reason):
         "STOCK_BUILDING": "Stockaufbau",
         "OVERHEAT": "Überhitzung",
         "AUTO_IDLE": "Automatik pausiert",
-        "MANUAL_MODE": "Manueller Modus"
+        "MANUAL_MODE": "Manueller Modus",
+        "INEFFICIENT_DRYING": "Ineffiziente Trocknung",
+        "TEMP_RISE": "Temperaturanstieg"
     }
     return mapping.get(reason, reason)
 
@@ -62,6 +64,7 @@ def pretty_detail_reason(reason):
         "humidity_low": "Feuchte zu niedrig",
         "ts_target_reached": "TS Ziel erreicht",
         "interval_wait": "Warte auf Intervall",
+        None: "Kein spezieller Grund",
     }
     return mapping.get(reason, reason)
 
@@ -166,6 +169,21 @@ def build_event_message(event):
             f"⏱ Dauer: {fmt_duration(duration)}\n\n"
         )
 
+    elif old == "INEFFICIENT_DRYING":
+        msg += (
+            f"⚠️ Ineffiziente Trocknung beendet\n"
+            f"⏱ Dauer: {fmt_duration(duration)}\n"
+            f"🌬 SDef Δ 2h: {fmt_float(old_d.get('sdef_change_2h'))}\n"
+            f"📉 TS Δ 2h: {fmt_float(old_d.get('ts_change_2h'))}\n\n"
+        )
+
+    elif old == "TEMP_RISE":
+        msg += (
+            f"🌡 Temperaturanstieg beendet\n"
+            f"⏱ Dauer: {fmt_duration(duration)}\n"
+            f"📈 Temp Δ 2h: {fmt_float(old_d.get('temp_change_2h'))}\n\n"
+        )
+
     # =========================
     # 🟢 NEW STATE (started)
     # =========================
@@ -217,6 +235,22 @@ def build_event_message(event):
             f"🛑 Automatik deaktiviert\n"
             f"⏱ Laufzeit: {fmt_duration(new_d.get('runtime'))}\n"
             f"📉 TS Diff: {fmt_float(new_d.get('tsDiff'))}"
+        )
+
+    # --- INEFFICIENT DRYING ---
+    elif new == "INEFFICIENT_DRYING":
+        msg += (
+            f"⚠️ Trocknung gestoppt\n"
+            f"⏱ Laufzeit: {fmt_duration(new_d.get('runtime'))}\n"
+            f"🌬 SDef Δ 2h: {fmt_float(new_d.get('sdef_change_2h'))}\n"
+            f"📉 TS Δ 2h: {fmt_float(new_d.get('ts_change_2h'))}"
+        )
+
+    # --- TEMP RISE ---
+    elif new == "TEMP_RISE":
+        msg += (
+            f"🌡 Temperaturanstieg erkannt\n"
+            f"📈 Temp Δ 2h: {fmt_float(new_d.get('temp_change_2h'))}"
         )
 
     # --- OVERHEAT ---

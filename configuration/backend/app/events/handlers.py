@@ -104,8 +104,8 @@ def handle_decision_log(event: Event):
         logger.info(f"Intervall Zeit: {details.get('interval_time')}")
         logger.info(f"Seit letztem Einschalten: {details.get('since_last_on')}")
 
-    # --- TEMPERATURE_RISING ---
-    elif decision.reason == "TEMPERATURE_RISING":
+    # --- TEMP_RISE ---
+    elif decision.reason == "TEMP_RISE":
         logger.info("Temperaturanstieg erkannt")
         logger.info(f"Temp Change 2h: {details.get('temp_change_2h')}")
 
