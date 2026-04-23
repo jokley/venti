@@ -131,6 +131,9 @@ def build_control_data():
         "intervall_time": (params[0]['intervall_time'][1] / 10) * 3600,
         "intervall_duration": (params[0]['intervall_duration'][1] / 10) * 60,
 
+        "is_fan_on": lastOn > lastOff,
+        "fan_runtime_current": int(now - lastOff),
+
         "uschutz_on": params[0]['uschutz_on'][1] / 10,
         "uschutz_hys": params[0]['uschutz_hys'][1] / 10,
 

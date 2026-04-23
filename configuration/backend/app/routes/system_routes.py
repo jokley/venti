@@ -49,6 +49,13 @@ def download():
     path = 'debug.log'
     return send_file(path, as_attachment=True)
 
+@system_bp.route('/debug')
+def debug_ctx():
+    """Debug route to return ctx as JSON"""
+    data = build_control_data()
+    ctx = VentiContext(data)
+    return jsonify(vars(ctx))
+
 
 @system_bp.route("/trace")
 def rule_trace():

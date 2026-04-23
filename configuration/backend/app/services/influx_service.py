@@ -1,5 +1,6 @@
 from ..db.influx_client import get_influxdb_client
 from datetime import datetime
+import json
 
 def get_venti_control_values():
     client = get_influxdb_client()
@@ -19,6 +20,50 @@ def get_venti_control_values():
     values = [dict(zip(names, records))]
     client.close()
     return values
+
+
+def get_last_controller_state():
+    client = get_influxdb_client()
+    query = '''
+    from(bucket: "jokley_bucket")
+      |> range(start: -30d)
+      |> filter(fn: (r) => r["_measurement"] == "venti_state")
+      |> last()
+    '''
+
+    try:
+        result = client.query_api().query(query=query)
+
+        state_data = {
+            "started_at": None,
+            "state": None,
+            "command": None,
+            "mode": None,
+            "details": None,
+        }
+
+        for table in result:
+            for record in table.records:
+                field_name = record.get_field()
+                field_value = record.get_value()
+
+                if state_data["started_at"] is None:
+                    state_data["started_at"] = record.get_time().timestamp()
+
+                if field_name == "details_json" and field_value:
+                    try:
+                        state_data["details"] = json.loads(field_value)
+                    except Exception:
+                        state_data["details"] = {"raw": field_value}
+                elif field_name in ("state", "command", "mode"):
+                    state_data[field_name] = field_value
+
+        if state_data["state"] is None:
+            return None
+
+        return state_data
+    finally:
+        client.close()
 
 def get_venti_control_param_values():
     client = get_influxdb_client()
@@ -420,5 +465,4 @@ def get_ts_change_over_hours(hours):
 def get_outdoor_temperature_change_over_hours(hours):
     device_filter = 'r["device_name"] == "outdoor00"'
     return get_measurement_change_over_hours("device_frmpayload_data_temperature", device_filter, hours, use_min=False)
-
 

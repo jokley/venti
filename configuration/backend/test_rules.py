@@ -298,6 +298,18 @@ def test_interval_active():
     assert result is None, "Should not trigger when conditions not met"
     print("✓ Interval active: Conditions not met - no action")
 
+    # Test: Auto mode, high humidity but fan was off recently, should not trigger
+    ctx = VentiContext({
+        "mode": "auto", "humMax": 80.0, "intervall_on": 70.0,
+        "temp_change_2h": 1.0,
+        "remainingTimeInterval": 4000, "intervall_time": 3600,
+        "remainingTimeIntervalOn": 200, "intervall_duration": 300,
+        "remainingTimeIntervalDiff": -2400
+    })
+    result = interval_active(ctx)
+    assert result is None, "Should not trigger when fan was off recently"
+    print("✓ Interval active: High humidity but off recently - no action")
+
     # Test: Auto mode, high humidity, time condition met, should trigger
     ctx = VentiContext({
         "mode": "auto", "humMax": 80.0, "intervall_on": 70.0,

@@ -5,6 +5,12 @@ class TransitionDetector:
         self.last_details = None   # 👈 NEW
         self.state_start_ts = None
 
+    def restore(self, command=None, reason=None, details=None, state_start_ts=None):
+        self.last_command = command
+        self.last_reason = reason
+        self.last_details = details
+        self.state_start_ts = state_start_ts
+
     def detect(self, decision, data):
         events = []
 

@@ -2,6 +2,7 @@ from flask import Flask
 from .config import Config
 from .extensions.extensions import cors, mqtt
 from .scheduler import start_scheduler
+from .controller.venti.controller import restore_controller_runtime_state
 
 from .routes.venti_routes import venti_bp
 from .routes.influx_routes import influx_bp
@@ -28,6 +29,7 @@ def create_app():
     cors.init_app(app)
     mqtt.init_app(app)
 
+    restore_controller_runtime_state()
     start_scheduler()
 
     # Register routes

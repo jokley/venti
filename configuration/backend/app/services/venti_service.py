@@ -1,4 +1,5 @@
 # backend/services/venti_service.py
+import json as std_json
 from flask import json
 from ..utils.logger import logger
 from ..extensions.extensions import mqtt
@@ -100,4 +101,24 @@ def venti_auto_param(sdef_on, sdef_min_offset, sdef_hys, uschutz_on, uschutz_hys
     ]
 
     write_api.write(bucket="jokley_bucket", org=ORG, record=record)
+    client.close()
+
+
+def write_controller_state(state, command, mode, details=None):
+    ORG = Config.INFLUX_ORG
+
+    client = get_influxdb_client()
+    write_api = client.write_api(write_options=SYNCHRONOUS)
+
+    point = (
+        Point("venti_state")
+        .field("state", state)
+        .field("command", command)
+        .field("mode", mode)
+    )
+
+    if details:
+        point = point.field("details_json", std_json.dumps(details, default=str))
+
+    write_api.write(bucket=Config.INFLUX_BUCKET, org=ORG, record=[point])
     client.close()

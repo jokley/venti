@@ -69,6 +69,9 @@ class VentiContext:
         self.fan_runtime_auto = d.get("fan_runtime_auto")
         self.auto_start = d.get("auto_start")
 
+        self.is_fan_on = d.get("is_fan_on", False)
+        self.fan_runtime_current = d.get("fan_runtime_current", 0)
+
         # =========================
         # 📈 Duration Changes (2 hours)
         # =========================
