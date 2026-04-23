@@ -16,13 +16,13 @@ def handle_transition_event(event: Event):
     """Handle state transitions"""
     try:
         event_data = event.data
-        logger.debug(f"Transition event data: {event_data}")
+        # logger.debug(f"Transition event data: {event_data}")
         
         # Extract the actual event tuple from event_data
         actual_event = event_data.get("event")
         
         msg = build_event_message(actual_event)
-        logger.debug(f"Built message: {msg}")
+        # logger.debug(f"Built message: {msg}")
         
         if msg:
             send_notification(
@@ -49,7 +49,7 @@ def handle_system_alert(event: Event):
         logger.debug(f"System alert data: {alert}")
         
         msg = build_system_alert_message(alert)
-        logger.debug(f"Built alert message: {msg}")
+        # logger.debug(f"Built alert message: {msg}")
         
         send_notification(
             title=alert[0],

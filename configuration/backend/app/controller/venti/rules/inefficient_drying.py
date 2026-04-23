@@ -3,7 +3,7 @@ from ..decision import Decision
 from ..control.state_manager import state_manager
 
 
-@rule(priority=25)
+@rule(priority=28)
 def inefficient_drying(ctx):
 
     if ctx.mode != "auto":

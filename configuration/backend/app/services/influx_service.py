@@ -90,60 +90,45 @@ def get_venti_control_param_values():
 
 def get_outdoor_values():
     client = get_influxdb_client()
+
     query = '''
-        // Get humidity (minimum from all outdoor sensors)
-        humidity = from(bucket: "jokley_bucket")
-            |> range(start: -1h)
-            |> filter(fn: (r) => r["device_name"] =~ /^outdoor/)
-            |> filter(fn: (r) => r["_measurement"] == "device_frmpayload_data_humidity")
-            |> filter(fn: (r) => r._value <= 150 and r._value >= -150)
-            |> last()
-            |> group(columns: ["_measurement"])
-            |> min()
+    outdoor = from(bucket: "jokley_bucket")
+      |> range(start: -1h)
+      |> filter(fn: (r) => r["device_name"] =~ /^outdoor/)
+      |> filter(fn: (r) =>
+          r["_measurement"] == "device_frmpayload_data_sdef" or
+          r["_measurement"] == "device_frmpayload_data_temperature" or
+          r["_measurement"] == "device_frmpayload_data_humidity" or
+          r["_measurement"] == "device_frmpayload_data_trockenmasse"
+      )
+      |> filter(fn: (r) => r._value <= 150 and r._value >= -150)
+      |> last()
+      |> pivot(rowKey: ["device_name"], columnKey: ["_measurement"], valueColumn: "_value")
 
-        // Get temperature (maximum from all outdoor sensors)
-        temperature = from(bucket: "jokley_bucket")
-            |> range(start: -1h)
-            |> filter(fn: (r) => r["device_name"] =~ /^outdoor/)
-            |> filter(fn: (r) => r["_measurement"] == "device_frmpayload_data_temperature")
-            |> filter(fn: (r) => r._value <= 150 and r._value >= -150)
-            |> last()
-            |> group(columns: ["_measurement"])
-            |> max()
+    best = outdoor
+      |> sort(columns: ["device_frmpayload_data_sdef"], desc: true)
+      |> limit(n: 1)
 
-        // Get sDef (maximum from all outdoor sensors)
-        sdef = from(bucket: "jokley_bucket")
-            |> range(start: -1h)
-            |> filter(fn: (r) => r["device_name"] =~ /^outdoor/)
-            |> filter(fn: (r) => r["_measurement"] == "device_frmpayload_data_sdef")
-            |> filter(fn: (r) => r._value <= 150 and r._value >= -150)
-            |> last()
-            |> group(columns: ["_measurement"])
-            |> max()
-
-        // Get trockenmasse (maximum from all outdoor sensors)
-        trockenmasse = from(bucket: "jokley_bucket")
-            |> range(start: -1h)
-            |> filter(fn: (r) => r["device_name"] =~ /^outdoor/)
-            |> filter(fn: (r) => r["_measurement"] == "device_frmpayload_data_trockenmasse")
-            |> filter(fn: (r) => r._value <= 150 and r._value >= -150)
-            |> last()
-            |> group(columns: ["_measurement"])
-            |> max()
-
-        union(tables: [humidity, temperature, sdef, trockenmasse])
+    best
     '''
+
     result = client.query_api().query(query=query)
 
-    records = []
+    values = {}
+
     for table in result:
         for r in table.records:
-            records.append(r.get_value())
+            values = {
+                "device": r.values.get("device_name"),
+                "humidityOut": r.values.get("device_frmpayload_data_humidity"),
+                "sDefOut": r.values.get("device_frmpayload_data_sdef"),
+                "temperatureOut": r.values.get("device_frmpayload_data_temperature"),
+                "trockenMasseOut": r.values.get("device_frmpayload_data_trockenmasse"),
+            }
 
-    names = ['humidityOut','sDefOut','temperatureOut','trockenMasseOut']
-    values = [dict(zip(names, records))]
     client.close()
-    return values
+
+    return [values] if values else []
 
 def get_min_max_values():
     client = get_influxdb_client()

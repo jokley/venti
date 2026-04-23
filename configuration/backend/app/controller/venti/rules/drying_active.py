@@ -3,7 +3,7 @@ from ..decision import Decision
 from ..control.state_manager import state_manager
 
 
-@rule(priority=30)
+@rule(priority=35)
 def drying_active(ctx):
 
     if ctx.mode != "auto":
