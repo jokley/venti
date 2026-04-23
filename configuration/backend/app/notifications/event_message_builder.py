@@ -207,7 +207,9 @@ def build_event_message(event):
             f"🌬 SDef Δ: {fmt_float(new_d.get('sDefDiff'))}\n"
             f"🌬 SDef: {fmt_float(new_d.get('sDefOut'))} "
             f"(Min: {fmt_float(new_d.get('sDefMin'))})\n"
-            f"📉 TS Diff: {fmt_float(new_d.get('tsDiff'))}"
+            f"📉 TS Diff: {fmt_float(new_d.get('tsDiff'))}\n"
+            f"📊 Effizienz: {fmt_float(new_d.get('efficiency'), 3)} "
+            f"(Limit: {fmt_float(new_d.get('adaptive_threshold'), 3)})"
         )
 
     # --- STOCK BUILD ---
@@ -229,6 +231,12 @@ def build_event_message(event):
         if new_d.get("tsDiff") is not None:
             msg += f"📉 TS Diff: {fmt_float(new_d.get('tsDiff'))}\n"
 
+        if new_d.get("efficiency") is not None:
+            msg += (
+                f"📊 Effizienz: {fmt_float(new_d.get('efficiency'), 3)} "
+                f"(Limit: {fmt_float(new_d.get('adaptive_threshold'), 3)})\n"
+            )
+
     # --- MANUAL MODE ---
     elif new == "MANUAL_MODE":
         msg += (
@@ -243,7 +251,9 @@ def build_event_message(event):
             f"⚠️ Trocknung gestoppt\n"
             f"⏱ Laufzeit: {fmt_duration(new_d.get('runtime'))}\n"
             f"🌬 SDef Δ 2h: {fmt_float(new_d.get('sdef_change_2h'))}\n"
-            f"📉 TS Δ 2h: {fmt_float(new_d.get('ts_change_2h'))}"
+            f"📉 TS Δ 2h: {fmt_float(new_d.get('ts_change_2h'))}\n"
+            f"📊 Effizienz: {fmt_float(new_d.get('efficiency'), 3)} "
+            f"(Limit: {fmt_float(new_d.get('adaptive_threshold'), 3)})"
         )
 
     # --- TEMP RISE ---

@@ -1,6 +1,7 @@
-from .rule_engine import rules
 from .decision import Decision
 from .context import VentiContext
+from .efficiency.drying_efficiency_engine import DryingEfficiencyEngine
+from .efficiency.drying_decision_engine import DryingDecisionEngine
 
 from app.services.control_data import build_control_data
 from app.services.venti_service import venti_cmd
@@ -21,31 +22,29 @@ from app.notifications.summary.auto_summary import build_auto_summary
 from app.events.event_bus import event_bus, EventType, Event
 from app.utils.logger import logger
 
-from .rules import *
+efficiency_engine = DryingEfficiencyEngine()
+decision_engine = DryingDecisionEngine()
 
 
-# =========================
-# 🧠 RULE ENGINE
-# =========================
 def evaluate(ctx):
-    trace = []
+    metrics = efficiency_engine.compute(ctx)
+    ctx.min_efficiency_threshold = state_manager.get_adaptive_threshold(
+        ctx.base_min_efficiency_threshold
+    )
 
-    for priority, rule_func in rules:
-        result = rule_func(ctx)
+    decision = decision_engine.decide(ctx, metrics)
+    updated_threshold = state_manager.update_adaptive_threshold(
+        metrics["efficiency"],
+        ctx,
+        has_history=metrics["has_history"],
+    )
 
-        trace.append({
-            "rule": rule_func.__name__,
-            "priority": priority,
-            "matched": result is not None,
-            "decision": result.command if result else None,
-            "reason": result.reason if result else None
-        })
-
-        if result:
-            result.details["trace"] = trace
-            return result
-
-    return Decision("off", "NO_CONDITION", {"trace": trace})
+    decision.details.setdefault("efficiency", metrics["efficiency"])
+    decision.details.setdefault("adaptive_threshold", updated_threshold)
+    decision.details.setdefault("sdef_change_2h", metrics["sdef_gain"])
+    decision.details.setdefault("ts_change_2h", metrics["ts_gain"])
+    decision.details.setdefault("window_hours", metrics["window_hours"])
+    return decision
 
 
 # =========================
@@ -106,12 +105,16 @@ def venti_control():
 
     mode_changed = previous_mode != ctx.mode
     state_changed = previous_state != decision.reason
+    threshold_changed = (
+        (state_manager.last_details or {}).get("adaptive_threshold")
+        != decision.details.get("adaptive_threshold")
+    )
 
     # 4. EXECUTE CONTROL
     venti_cmd(decision.command)
 
     # 5. PERSIST STATE (ONLY STATE MANAGER)
-    if mode_changed or state_changed:
+    if mode_changed or state_changed or threshold_changed:
         state_manager.persist(
             state=decision.reason,
             command=decision.command,
@@ -162,7 +165,7 @@ def venti_control():
             }
         ))
 
-        if event[0] == "STATE_CHANGE" and event[2] == "AUTO_DISABLED":
+        if event[0] == "STATE_CHANGE" and event[2] == "MANUAL_MODE":
             event_bus.publish(Event(
                 type=EventType.TRANSITION,
                 data={

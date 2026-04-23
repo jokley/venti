@@ -451,3 +451,56 @@ def get_outdoor_temperature_change_over_hours(hours):
     device_filter = 'r["device_name"] == "outdoor00"'
     return get_measurement_change_over_hours("device_frmpayload_data_temperature", device_filter, hours, use_min=False)
 
+
+def get_measurement_value_hours_ago(measurement, device_filter, hours, use_min=True):
+    client = get_influxdb_client()
+
+    query = f'''
+    from(bucket: "jokley_bucket")
+    |> range(start: -{hours + 1}h, stop: -{hours}h)
+    |> filter(fn: (r) => {device_filter})
+    |> filter(fn: (r) => r["_measurement"] == "{measurement}")
+    |> filter(fn: (r) => r._value <= 150 and r._value >= -150)
+    |> last()
+    '''
+
+    if use_min:
+        query += '|> group(columns: ["_measurement"]) |> min()'
+    else:
+        query += '|> group(columns: ["_measurement"]) |> max()'
+
+    try:
+        result = client.query_api().query(query=query)
+
+        for table in result:
+            for record in table.records:
+                return record.get_value()
+
+        return None
+    finally:
+        client.close()
+
+
+def get_2h_values(hours=2):
+    device_filter = 'r["device_name"] == "probe01" or r["device_name"] == "probe02"'
+    return {
+        "sDef_2h_ago": get_measurement_value_hours_ago(
+            "device_frmpayload_data_sdef",
+            device_filter,
+            hours,
+            use_min=True,
+        ),
+        "ts_2h_ago": get_measurement_value_hours_ago(
+            "device_frmpayload_data_trockenmasse",
+            device_filter,
+            hours,
+            use_min=True,
+        ),
+        "temp_2h_ago": get_measurement_value_hours_ago(
+            "device_frmpayload_data_temperature",
+            device_filter,
+            hours,
+            use_min=True,
+        ),
+        "window_seconds": int(hours * 3600),
+    }

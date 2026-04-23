@@ -13,6 +13,7 @@ class VentiContext:
         self.sDefMin = d.get("sDefMin")
 
         self.tsMin = d.get("tsMin")
+        self.tsOut = d.get("tsOut", self.tsMin)
         self.tsSoll = d.get("tsSoll")
 
         self.humMax = d.get("humMax")
@@ -79,3 +80,35 @@ class VentiContext:
         self.sdef_change_2h = d.get("sdef_change_2h", 0.0)
         self.ts_change_2h = d.get("ts_change_2h", 0.0)
         self.outdoor_temp_change_2h = d.get("outdoor_temp_change_2h", 0.0)
+
+        # =========================
+        # 🧠 EFFICIENCY ENGINE
+        # =========================
+        self.sDef_2h_ago = d.get("sDef_2h_ago")
+        self.ts_2h_ago = d.get("ts_2h_ago")
+        self.temp_2h_ago = d.get("temp_2h_ago")
+        self.efficiency_window = d.get("efficiency_window", 2 * 3600)
+
+        self.base_min_efficiency_threshold = d.get("base_min_efficiency_threshold", 0.25)
+        self.min_efficiency_threshold = d.get("min_efficiency_threshold", self.base_min_efficiency_threshold)
+        self.good_drying_level = d.get("good_drying_level", 0.35)
+        self.efficiency_learning_up = d.get("efficiency_learning_up", 1.01)
+        self.efficiency_learning_down = d.get("efficiency_learning_down", 0.99)
+
+        self.overheat = (
+            self.tempMax is not None
+            and self.uschutz_on is not None
+            and self.tempMax >= self.uschutz_on
+        )
+        self.fan_off = not self.is_fan_on
+        self.temp_rising = self.temp_change_2h > 2.0
+        self.drying_conditions_met = (
+            self.sDefOut is not None
+            and self.sdefMinThreshold is not None
+            and self.sdef_on is not None
+            and self.tsSoll is not None
+            and self.tsOut is not None
+            and self.sDefOut >= self.sdefMinThreshold + self.sdef_hys_half
+            and self.sDefOut >= self.sdef_on + self.sdef_hys_half
+            and self.tsSoll >= self.tsOut + self.ts_hys_half
+        )

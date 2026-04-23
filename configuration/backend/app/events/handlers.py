@@ -96,6 +96,7 @@ def handle_decision_log(event: Event):
         logger.info(f"SDef diff: {details.get('sDefDiff')}")
         logger.info(f"TS ist: {details.get('tsMin')} | TS soll: {details.get('tsSoll')}")
         logger.info(f"TS diff: {details.get('tsDiff')}")
+        logger.info(f"Effizienz: {details.get('efficiency')} | Limit: {details.get('adaptive_threshold')}")
 
     # --- INTERVAL_ACTIVE ---
     elif decision.reason == "INTERVAL_ACTIVE":
@@ -114,7 +115,7 @@ def handle_decision_log(event: Event):
         logger.info("Ineffiziente Trocknung erkannt")
         logger.info(f"SDEF Change 2h: {details.get('sdef_change_2h')}")
         logger.info(f"TS Change 2h: {details.get('ts_change_2h')}")
-        logger.info(f"Reason: {details.get('reason')}")
+        logger.info(f"Effizienz: {details.get('efficiency')} | Limit: {details.get('adaptive_threshold')}")
 
     # --- MANUAL_MODE ---
     elif decision.reason == "MANUAL_MODE":
@@ -125,7 +126,8 @@ def handle_decision_log(event: Event):
     # --- AUTO_IDLE ---
     elif decision.reason == "AUTO_IDLE":
         logger.info("Automatik im Leerlauf")
-        logger.info(f"Mode: {details.get('mode')}")
+        logger.info(f"Reason: {details.get('reason')}")
+        logger.info(f"Effizienz: {details.get('efficiency')} | Limit: {details.get('adaptive_threshold')}")
 
     # --- NO_CONDITION ---
     elif decision.reason == "NO_CONDITION":
