@@ -79,20 +79,16 @@ At the moment, `self_learning_enabled` is set to `False` in [control_data.py](/h
   - `efficiency_learning_down`
   - `self_learning_enabled`
 
-Derived flags are also built in [context.py](/home/pi/Projects/venti/configuration/backend/app/controller/venti/context.py:99):
+Derived flags are also built in [context.py](/home/pi/Projects/venti/configuration/backend/app/controller/venti/context.py:1):
 
 - `overheat`
-- `fan_off`
-- `temp_rising`
 - `drying_conditions_met`
 
 The current drying start condition is:
 
 - `sDefOut >= sdefMinThreshold + sdef_hys_half`
 - `sDefOut >= sdef_on + sdef_hys_half`
-- `tsSoll >= tsOut + ts_hys_half`
-
-Note: `tsOut` currently defaults to `tsMin` in [context.py](/home/pi/Projects/venti/configuration/backend/app/controller/venti/context.py:14), so in practice this behaves like the old `tsSoll >= tsMin + ts_hys_half` rule.
+- `tsSoll >= tsMin + ts_hys_half`
 
 ## Decision Order
 
@@ -247,14 +243,9 @@ Transition and log messages are then built from this state and sent through the 
 In [control_data.py](/home/pi/Projects/venti/configuration/backend/app/services/control_data.py:170), the important current defaults are:
 
 - `efficiency_window = 2h`
-- `inefficient_drying_cooldown = 1h`
 - `self_learning_enabled = False`
 - `base_min_efficiency_threshold = 0.25`
 - `good_drying_level = 0.35`
-
-Note:
-
-- `inefficient_drying_cooldown` currently exists in context, but the active split logic is mainly driven by `self_learning_enabled` and the last bad drying snapshot logic.
 
 ## Current Status Summary
 

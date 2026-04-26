@@ -10,10 +10,6 @@ from .influx_service import (
     get_fan_runtime_today,
     get_last_auto_start,
     get_fan_runtime_since,
-    get_temperature_change_over_hours,
-    get_sdef_change_over_hours,
-    get_ts_change_over_hours,
-    get_outdoor_temperature_change_over_hours,
     get_2h_values,
 )
 
@@ -71,12 +67,6 @@ def build_control_data():
     fan_runtime_auto = get_fan_runtime_since(auto_start)
     history_2h = get_2h_values(2)
 
-    # Duration-based changes
-    temp_change_2h = get_temperature_change_over_hours(2)
-    sdef_change_2h = get_sdef_change_over_hours(2)
-    ts_change_2h = get_ts_change_over_hours(2)
-    outdoor_temp_change_2h = get_outdoor_temperature_change_over_hours(2)
-
     # =========================
     # ⏱ TIME
     # =========================
@@ -107,7 +97,6 @@ def build_control_data():
         "sDefMin": data[0]['sDefMin'],
 
         "tsMin": data[0]['trockenMasseMin'],
-        "tsOut": data[0]['trockenMasseMin'],
         "tsSoll": tsSoll,
 
         "stock": stock,
@@ -157,21 +146,11 @@ def build_control_data():
         "auto_start": auto_start,
 
         # =========================
-        # 📈 Duration Changes (2 hours)
-        # =========================
-        "temp_change_2h": temp_change_2h,
-        "sdef_change_2h": sdef_change_2h,
-        "ts_change_2h": ts_change_2h,
-        "outdoor_temp_change_2h": outdoor_temp_change_2h,
-
-        # =========================
         # 🧠 EFFICIENCY ENGINE INPUTS
         # =========================
         "sDef_2h_ago": history_2h["sDef_2h_ago"],
         "ts_2h_ago": history_2h["ts_2h_ago"],
-        "temp_2h_ago": history_2h["temp_2h_ago"],
         "efficiency_window": history_2h["window_seconds"],
-        "inefficient_drying_cooldown": 1 * 3600,
         "self_learning_enabled": False,
         "base_min_efficiency_threshold": 0.25,
         "good_drying_level": 0.35,

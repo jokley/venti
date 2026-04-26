@@ -13,7 +13,6 @@ class VentiContext:
         self.sDefMin = d.get("sDefMin")
 
         self.tsMin = d.get("tsMin")
-        self.tsOut = d.get("tsOut", self.tsMin)
         self.tsSoll = d.get("tsSoll")
 
         self.humMax = d.get("humMax")
@@ -74,21 +73,11 @@ class VentiContext:
         self.fan_runtime_current = d.get("fan_runtime_current", 0)
 
         # =========================
-        # 📈 Duration Changes (2 hours)
-        # =========================
-        self.temp_change_2h = d.get("temp_change_2h", 0.0)
-        self.sdef_change_2h = d.get("sdef_change_2h", 0.0)
-        self.ts_change_2h = d.get("ts_change_2h", 0.0)
-        self.outdoor_temp_change_2h = d.get("outdoor_temp_change_2h", 0.0)
-
-        # =========================
         # 🧠 EFFICIENCY ENGINE
         # =========================
         self.sDef_2h_ago = d.get("sDef_2h_ago")
         self.ts_2h_ago = d.get("ts_2h_ago")
-        self.temp_2h_ago = d.get("temp_2h_ago")
         self.efficiency_window = d.get("efficiency_window", 2 * 3600)
-        self.inefficient_drying_cooldown = d.get("inefficient_drying_cooldown", 1 * 3600)
         self.self_learning_enabled = d.get("self_learning_enabled", False)
 
         self.base_min_efficiency_threshold = d.get("base_min_efficiency_threshold", 0.25)
@@ -102,15 +91,13 @@ class VentiContext:
             and self.uschutz_on is not None
             and self.tempMax >= self.uschutz_on
         )
-        self.fan_off = not self.is_fan_on
-        self.temp_rising = self.temp_change_2h > 2.0
         self.drying_conditions_met = (
             self.sDefOut is not None
             and self.sdefMinThreshold is not None
             and self.sdef_on is not None
             and self.tsSoll is not None
-            and self.tsOut is not None
+            and self.tsMin is not None
             and self.sDefOut >= self.sdefMinThreshold + self.sdef_hys_half
             and self.sDefOut >= self.sdef_on + self.sdef_hys_half
-            and self.tsSoll >= self.tsOut + self.ts_hys_half
+            and self.tsSoll >= self.tsMin + self.ts_hys_half
         )

@@ -496,11 +496,5 @@ def get_2h_values(hours=2):
             hours,
             use_min=True,
         ),
-        "temp_2h_ago": get_measurement_value_hours_ago(
-            "device_frmpayload_data_temperature",
-            device_filter,
-            hours,
-            use_min=True,
-        ),
         "window_seconds": int(hours * 3600),
     }

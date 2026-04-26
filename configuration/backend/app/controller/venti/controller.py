@@ -149,7 +149,7 @@ def venti_control():
     data = build_control_data()
     ctx = VentiContext(data)
 
-    # 3. RULE ENGINE
+    # 3. DECISION ENGINE
     decision = evaluate(ctx)
     effective_mode = decision.details.get("mode_override", ctx.mode)
 
