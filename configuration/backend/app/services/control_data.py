@@ -171,6 +171,8 @@ def build_control_data():
         "ts_2h_ago": history_2h["ts_2h_ago"],
         "temp_2h_ago": history_2h["temp_2h_ago"],
         "efficiency_window": history_2h["window_seconds"],
+        "inefficient_drying_cooldown": 1 * 3600,
+        "self_learning_enabled": False,
         "base_min_efficiency_threshold": 0.25,
         "good_drying_level": 0.35,
         "efficiency_learning_up": 1.01,

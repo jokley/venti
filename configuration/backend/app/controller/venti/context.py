@@ -88,6 +88,8 @@ class VentiContext:
         self.ts_2h_ago = d.get("ts_2h_ago")
         self.temp_2h_ago = d.get("temp_2h_ago")
         self.efficiency_window = d.get("efficiency_window", 2 * 3600)
+        self.inefficient_drying_cooldown = d.get("inefficient_drying_cooldown", 1 * 3600)
+        self.self_learning_enabled = d.get("self_learning_enabled", False)
 
         self.base_min_efficiency_threshold = d.get("base_min_efficiency_threshold", 0.25)
         self.min_efficiency_threshold = d.get("min_efficiency_threshold", self.base_min_efficiency_threshold)

@@ -61,6 +61,8 @@ def pretty_reason(reason):
 def pretty_detail_reason(reason):
     mapping = {
         "drying_conditions_not_met": "Trocknung nicht möglich",
+        "inefficient_cooldown": "Pause nach ineffizienter Trocknung",
+        "waiting_better_than_last_bad_drying": "Warte auf bessere Bedingungen als beim letzten Fehlversuch",
         "humidity_low": "Feuchte zu niedrig",
         "ts_target_reached": "TS Ziel erreicht",
         "interval_wait": "Warte auf Intervall",
@@ -236,6 +238,9 @@ def build_event_message(event):
                 f"📊 Effizienz: {fmt_float(new_d.get('efficiency'), 3)} "
                 f"(Limit: {fmt_float(new_d.get('adaptive_threshold'), 3)})\n"
             )
+
+        if new_d.get("cooldown_remaining") is not None:
+            msg += f"⏳ Pause: {fmt_duration(new_d.get('cooldown_remaining'))}\n"
 
     # --- MANUAL MODE ---
     elif new == "MANUAL_MODE":

@@ -4,7 +4,7 @@ from .efficiency.drying_efficiency_engine import DryingEfficiencyEngine
 from .efficiency.drying_decision_engine import DryingDecisionEngine
 
 from app.services.control_data import build_control_data
-from app.services.venti_service import venti_cmd
+from app.services.venti_service import venti_cmd, venti_auto
 
 from .control.state_manager import state_manager
 
@@ -27,17 +27,65 @@ decision_engine = DryingDecisionEngine()
 
 
 def evaluate(ctx):
+    # Always compute metrics first so both classic mode and self-learning
+    # decisions can log the same drying telemetry.
     metrics = efficiency_engine.compute(ctx)
-    ctx.min_efficiency_threshold = state_manager.get_adaptive_threshold(
-        ctx.base_min_efficiency_threshold
-    )
+
+    # In self-learning mode the active stop threshold can drift over time.
+    # In classic mode we keep it fixed at the configured base value.
+    if ctx.self_learning_enabled:
+        ctx.min_efficiency_threshold = state_manager.get_adaptive_threshold(
+            ctx.base_min_efficiency_threshold
+        )
+    else:
+        ctx.min_efficiency_threshold = ctx.base_min_efficiency_threshold
 
     decision = decision_engine.decide(ctx, metrics)
-    updated_threshold = state_manager.update_adaptive_threshold(
-        metrics["efficiency"],
-        ctx,
-        has_history=metrics["has_history"],
+
+    # Self-learning remembers a bad run so the next restart can require
+    # better conditions before trying again.
+    if ctx.self_learning_enabled and decision.reason == "INEFFICIENT_DRYING":
+        state_manager.remember_bad_drying(ctx, metrics, decision.details)
+
+    # A successful drying run clears the previous bad-run snapshot.
+    if ctx.self_learning_enabled and decision.reason == "DRYING_ACTIVE":
+        state_manager.clear_bad_drying()
+
+    # The adaptive threshold is updated after the decision so the current
+    # cycle uses the old value and the next cycle sees the learned value.
+    if ctx.self_learning_enabled:
+        updated_threshold = state_manager.update_adaptive_threshold(
+            metrics["efficiency"],
+            ctx,
+            has_history=metrics["has_history"],
+        )
+    else:
+        updated_threshold = ctx.min_efficiency_threshold
+
+    auto_disable_triggered = (
+        ctx.mode == "auto"
+        and decision.command == "off"
+        and ctx.remainingTimeStock > ctx.stock
+        and ctx.remainingTimeInterval >= 7200
+        and ctx.tsSoll is not None
+        and ctx.tsMin is not None
+        and (ctx.tsSoll - ctx.tsMin) <= 0.5
     )
+
+    # Preserve the old behavior: after a long idle period near target TS,
+    # switch auto mode fully off instead of only keeping the fan off.
+    if auto_disable_triggered:
+        venti_auto("off", ctx.tsSoll, "0")
+        decision = Decision(
+            "off",
+            "MANUAL_MODE",
+            {
+                "runtime": ctx.remainingTimeInterval,
+                "tsDiff": ctx.tsSoll - ctx.tsMin,
+                "reason": "auto_disabled",
+                "mode_override": "off",
+            },
+        )
 
     decision.details.setdefault("efficiency", metrics["efficiency"])
     decision.details.setdefault("adaptive_threshold", updated_threshold)
@@ -58,6 +106,7 @@ previous_state = None
 def restore_controller_runtime_state():
     global previous_mode, previous_state
 
+    # Skip restore when runtime memory is already initialized.
     if (
         previous_mode is not None
         or previous_state is not None
@@ -102,8 +151,9 @@ def venti_control():
 
     # 3. RULE ENGINE
     decision = evaluate(ctx)
+    effective_mode = decision.details.get("mode_override", ctx.mode)
 
-    mode_changed = previous_mode != ctx.mode
+    mode_changed = previous_mode != effective_mode
     state_changed = previous_state != decision.reason
     threshold_changed = (
         (state_manager.last_details or {}).get("adaptive_threshold")
@@ -113,12 +163,12 @@ def venti_control():
     # 4. EXECUTE CONTROL
     venti_cmd(decision.command)
 
-    # 5. PERSIST STATE (ONLY STATE MANAGER)
+    # Persist only on relevant state changes to avoid noisy writes.
     if mode_changed or state_changed or threshold_changed:
         state_manager.persist(
             state=decision.reason,
             command=decision.command,
-            mode=ctx.mode,
+            mode=effective_mode,
             details=decision.details,
             ctx=ctx
         )
@@ -132,7 +182,7 @@ def venti_control():
     # 7. MODE CHANGE HANDLING
     if mode_changed:
 
-        if previous_mode == "auto" and ctx.mode == "manual":
+        if previous_mode == "auto" and effective_mode != "auto":
             logger.info("🛑 AUTO disabled -> sending summary")
 
             event_bus.publish(Event(
@@ -144,13 +194,13 @@ def venti_control():
             type=EventType.MODE_CHANGE,
             data={
                 "old_mode": previous_mode,
-                "new_mode": ctx.mode,
+                "new_mode": effective_mode,
                 "ctx": ctx,
                 "decision": decision
             }
         ))
 
-        previous_mode = ctx.mode
+        previous_mode = effective_mode
 
     # 8. TRANSITIONS
     events = detector.detect(decision, data)
@@ -176,7 +226,8 @@ def venti_control():
 
     previous_state = decision.reason
 
-    # 9. SYSTEM ALERTS
+    # Alerts and summaries are evaluated after the control decision so they
+    # report what actually happened in this control cycle.
     for alert in (
         check_battery_alerts(ctx, alert_state.battery)
         + check_rssi_alerts(ctx, alert_state.rssi)
