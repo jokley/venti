@@ -85,6 +85,7 @@ class VentiContext:
         self.good_drying_level = d.get("good_drying_level", 0.35)
         self.efficiency_learning_up = d.get("efficiency_learning_up", 1.01)
         self.efficiency_learning_down = d.get("efficiency_learning_down", 0.99)
+        self.ts_weight = d.get("ts_weight", 0.30)
 
         self.overheat = (
             self.tempMax is not None

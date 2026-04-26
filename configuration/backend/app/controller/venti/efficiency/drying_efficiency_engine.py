@@ -1,6 +1,6 @@
 class DryingEfficiencyEngine:
     def __init__(self, ts_weight=0.3):
-        self.ts_weight = ts_weight
+        self.default_ts_weight = ts_weight
 
     def compute(self, ctx):
         """
@@ -48,7 +48,8 @@ class DryingEfficiencyEngine:
 
         # `sdef_gain` is the main signal. `ts_gain` is included with a
         # smaller weight so TS still influences the result without dominating it.
-        weighted_gain = sdef_gain + (self.ts_weight * ts_gain)
+        ts_weight = getattr(ctx, "ts_weight", self.default_ts_weight)
+        weighted_gain = sdef_gain + (ts_weight * ts_gain)
         window_hours = window_seconds / 3600.0
         efficiency = weighted_gain / window_hours if window_hours > 0 else 0.0
 

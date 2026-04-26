@@ -2,7 +2,7 @@ from flask import Blueprint, jsonify
 from ..utils.logger import logger
 from ..services.influx_service import (
     get_venti_control_values,
-    get_venti_control_param_values
+    get_venti_control_param_actual_values
 )
 
 influx_bp = Blueprint('influx', __name__)
@@ -31,8 +31,4 @@ def control_values():
 
 @influx_bp.route('/controlParamValues', methods=['GET'])
 def control_param_values():
-    pramsVenti = get_venti_control_param_values()[0]
-    # convert to actual values
-    iniDict = {k: v[1]/10 for k, v in pramsVenti.items() if k != 'intervall_enable'}
-    iniDict['intervall_enable'] = pramsVenti['intervall_enable'][1]
-    return jsonify(iniDict)
+    return jsonify(get_venti_control_param_actual_values())

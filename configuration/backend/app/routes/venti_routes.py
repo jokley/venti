@@ -3,6 +3,10 @@ from datetime import datetime
 from ..services.venti_service import venti_cmd, venti_auto, venti_auto_param
 from ..controller.venti.controller import venti_control
 from ..extensions.extensions import scheduler
+from ..services.influx_service import (
+    VENTI_PARAM_DEFAULTS,
+    get_venti_control_param_actual_values,
+)
 from ..utils.logger import logger
 
 venti_bp = Blueprint('venti', __name__)
@@ -39,8 +43,15 @@ def switch():
 
 @venti_bp.route('/ventiParams', methods=['POST'])
 def set_params():
-    data = request.get_json()
-    venti_auto_param(**data)
+    data = request.get_json() or {}
+    current_params = get_venti_control_param_actual_values()
+
+    merged_params = {
+        key: data.get(key, current_params.get(key, default_value))
+        for key, default_value in VENTI_PARAM_DEFAULTS.items()
+    }
+
+    venti_auto_param(**merged_params)
     # Force scheduler to run now when params change
     scheduler.modify_job('venti_control', next_run_time=datetime.now())
     logger.info('Parameter aktualisiert')

@@ -18,7 +18,7 @@ The current implementation supports two drying strategies:
 - `classic`: old proven rule behavior
 - `self-learning`: same basic drying start rule, plus efficiency evaluation and restart blocking after a bad drying run
 
-At the moment, `self_learning_enabled` is set to `False` in [control_data.py](/home/pi/Projects/venti/configuration/backend/app/services/control_data.py:175), so the system currently runs in `classic` mode.
+At the moment, the default persisted control parameters in [influx_service.py](/home/pi/Projects/venti/configuration/backend/app/services/influx_service.py:4) use `self_learning_enabled = False`, so a fresh setup starts in `classic` mode until the UI changes that parameter.
 
 ## Main Files
 
@@ -78,6 +78,7 @@ At the moment, `self_learning_enabled` is set to `False` in [control_data.py](/h
   - `efficiency_learning_up`
   - `efficiency_learning_down`
   - `self_learning_enabled`
+  - `ts_weight`
 
 Derived flags are also built in [context.py](/home/pi/Projects/venti/configuration/backend/app/controller/venti/context.py:1):
 
@@ -285,14 +286,38 @@ The current controller and message layer actively handle these reasons:
 
 Older states from the removed rule engine such as `TEMP_RISE` and `NO_CONDITION` are no longer part of the active controller path.
 
-## Current Defaults
+## Control Parameters
 
-In [control_data.py](/home/pi/Projects/venti/configuration/backend/app/services/control_data.py:170), the important current defaults are:
+The controller now reads both classic and self-learning parameters from the persisted `venti_param` measurement.
 
-- `efficiency_window = 2h`
+The UI/backend parameter surface includes:
+
+- `sdef_on`
+- `sdef_min_offset`
+- `sdef_hys`
+- `uschutz_on`
+- `uschutz_hys`
+- `ts_hys`
+- `intervall_on`
+- `intervall_time`
+- `intervall_duration`
+- `self_learning_enabled`
+- `efficiency_window_hours`
+- `base_min_efficiency_threshold`
+- `good_drying_level`
+- `efficiency_learning_up`
+- `efficiency_learning_down`
+- `ts_weight`
+
+The default fallback values are defined in [influx_service.py](/home/pi/Projects/venti/configuration/backend/app/services/influx_service.py:4):
+
+- `efficiency_window_hours = 2.0`
 - `self_learning_enabled = False`
 - `base_min_efficiency_threshold = 0.25`
 - `good_drying_level = 0.35`
+- `efficiency_learning_up = 1.01`
+- `efficiency_learning_down = 0.99`
+- `ts_weight = 0.30`
 
 ## Current Status Summary
 
@@ -310,9 +335,10 @@ Right now the controller is in this state:
 
 ## Suggested Next Step
 
-The next practical step would be to make `self_learning_enabled` a real user parameter instead of a hardcoded value in [control_data.py](/home/pi/Projects/venti/configuration/backend/app/services/control_data.py:175). Then you could switch between:
+The next practical step would be to expose the new self-learning parameters in the frontend form so you can tune them without editing code. The most important ones are:
 
-- stable classic mode
-- experimental self-learning mode
-
-without editing code.
+- `self_learning_enabled`
+- `efficiency_window_hours`
+- `base_min_efficiency_threshold`
+- `good_drying_level`
+- `ts_weight`

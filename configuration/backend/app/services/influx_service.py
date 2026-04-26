@@ -2,6 +2,45 @@ from ..db.influx_client import get_influxdb_client
 from datetime import datetime
 import json
 
+VENTI_PARAM_DEFAULTS = {
+    "sdef_on": 4.0,
+    "sdef_min_offset": 2.0,
+    "sdef_hys": 1.0,
+    "uschutz_on": 35.0,
+    "uschutz_hys": 2.5,
+    "ts_hys": 0.4,
+    "intervall_on": 95.0,
+    "intervall_time": 12.0,
+    "intervall_duration": 12.0,
+    "self_learning_enabled": False,
+    "efficiency_window_hours": 2.0,
+    "base_min_efficiency_threshold": 0.25,
+    "good_drying_level": 0.35,
+    "efficiency_learning_up": 1.01,
+    "efficiency_learning_down": 0.99,
+    "ts_weight": 0.30,
+}
+
+VENTI_PARAM_SCALES = {
+    "sdef_on": 10,
+    "sdef_min_offset": 10,
+    "sdef_hys": 10,
+    "uschutz_on": 10,
+    "uschutz_hys": 10,
+    "ts_hys": 10,
+    "intervall_on": 10,
+    "intervall_time": 10,
+    "intervall_duration": 10,
+    "efficiency_window_hours": 10,
+    "base_min_efficiency_threshold": 100,
+    "good_drying_level": 100,
+    "efficiency_learning_up": 100,
+    "efficiency_learning_down": 100,
+    "ts_weight": 100,
+}
+
+VENTI_PARAM_BOOL_FIELDS = {"self_learning_enabled"}
+
 def get_venti_control_values():
     client = get_influxdb_client()
     query = ''' from(bucket: "jokley_bucket")
@@ -74,19 +113,33 @@ def get_venti_control_param_values():
             '''
     result = client.query_api().query(query=query)
 
-    records = []
+    values = {}
     for table in result:
         for r in table.records:
-            records.append((r.get_time(), r.get_value()))
+            values[r.get_field()] = (r.get_time(), r.get_value())
 
-    names = [
-        'intervall_duration', 'intervall_enable', 'intervall_on', 'intervall_time',
-        'sdef_hys', 'sdef_min_offset', 'sdef_on',
-        'ts_hys', 'uschutz_hys', 'uschutz_on'
-    ]
-    values = [dict(zip(names, records))]
     client.close()
-    return values
+    return [values]
+
+
+def get_venti_control_param_actual_values():
+    raw = get_venti_control_param_values()[0]
+    params = dict(VENTI_PARAM_DEFAULTS)
+
+    for key, record in raw.items():
+        if key not in params:
+            continue
+
+        value = record[1]
+
+        if key in VENTI_PARAM_BOOL_FIELDS:
+            params[key] = bool(value)
+            continue
+
+        scale = VENTI_PARAM_SCALES.get(key, 1)
+        params[key] = float(value) / scale
+
+    return params
 
 def get_outdoor_values():
     client = get_influxdb_client()

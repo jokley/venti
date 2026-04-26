@@ -52,8 +52,32 @@ def venti_auto(cmd, trockenMasse,stockAufbau):
     write_api.write(bucket="jokley_bucket", org=ORG, record=record)
     client.close()
 
-def venti_auto_param(sdef_on, sdef_min_offset, sdef_hys, uschutz_on, uschutz_hys, ts_hys,
-                     intervall_on, intervall_time, intervall_duration, intervall_enable):
+def _to_bool(value):
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower() in ("1", "true", "yes", "on")
+    return bool(value)
+
+
+def venti_auto_param(
+    sdef_on,
+    sdef_min_offset,
+    sdef_hys,
+    uschutz_on,
+    uschutz_hys,
+    ts_hys,
+    intervall_on,
+    intervall_time,
+    intervall_duration,
+    self_learning_enabled,
+    efficiency_window_hours,
+    base_min_efficiency_threshold,
+    good_drying_level,
+    efficiency_learning_up,
+    efficiency_learning_down,
+    ts_weight,
+):
 
     ORG = Config.INFLUX_ORG
 
@@ -68,7 +92,13 @@ def venti_auto_param(sdef_on, sdef_min_offset, sdef_hys, uschutz_on, uschutz_hys
     logger.info('Intervall on: {}'.format(intervall_on))
     logger.info('Intervall time: {}'.format(intervall_time))
     logger.info('Intervall duration: {}'.format(intervall_duration))
-    logger.info('Intervall enable: {}'.format(intervall_enable))
+    logger.info('Self learning enabled: {}'.format(self_learning_enabled))
+    logger.info('Efficiency window hours: {}'.format(efficiency_window_hours))
+    logger.info('Base min efficiency threshold: {}'.format(base_min_efficiency_threshold))
+    logger.info('Good drying level: {}'.format(good_drying_level))
+    logger.info('Efficiency learning up: {}'.format(efficiency_learning_up))
+    logger.info('Efficiency learning down: {}'.format(efficiency_learning_down))
+    logger.info('TS weight: {}'.format(ts_weight))
 
     sdef_on = int(sdef_on * 10)
     sdef_min_offset = int(sdef_min_offset * 10)
@@ -79,7 +109,13 @@ def venti_auto_param(sdef_on, sdef_min_offset, sdef_hys, uschutz_on, uschutz_hys
     intervall_on = int(intervall_on * 10)
     intervall_time = int(intervall_time * 10)
     intervall_duration = int(intervall_duration * 10)
-    intervall_enable = intervall_enable
+    self_learning_enabled = _to_bool(self_learning_enabled)
+    efficiency_window_hours = int(efficiency_window_hours * 10)
+    base_min_efficiency_threshold = int(base_min_efficiency_threshold * 100)
+    good_drying_level = int(good_drying_level * 100)
+    efficiency_learning_up = int(efficiency_learning_up * 100)
+    efficiency_learning_down = int(efficiency_learning_down * 100)
+    ts_weight = int(ts_weight * 100)
 
    
 
@@ -97,7 +133,13 @@ def venti_auto_param(sdef_on, sdef_min_offset, sdef_hys, uschutz_on, uschutz_hys
         .field("intervall_on", intervall_on)
         .field("intervall_time", intervall_time)
         .field("intervall_duration", intervall_duration)
-        .field("intervall_enable", intervall_enable)
+        .field("self_learning_enabled", self_learning_enabled)
+        .field("efficiency_window_hours", efficiency_window_hours)
+        .field("base_min_efficiency_threshold", base_min_efficiency_threshold)
+        .field("good_drying_level", good_drying_level)
+        .field("efficiency_learning_up", efficiency_learning_up)
+        .field("efficiency_learning_down", efficiency_learning_down)
+        .field("ts_weight", ts_weight)
     ]
 
     write_api.write(bucket="jokley_bucket", org=ORG, record=record)

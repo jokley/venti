@@ -3,7 +3,7 @@ from .influx_service import (
     get_min_max_values,
     get_outdoor_values,
     get_venti_lastTimeOn,
-    get_venti_control_param_values,
+    get_venti_control_param_actual_values,
     get_battery_data,
     get_rssi_data,
     get_sensor_age,
@@ -53,7 +53,7 @@ def build_control_data():
     data = get_min_max_values()
     dataOut = get_outdoor_values()
     dataLastTime = get_venti_lastTimeOn()
-    params = get_venti_control_param_values()
+    params = get_venti_control_param_actual_values()
     
     raw_battery = get_battery_data()
     battery = {
@@ -65,7 +65,7 @@ def build_control_data():
     fan_runtime = get_fan_runtime_today()
     auto_start = get_last_auto_start()
     fan_runtime_auto = get_fan_runtime_since(auto_start)
-    history_2h = get_2h_values(2)
+    history_2h = get_2h_values(params["efficiency_window_hours"])
 
     # =========================
     # ⏱ TIME
@@ -113,21 +113,21 @@ def build_control_data():
         # =========================
         # ⚙️ PARAMETERS
         # =========================
-        "sdef_on": params[0]['sdef_on'][1] / 10,
-        "sdef_hys_half": (params[0]['sdef_hys'][1] / 10) / 2,
-        "sdefMinThreshold": data[0]['sDefMin'] + (params[0]['sdef_min_offset'][1] / 10),
+        "sdef_on": params["sdef_on"],
+        "sdef_hys_half": params["sdef_hys"] / 2,
+        "sdefMinThreshold": data[0]['sDefMin'] + params["sdef_min_offset"],
 
-        "ts_hys_half": (params[0]['ts_hys'][1] / 10) / 2,
+        "ts_hys_half": params["ts_hys"] / 2,
 
-        "intervall_on": params[0]['intervall_on'][1] / 10,
-        "intervall_time": (params[0]['intervall_time'][1] / 10) * 3600,
-        "intervall_duration": (params[0]['intervall_duration'][1] / 10) * 60,
+        "intervall_on": params["intervall_on"],
+        "intervall_time": params["intervall_time"] * 3600,
+        "intervall_duration": params["intervall_duration"] * 60,
 
         "is_fan_on": lastOn > lastOff,
         "fan_runtime_current": int(now - lastOff),
 
-        "uschutz_on": params[0]['uschutz_on'][1] / 10,
-        "uschutz_hys": params[0]['uschutz_hys'][1] / 10,
+        "uschutz_on": params["uschutz_on"],
+        "uschutz_hys": params["uschutz_hys"],
 
 
         # =========================
@@ -151,10 +151,11 @@ def build_control_data():
         "sDef_2h_ago": history_2h["sDef_2h_ago"],
         "ts_2h_ago": history_2h["ts_2h_ago"],
         "efficiency_window": history_2h["window_seconds"],
-        "self_learning_enabled": False,
-        "base_min_efficiency_threshold": 0.25,
-        "good_drying_level": 0.35,
-        "efficiency_learning_up": 1.01,
-        "efficiency_learning_down": 0.99,
+        "self_learning_enabled": params["self_learning_enabled"],
+        "base_min_efficiency_threshold": params["base_min_efficiency_threshold"],
+        "good_drying_level": params["good_drying_level"],
+        "efficiency_learning_up": params["efficiency_learning_up"],
+        "efficiency_learning_down": params["efficiency_learning_down"],
+        "ts_weight": params["ts_weight"],
 
     }
