@@ -41,6 +41,11 @@ VENTI_PARAM_SCALES = {
 
 VENTI_PARAM_BOOL_FIELDS = {"self_learning_enabled"}
 
+
+def _hours_to_flux_duration(hours):
+    seconds = max(0, int(round(float(hours) * 3600)))
+    return f"{seconds}s"
+
 def get_venti_control_values():
     client = get_influxdb_client()
     query = ''' from(bucket: "jokley_bucket")
@@ -430,6 +435,8 @@ def get_measurement_change_over_hours(measurement, device_filter, hours, use_min
     Returns current_value - past_value
     """
     client = get_influxdb_client()
+    start_offset = _hours_to_flux_duration(hours + 1)
+    stop_offset = _hours_to_flux_duration(hours)
     
     # Get current value
     query_current = f'''
@@ -449,7 +456,7 @@ def get_measurement_change_over_hours(measurement, device_filter, hours, use_min
     # Get past value
     query_past = f'''
     from(bucket: "jokley_bucket")
-    |> range(start: -{hours + 1}h, stop: -{hours}h)
+    |> range(start: -{start_offset}, stop: -{stop_offset})
     |> filter(fn: (r) => {device_filter})
     |> filter(fn: (r) => r["_measurement"] == "{measurement}")
     |> filter(fn: (r) => r._value <= 150 and r._value >= -150)
@@ -507,10 +514,12 @@ def get_outdoor_temperature_change_over_hours(hours):
 
 def get_measurement_value_hours_ago(measurement, device_filter, hours, use_min=True):
     client = get_influxdb_client()
+    start_offset = _hours_to_flux_duration(hours + 1)
+    stop_offset = _hours_to_flux_duration(hours)
 
     query = f'''
     from(bucket: "jokley_bucket")
-    |> range(start: -{hours + 1}h, stop: -{hours}h)
+    |> range(start: -{start_offset}, stop: -{stop_offset})
     |> filter(fn: (r) => {device_filter})
     |> filter(fn: (r) => r["_measurement"] == "{measurement}")
     |> filter(fn: (r) => r._value <= 150 and r._value >= -150)
