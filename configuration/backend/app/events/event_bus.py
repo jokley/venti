@@ -9,7 +9,6 @@ class EventType(Enum):
     DECISION_LOG = "decision_log"
     SYSTEM_ALERT = "system_alert"
     DAILY_SUMMARY = "daily_summary"
-    STATE_INITIATED = "state_initiated"  # NEW: when a state starts
 
 @dataclass
 class Event:

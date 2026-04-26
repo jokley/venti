@@ -215,15 +215,6 @@ def venti_control():
             }
         ))
 
-        if event[0] == "STATE_CHANGE" and event[2] == "MANUAL_MODE":
-            event_bus.publish(Event(
-                type=EventType.TRANSITION,
-                data={
-                    "name": "AUTO_SUMMARY",
-                    "ctx": ctx
-                }
-            ))
-
     previous_state = decision.reason
 
     # Alerts and summaries are evaluated after the control decision so they

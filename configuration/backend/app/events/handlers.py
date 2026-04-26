@@ -7,9 +7,7 @@ from app.notifications.event_message_builder import (
     pretty_reason
 )
 from app.notifications.notifier import send_notification
-from app.notifications.summary.auto_summary import build_auto_summary
 from app.notifications.alerts.alert_message_builder import build_system_alert_message
-from app.notifications.summary.daily_summary import build_daily_summary
 from app.utils.logger import logger
 
 def handle_transition_event(event: Event):
@@ -31,16 +29,6 @@ def handle_transition_event(event: Event):
             )
     except Exception as e:
         logger.error(f"Error in handle_transition_event: {e}", exc_info=True)
-
-def handle_auto_summary(event: Event):
-    """Handle auto summary on AUTO_DISABLED"""
-    ctx = event.data["ctx"]
-    msg = build_auto_summary(ctx)
-    
-    send_notification(
-        title="AUTO SUMMARY",
-        message=msg
-    )
 
 def handle_system_alert(event: Event):
     """Handle system alerts (battery, rssi)"""
@@ -105,11 +93,6 @@ def handle_decision_log(event: Event):
         logger.info(f"Intervall Zeit: {details.get('interval_time')}")
         logger.info(f"Seit letztem Einschalten: {details.get('since_last_on')}")
 
-    # --- TEMP_RISE ---
-    elif decision.reason == "TEMP_RISE":
-        logger.info("Temperaturanstieg erkannt")
-        logger.info(f"Temp Change 2h: {details.get('temp_change_2h')}")
-
     # --- INEFFICIENT_DRYING ---
     elif decision.reason == "INEFFICIENT_DRYING":
         logger.info("Ineffiziente Trocknung erkannt")
@@ -128,11 +111,6 @@ def handle_decision_log(event: Event):
         logger.info("Automatik im Leerlauf")
         logger.info(f"Reason: {details.get('reason')}")
         logger.info(f"Effizienz: {details.get('efficiency')} | Limit: {details.get('adaptive_threshold')}")
-
-    # --- NO_CONDITION ---
-    elif decision.reason == "NO_CONDITION":
-        logger.info("Standardzustand: Lüfter aus")
-        logger.info(f"Mode: {details.get('mode')}")
 
 def handle_mode_change(event: Event):
     """Handle mode changes (Manual -> Auto, etc)"""
@@ -175,8 +153,8 @@ def handle_mode_change(event: Event):
                 message=msg
             )
         
-        elif new_mode == "manual":
-            msg = f"🛑 Manueller Modus aktiviert"
+        elif old_mode == "auto" and new_mode != "auto":
+            msg = "🛑 Automatik aus"
             send_notification(
                 title="MODE CHANGE",
                 message=msg
@@ -186,36 +164,9 @@ def handle_mode_change(event: Event):
         logger.error(f"Error in handle_mode_change: {e}", exc_info=True)
 
 
-def handle_state_initiated(event: Event):
-    """Handle when a state starts (without STATE_CHANGE event)"""
-    try:
-        state = event.data["state"]
-        decision = event.data["decision"]
-        d = decision.details or {}
-        
-        # Only send if it's a mode change scenario
-        # (don't double-notify STATE_CHANGE events)
-        ctx = event.data["ctx"]
-        
-        if state == "STOCK_BUILDING":
-            msg = (
-                f"🌾 Stockaufbau gestartet\n"
-                f"🌾 Ziel: {fmt_duration(d.get('stock'))}\n"
-                f"⏳ Restzeit: {fmt_duration(d.get('restzeit'))}"
-            )
-            send_notification(
-                title="STATE START",
-                message=msg
-            )
-    
-    except Exception as e:
-        logger.error(f"Error in handle_state_initiated: {e}", exc_info=True)
-
-
 def register_handlers():
     event_bus.subscribe(EventType.TRANSITION, handle_transition_event)
     event_bus.subscribe(EventType.MODE_CHANGE, handle_mode_change)
-    event_bus.subscribe(EventType.STATE_INITIATED, handle_state_initiated)
     event_bus.subscribe(EventType.DECISION_LOG, handle_decision_log)
     event_bus.subscribe(EventType.SYSTEM_ALERT, handle_system_alert)
     event_bus.subscribe(EventType.DAILY_SUMMARY, handle_daily_summary)

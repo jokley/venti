@@ -238,6 +238,53 @@ The persisted payload includes:
 
 Transition and log messages are then built from this state and sent through the event system.
 
+## Event Flow
+
+The controller publishes these active event types:
+
+- `DECISION_LOG`
+- `TRANSITION`
+- `MODE_CHANGE`
+- `SYSTEM_ALERT`
+- `DAILY_SUMMARY`
+
+The flow in [controller.py](/home/pi/Projects/venti/configuration/backend/app/controller/venti/controller.py:1) is:
+
+1. Build the current `Decision`
+2. Send the fan command
+3. Persist relevant state changes
+4. Publish a `DECISION_LOG` event for structured logging
+5. Publish `MODE_CHANGE` when the effective mode changes
+6. Run `TransitionDetector.detect(...)` and publish `TRANSITION` events for state changes
+7. Publish alert and summary events after the control action
+
+### Transition Messages
+
+`TransitionDetector` in [transitions.py](/home/pi/Projects/venti/configuration/backend/app/notifications/transitions.py:1) only emits a transition when the controller reason changes.
+
+The message text is built in [event_message_builder.py](/home/pi/Projects/venti/configuration/backend/app/notifications/event_message_builder.py:1) from:
+
+- the previous state name
+- the new state name
+- the duration of the previous state
+- old and new decision details
+
+This means transition messages are aligned to the current state machine, not to the removed legacy rule modules.
+
+### Current Active States
+
+The current controller and message layer actively handle these reasons:
+
+- `MANUAL_MODE`
+- `OVERHEAT`
+- `STOCK_BUILDING`
+- `DRYING_ACTIVE`
+- `INTERVAL_ACTIVE`
+- `AUTO_IDLE`
+- `INEFFICIENT_DRYING`
+
+Older states from the removed rule engine such as `TEMP_RISE` and `NO_CONDITION` are no longer part of the active controller path.
+
 ## Current Defaults
 
 In [control_data.py](/home/pi/Projects/venti/configuration/backend/app/services/control_data.py:170), the important current defaults are:

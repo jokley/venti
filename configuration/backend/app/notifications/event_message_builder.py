@@ -53,7 +53,6 @@ def pretty_reason(reason):
         "AUTO_IDLE": "Automatik pausiert",
         "MANUAL_MODE": "Manueller Modus",
         "INEFFICIENT_DRYING": "Ineffiziente Trocknung",
-        "TEMP_RISE": "Temperaturanstieg"
     }
     return mapping.get(reason, reason)
 
@@ -179,13 +178,6 @@ def build_event_message(event):
             f"📉 TS Δ 2h: {fmt_float(old_d.get('ts_change_2h'))}\n\n"
         )
 
-    elif old == "TEMP_RISE":
-        msg += (
-            f"🌡 Temperaturanstieg beendet\n"
-            f"⏱ Dauer: {fmt_duration(duration)}\n"
-            f"📈 Temp Δ 2h: {fmt_float(old_d.get('temp_change_2h'))}\n\n"
-        )
-
     # =========================
     # 🟢 NEW STATE (started)
     # =========================
@@ -259,13 +251,6 @@ def build_event_message(event):
             f"📉 TS Δ 2h: {fmt_float(new_d.get('ts_change_2h'))}\n"
             f"📊 Effizienz: {fmt_float(new_d.get('efficiency'), 3)} "
             f"(Limit: {fmt_float(new_d.get('adaptive_threshold'), 3)})"
-        )
-
-    # --- TEMP RISE ---
-    elif new == "TEMP_RISE":
-        msg += (
-            f"🌡 Temperaturanstieg erkannt\n"
-            f"📈 Temp Δ 2h: {fmt_float(new_d.get('temp_change_2h'))}"
         )
 
     # --- OVERHEAT ---
