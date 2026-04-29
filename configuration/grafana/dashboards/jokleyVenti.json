@@ -24,7 +24,7 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 1,
+  "id": 2,
   "links": [],
   "panels": [
     {
@@ -325,6 +325,125 @@
         "type": "influxdb",
         "uid": "P5697886F9CA74929"
       },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "green",
+            "mode": "fixed"
+          },
+          "displayName": ".",
+          "mappings": [
+            {
+              "options": {
+                "AUTO_IDLE": {
+                  "color": "blue",
+                  "index": 2,
+                  "text": "💤 Auto pause"
+                },
+                "DRYING_ACTIVE": {
+                  "color": "green",
+                  "index": 3,
+                  "text": "🌀 Auto "
+                },
+                "INEFFICIENT_DRYING": {
+                  "color": "super-light-yellow",
+                  "index": 4,
+                  "text": "⚠️ Auto ineffizient"
+                },
+                "INTERVAL_ACTIVE": {
+                  "color": "blue",
+                  "index": 6,
+                  "text": "⏱️ Intervall"
+                },
+                "MANUAL_MODE": {
+                  "color": "blue",
+                  "index": 0,
+                  "text": "🛠️ Hand"
+                },
+                "OVERHEAT": {
+                  "color": "semi-dark-red",
+                  "index": 5,
+                  "text": "🚨 Heustock heiß"
+                },
+                "STOCK_BUILDING": {
+                  "color": "#69bfb9",
+                  "index": 1,
+                  "text": "🏗️ Stockaufbau"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "state"
+            },
+            "properties": [
+              {
+                "id": "displayName"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 2,
+        "x": 14,
+        "y": 0
+      },
+      "id": 31,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/^state$/",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "value",
+        "wideLayout": true
+      },
+      "pluginVersion": "12.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "P5697886F9CA74929"
+          },
+          "query": "    from(bucket: \"jokley_bucket\")\r\n      |> range(start: -30d)\r\n      |> filter(fn: (r) => r[\"_measurement\"] == \"venti_state\")\r\n      |> filter(fn: (r) => r[\"_field\"] == \"state\")\r\n      |> last()",
+          "refId": "A"
+        }
+      ],
+      "title": "Lüfter Status",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "P5697886F9CA74929"
+      },
       "description": "",
       "fieldConfig": {
         "defaults": {
@@ -399,8 +518,8 @@
       },
       "gridPos": {
         "h": 3,
-        "w": 10,
-        "x": 14,
+        "w": 8,
+        "x": 16,
         "y": 0
       },
       "id": 15,
@@ -480,7 +599,7 @@
       "options": {
         "dedupStrategy": "none",
         "enableInfiniteScrolling": false,
-        "enableLogDetails": true,
+        "enableLogDetails": false,
         "prettifyLogMessage": false,
         "showCommonLabels": false,
         "showLabels": false,
@@ -741,7 +860,7 @@
             "type": "influxdb",
             "uid": "P5697886F9CA74929"
           },
-          "query": "from(bucket: \"jokley_bucket\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"device_name\"] == \"outdoor00\")\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"device_frmpayload_data_temperature\" or r[\"_measurement\"] == \"device_frmpayload_data_humidity\" or r[\"_measurement\"] == \"device_frmpayload_data_trockenmasse\")\r\n  |> group(columns: [\"device_name\", \"_measurement\", \"_field\"])\r\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\r\n  |> yield(name: \"mean\")",
+          "query": "from(bucket: \"jokley_bucket\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"device_name\"] =~ /^outdoor/)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"device_frmpayload_data_temperature\" or r[\"_measurement\"] == \"device_frmpayload_data_humidity\" or r[\"_measurement\"] == \"device_frmpayload_data_trockenmasse\")\r\n  |> group(columns: [\"device_name\", \"_measurement\", \"_field\"])\r\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\r\n  |> yield(name: \"mean\")",
           "refId": "A"
         }
       ],
@@ -965,7 +1084,7 @@
             "type": "influxdb",
             "uid": "P5697886F9CA74929"
           },
-          "query": "from(bucket: \"jokley_bucket\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"device_name\"] != \"outdoor00\")\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"device_frmpayload_data_temperature\" or r[\"_measurement\"] == \"device_frmpayload_data_humidity\" or r[\"_measurement\"] == \"device_frmpayload_data_trockenmasse\")\r\n  |> group(columns: [\"device_name\", \"_measurement\", \"_field\"])\r\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\r\n  |> yield(name: \"mean\")",
+          "query": "from(bucket: \"jokley_bucket\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"device_name\"] !~ /^outdoor/)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"device_frmpayload_data_temperature\" or r[\"_measurement\"] == \"device_frmpayload_data_humidity\" or r[\"_measurement\"] == \"device_frmpayload_data_trockenmasse\")\r\n  |> group(columns: [\"device_name\", \"_measurement\", \"_field\"])\r\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\r\n  |> yield(name: \"mean\")",
           "refId": "A"
         }
       ],
@@ -1255,7 +1374,7 @@
             "type": "influxdb",
             "uid": "P5697886F9CA74929"
           },
-          "query": "from(bucket: \"jokley_bucket\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"device_name\"] != \"outdoor00\")\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"device_frmpayload_data_temperature\" or r[\"_measurement\"] == \"device_frmpayload_data_humidity\" or r[\"_measurement\"] == \"device_frmpayload_data_trockenmasse\")\r\n  |> group(columns: [\"device_name\", \"_measurement\", \"_field\"])\r\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\r\n  |> yield(name: \"mean\")",
+          "query": "from(bucket: \"jokley_bucket\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"device_name\"] !~ /^outdoor/)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"device_frmpayload_data_temperature\" or r[\"_measurement\"] == \"device_frmpayload_data_humidity\" or r[\"_measurement\"] == \"device_frmpayload_data_trockenmasse\")\r\n  |> group(columns: [\"device_name\", \"_measurement\", \"_field\"])\r\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\r\n  |> yield(name: \"mean\")",
           "refId": "A"
         }
       ],
@@ -1390,7 +1509,7 @@
             "type": "influxdb",
             "uid": "P5697886F9CA74929"
           },
-          "query": "from(bucket: \"jokley_bucket\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"device_name\"] == \"outdoor00\" or r[\"device_name\"] == \"fan\" or r[\"device_name\"] == \"probe01\" or r[\"device_name\"] == \"probe02\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"rssi\")\r\n  |> group(columns: [\"device_name\", \"_measurement\", \"_field\"])\r\n  |> aggregateWindow(every: 1h, fn: mean, createEmpty: false)\r\n  |> yield(name: \"last\")",
+          "query": "from(bucket: \"jokley_bucket\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"device_name\"] =~ /^outdoor/ or r[\"device_name\"] == \"fan\" or r[\"device_name\"] =~ /^probe/)\r\n  |> filter(fn: (r) => r[\"_field\"] == \"rssi\")\r\n  |> group(columns: [\"device_name\", \"_measurement\", \"_field\"])\r\n  |> aggregateWindow(every: 1h, fn: mean, createEmpty: false)\r\n  |> yield(name: \"last\")",
           "refId": "Probe_01"
         }
       ],
@@ -1513,7 +1632,7 @@
             "type": "influxdb",
             "uid": "P5697886F9CA74929"
           },
-          "query": "from(bucket: \"jokley_bucket\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"device_name\"] == \"outdoor00\" or r[\"device_name\"] == \"fan\" or r[\"device_name\"] == \"probe01\" or r[\"device_name\"] == \"probe02\")\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"device_frmpayload_data_battery\")\r\n    |> group(columns: [\"device_name\", \"_measurement\", \"_field\"])\r\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\r\n  |> yield(name: \"last\")\r\n\r\n",
+          "query": "from(bucket: \"jokley_bucket\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"device_name\"] =~ /^outdoor/ or r[\"device_name\"] == \"fan\" or r[\"device_name\"] =~ /^probe/)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"device_frmpayload_data_battery\")\r\n    |> group(columns: [\"device_name\", \"_measurement\", \"_field\"])\r\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\r\n  |> yield(name: \"last\")\r\n\r\n",
           "refId": "Probe_01"
         }
       ],
@@ -2080,7 +2199,7 @@
             "type": "influxdb",
             "uid": "P5697886F9CA74929"
           },
-          "query": "from(bucket: \"jokley_bucket\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) =>\r\n    (r[\"device_name\"] == \"outdoor00\" or r[\"device_name\"] == \"outdoor01\") and\r\n    (\r\n      r[\"_measurement\"] == \"device_frmpayload_data_temperature\" or\r\n      r[\"_measurement\"] == \"device_frmpayload_data_humidity\" or\r\n      r[\"_measurement\"] == \"device_frmpayload_data_trockenmasse\" or\r\n      r[\"_measurement\"] == \"device_frmpayload_data_sdef\"\r\n    ) and\r\n    r[\"_value\"] <= 100 and r[\"_value\"] >= -100\r\n  )\r\n  |> last()\r\n  |> map(fn: (r) => ({\r\n    _time: r._time,\r\n    _value: r._value,\r\n    _field:\r\n      if r._measurement == \"device_frmpayload_data_temperature\" then \"Temperature (°C)\"\r\n      else if r._measurement == \"device_frmpayload_data_humidity\" then \"Humidity (%)\"\r\n      else if r._measurement == \"device_frmpayload_data_trockenmasse\" then \"Trockenmasse (%)\"\r\n      else if r._measurement == \"device_frmpayload_data_sdef\" then \"SDEF\"\r\n      else r._measurement\r\n  }))\r\n  |> group(columns: [\"_field\"])  // only group by field name to make it appear in Grafana correctly\r\n  |> max()\r\n",
+          "query": "from(bucket: \"jokley_bucket\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) =>\r\n    (r[\"device_name\"] !~ /^outdoor/) and\r\n    (\r\n      r[\"_measurement\"] == \"device_frmpayload_data_temperature\" or\r\n      r[\"_measurement\"] == \"device_frmpayload_data_humidity\" or\r\n      r[\"_measurement\"] == \"device_frmpayload_data_trockenmasse\" or\r\n      r[\"_measurement\"] == \"device_frmpayload_data_sdef\"\r\n    ) and\r\n    r[\"_value\"] <= 100 and r[\"_value\"] >= -100\r\n  )\r\n  |> last()\r\n  |> map(fn: (r) => ({\r\n    _time: r._time,\r\n    _value: r._value,\r\n    _field:\r\n      if r._measurement == \"device_frmpayload_data_temperature\" then \"Temperature (°C)\"\r\n      else if r._measurement == \"device_frmpayload_data_humidity\" then \"Humidity (%)\"\r\n      else if r._measurement == \"device_frmpayload_data_trockenmasse\" then \"Trockenmasse (%)\"\r\n      else if r._measurement == \"device_frmpayload_data_sdef\" then \"SDEF\"\r\n      else r._measurement\r\n  }))\r\n  |> group(columns: [\"_field\"])  // only group by field name to make it appear in Grafana correctly\r\n  |> max()\r\n",
           "refId": "A"
         }
       ],
@@ -2147,7 +2266,7 @@
             "uid": "P5697886F9CA74929"
           },
           "hide": false,
-          "query": "from(bucket: \"jokley_bucket\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) =>\r\n    (r[\"device_name\"] == \"probe01\" or r[\"device_name\"] == \"probe02\") and\r\n    (\r\n      r[\"_measurement\"] == \"device_frmpayload_data_temperature\" or\r\n      r[\"_measurement\"] == \"device_frmpayload_data_humidity\" or\r\n      r[\"_measurement\"] == \"device_frmpayload_data_trockenmasse\" or\r\n      r[\"_measurement\"] == \"device_frmpayload_data_sdef\"\r\n    ) and\r\n    r[\"_value\"] <= 100 and r[\"_value\"] >= -100\r\n  )\r\n  |> last()\r\n  |> map(fn: (r) => ({\r\n    _time: r._time,\r\n    _value: r._value,\r\n    _field:\r\n      if r._measurement == \"device_frmpayload_data_temperature\" then \"Temperature (°C)\"\r\n      else if r._measurement == \"device_frmpayload_data_humidity\" then \"Humidity (%)\"\r\n      else if r._measurement == \"device_frmpayload_data_trockenmasse\" then \"Trockenmasse (%)\"\r\n      else if r._measurement == \"device_frmpayload_data_sdef\" then \"SDEF\"\r\n      else r._measurement\r\n  }))\r\n  |> group(columns: [\"_field\"])  // only group by field name to make it appear in Grafana correctly\r\n  |> min()\r\n",
+          "query": "from(bucket: \"jokley_bucket\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) =>\r\n    (r[\"device_name\"] =~ /^probe/) and\r\n    (\r\n      r[\"_measurement\"] == \"device_frmpayload_data_temperature\" or\r\n      r[\"_measurement\"] == \"device_frmpayload_data_humidity\" or\r\n      r[\"_measurement\"] == \"device_frmpayload_data_trockenmasse\" or\r\n      r[\"_measurement\"] == \"device_frmpayload_data_sdef\"\r\n    ) and\r\n    r[\"_value\"] <= 100 and r[\"_value\"] >= -100\r\n  )\r\n  |> last()\r\n  |> map(fn: (r) => ({\r\n    _time: r._time,\r\n    _value: r._value,\r\n    _field:\r\n      if r._measurement == \"device_frmpayload_data_temperature\" then \"Temperature (°C)\"\r\n      else if r._measurement == \"device_frmpayload_data_humidity\" then \"Humidity (%)\"\r\n      else if r._measurement == \"device_frmpayload_data_trockenmasse\" then \"Trockenmasse (%)\"\r\n      else if r._measurement == \"device_frmpayload_data_sdef\" then \"SDEF\"\r\n      else r._measurement\r\n  }))\r\n  |> group(columns: [\"_field\"])  // only group by field name to make it appear in Grafana correctly\r\n  |> min()\r\n",
           "refId": "A"
         }
       ],
@@ -2214,7 +2333,7 @@
             "uid": "P5697886F9CA74929"
           },
           "hide": false,
-          "query": "from(bucket: \"jokley_bucket\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) =>\r\n    (r[\"device_name\"] == \"probe01\" or r[\"device_name\"] == \"probe02\") and\r\n    (\r\n      r[\"_measurement\"] == \"device_frmpayload_data_temperature\" or\r\n      r[\"_measurement\"] == \"device_frmpayload_data_humidity\" or\r\n      r[\"_measurement\"] == \"device_frmpayload_data_trockenmasse\" or\r\n      r[\"_measurement\"] == \"device_frmpayload_data_sdef\"\r\n    ) and\r\n    r[\"_value\"] <= 100 and r[\"_value\"] >= -100\r\n  )\r\n  |> last()\r\n  |> map(fn: (r) => ({\r\n    _time: r._time,\r\n    _value: r._value,\r\n    _field:\r\n      if r._measurement == \"device_frmpayload_data_temperature\" then \"Temperature (°C)\"\r\n      else if r._measurement == \"device_frmpayload_data_humidity\" then \"Humidity (%)\"\r\n      else if r._measurement == \"device_frmpayload_data_trockenmasse\" then \"Trockenmasse (%)\"\r\n      else if r._measurement == \"device_frmpayload_data_sdef\" then \"SDEF\"\r\n      else r._measurement\r\n  }))\r\n  |> group(columns: [\"_field\"])  // only group by field name to make it appear in Grafana correctly\r\n  |> max()\r\n",
+          "query": "from(bucket: \"jokley_bucket\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) =>\r\n    (r[\"device_name\"] =~ /^probe/) and\r\n    (\r\n      r[\"_measurement\"] == \"device_frmpayload_data_temperature\" or\r\n      r[\"_measurement\"] == \"device_frmpayload_data_humidity\" or\r\n      r[\"_measurement\"] == \"device_frmpayload_data_trockenmasse\" or\r\n      r[\"_measurement\"] == \"device_frmpayload_data_sdef\"\r\n    ) and\r\n    r[\"_value\"] <= 100 and r[\"_value\"] >= -100\r\n  )\r\n  |> last()\r\n  |> map(fn: (r) => ({\r\n    _time: r._time,\r\n    _value: r._value,\r\n    _field:\r\n      if r._measurement == \"device_frmpayload_data_temperature\" then \"Temperature (°C)\"\r\n      else if r._measurement == \"device_frmpayload_data_humidity\" then \"Humidity (%)\"\r\n      else if r._measurement == \"device_frmpayload_data_trockenmasse\" then \"Trockenmasse (%)\"\r\n      else if r._measurement == \"device_frmpayload_data_sdef\" then \"SDEF\"\r\n      else r._measurement\r\n  }))\r\n  |> group(columns: [\"_field\"])  // only group by field name to make it appear in Grafana correctly\r\n  |> max()\r\n",
           "refId": "A"
         }
       ],
@@ -2255,12 +2374,12 @@
     "list": []
   },
   "time": {
-    "from": "now-1h",
+    "from": "now-7d",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "",
-  "title": "jokleyVenti",
-  "uid": "47a24cfa-bd5f-415d-96cf-fae2441ecb49",
-  "version": 10
+  "title": "jokleyVenti Copy",
+  "uid": "bb40a0f9-7d84-4cd0-b7f5-11df7469ab6c",
+  "version": 12
 }
