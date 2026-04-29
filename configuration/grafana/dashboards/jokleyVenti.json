@@ -399,7 +399,7 @@
       },
       "gridPos": {
         "h": 3,
-        "w": 9,
+        "w": 10,
         "x": 14,
         "y": 0
       },
@@ -452,6 +452,143 @@
       ],
       "title": "Lüfter",
       "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "P5697886F9CA74929"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "value {application_name=\"jokley\", dev_eui=\"a840418c51868361\", device_name=\"fan\", f_port=\"2\"}"
+            },
+            "properties": []
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 12,
+        "x": 12,
+        "y": 3
+      },
+      "id": 30,
+      "options": {
+        "dedupStrategy": "none",
+        "enableInfiniteScrolling": false,
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": false,
+        "sortOrder": "Descending",
+        "wrapLogMessage": false
+      },
+      "pluginVersion": "12.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "P5697886F9CA74929"
+          },
+          "query": "    from(bucket: \"jokley_bucket\")\r\n      |> range(start: -30d)\r\n      |> filter(fn: (r) => r[\"_measurement\"] == \"venti_state\")",
+          "refId": "A"
+        }
+      ],
+      "title": "Lüfter Status",
+      "type": "logs"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "P5697886F9CA74929"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "#19d2ff",
+            "mode": "fixed"
+          },
+          "custom": {
+            "axisPlacement": "auto",
+            "fillOpacity": 50,
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineWidth": 1,
+            "spanNulls": false
+          },
+          "displayName": ".",
+          "mappings": [
+            {
+              "options": {
+                "ON": {
+                  "color": "#3fedc2",
+                  "index": 0,
+                  "text": "ON"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 12,
+        "x": 0,
+        "y": 7
+      },
+      "id": 4,
+      "options": {
+        "alignValue": "center",
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "mergeValues": true,
+        "rowHeight": 0.9,
+        "showValue": "auto",
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "P5697886F9CA74929"
+          },
+          "query": "from(bucket: \"jokley_bucket\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"device_name\"] == \"fan\")\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"device_frmpayload_data_RO1_status\")\r\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)\r\n  |> yield(name: \"last\")",
+          "refId": "A"
+        }
+      ],
+      "title": "Lüfter Status",
+      "type": "state-timeline"
     },
     {
       "datasource": {
@@ -581,7 +718,7 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 3
+        "y": 7
       },
       "id": 2,
       "options": {
@@ -610,189 +747,6 @@
       ],
       "title": "Außen Temperatur / Luftfeuchte / Trockenmasse",
       "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "influxdb",
-        "uid": "P5697886F9CA74929"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "fixedColor": "#19d2ff",
-            "mode": "fixed"
-          },
-          "custom": {
-            "axisPlacement": "auto",
-            "fillOpacity": 50,
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineWidth": 1,
-            "spanNulls": false
-          },
-          "displayName": ".",
-          "mappings": [
-            {
-              "options": {
-                "ON": {
-                  "color": "#3fedc2",
-                  "index": 0,
-                  "text": "ON"
-                }
-              },
-              "type": "value"
-            }
-          ],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green"
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 12,
-        "x": 0,
-        "y": 7
-      },
-      "id": 4,
-      "options": {
-        "alignValue": "center",
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "mergeValues": true,
-        "rowHeight": 0.9,
-        "showValue": "auto",
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "pluginVersion": "12.0.0",
-      "targets": [
-        {
-          "datasource": {
-            "type": "influxdb",
-            "uid": "P5697886F9CA74929"
-          },
-          "query": "from(bucket: \"jokley_bucket\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"device_name\"] == \"fan\")\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"device_frmpayload_data_RO1_status\")\r\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)\r\n  |> yield(name: \"last\")",
-          "refId": "A"
-        }
-      ],
-      "title": "Lüfter Status",
-      "type": "state-timeline"
-    },
-    {
-      "datasource": {
-        "type": "influxdb",
-        "uid": "P5697886F9CA74929"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "fixedColor": "#19d2ff",
-            "mode": "fixed"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "fillOpacity": 68,
-            "gradientMode": "opacity",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "lineWidth": 1,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "decimals": 1,
-          "displayName": "Lüfter",
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green"
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          },
-          "unit": "h"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 7,
-        "w": 12,
-        "x": 12,
-        "y": 10
-      },
-      "id": 18,
-      "options": {
-        "barRadius": 0.05,
-        "barWidth": 0.84,
-        "fullHighlight": false,
-        "groupWidth": 0.7,
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "orientation": "auto",
-        "showValue": "auto",
-        "stacking": "none",
-        "text": {},
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "multi",
-          "sort": "none"
-        },
-        "xTickLabelRotation": 0,
-        "xTickLabelSpacing": 200
-      },
-      "pluginVersion": "12.0.0",
-      "targets": [
-        {
-          "datasource": {
-            "type": "influxdb",
-            "uid": "P5697886F9CA74929"
-          },
-          "query": "option v = {timeRangeStart: v.timeRangeStart, timeRangeStop: v.timeRangeStop}\r\n\r\ntimeRangeSeconds = int(v: uint(v: v.timeRangeStop) - uint(v: v.timeRangeStart)) / 1000000000\r\n\r\nwindowSize =\r\n    if timeRangeSeconds < 3 * 24 * 3600 then 1h\r\n    else if timeRangeSeconds < 30 * 24 * 3600 then 1d\r\n    else 30d\r\n\r\nfrom(bucket: \"jokley_bucket\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) =>\r\n      r[\"device_name\"] == \"fan\" and\r\n      r[\"_measurement\"] == \"device_frmpayload_data_RO1_status\"\r\n  )\r\n  |> elapsed(unit: 1s)\r\n  |> map(fn: (r) => ({ r with elapsedFloat: float(v: r.elapsed)/3600.0 }))\r\n  |> filter(fn: (r) => r[\"_value\"] == \"ON\")\r\n  |> aggregateWindow(every: windowSize, fn: sum, column: \"elapsedFloat\")\r\n  |> yield(name: \"sum\")\r\n",
-          "refId": "A"
-        }
-      ],
-      "title": "Betriebsstunden",
-      "type": "barchart"
     },
     {
       "datasource": {
@@ -1026,118 +980,78 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "continuous-YlBl"
+            "fixedColor": "#19d2ff",
+            "mode": "fixed"
           },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "fillOpacity": 68,
+            "gradientMode": "opacity",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineWidth": 1,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "decimals": 1,
+          "displayName": "Lüfter",
           "mappings": [],
-          "max": -30,
-          "min": -105,
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "red"
+                "color": "green"
               },
               {
-                "color": "light-red",
-                "value": 3600
-              },
-              {
-                "color": "super-light-orange",
-                "value": 3700
-              },
-              {
-                "color": "super-light-yellow",
-                "value": 3800
-              },
-              {
-                "color": "blue",
-                "value": 3900
+                "color": "red",
+                "value": 80
               }
             ]
           },
-          "unit": "none"
+          "unit": "h"
         },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "rssi probe01"
-            },
-            "properties": [
-              {
-                "id": "displayName",
-                "value": "Sonde 1"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "rssi probe02"
-            },
-            "properties": [
-              {
-                "id": "displayName",
-                "value": "Sonde 2"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "rssi outdoor00"
-            },
-            "properties": [
-              {
-                "id": "displayName",
-                "value": "Outdoor"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "rssi fan"
-            },
-            "properties": [
-              {
-                "id": "displayName",
-                "value": "Lüfter"
-              }
-            ]
-          }
-        ]
+        "overrides": []
       },
       "gridPos": {
-        "h": 5,
+        "h": 7,
         "w": 12,
         "x": 12,
-        "y": 17
+        "y": 14
       },
-      "id": 23,
+      "id": 18,
       "options": {
-        "displayMode": "gradient",
+        "barRadius": 0.05,
+        "barWidth": 0.84,
+        "fullHighlight": false,
+        "groupWidth": 0.7,
         "legend": {
           "calcs": [],
           "displayMode": "list",
           "placement": "bottom",
-          "showLegend": false
+          "showLegend": true
         },
-        "maxVizHeight": 300,
-        "minVizHeight": 10,
-        "minVizWidth": 0,
-        "namePlacement": "auto",
-        "orientation": "horizontal",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
+        "orientation": "auto",
+        "showValue": "auto",
+        "stacking": "none",
+        "text": {},
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "multi",
+          "sort": "none"
         },
-        "showUnfilled": true,
-        "sizing": "auto",
-        "valueMode": "color"
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 200
       },
       "pluginVersion": "12.0.0",
       "targets": [
@@ -1146,12 +1060,12 @@
             "type": "influxdb",
             "uid": "P5697886F9CA74929"
           },
-          "query": "from(bucket: \"jokley_bucket\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"device_name\"] == \"outdoor00\" or r[\"device_name\"] == \"fan\" or r[\"device_name\"] == \"probe01\" or r[\"device_name\"] == \"probe02\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"rssi\")\r\n  |> group(columns: [\"device_name\", \"_measurement\", \"_field\"])\r\n  |> aggregateWindow(every: 1h, fn: mean, createEmpty: false)\r\n  |> yield(name: \"last\")",
-          "refId": "Probe_01"
+          "query": "option v = {timeRangeStart: v.timeRangeStart, timeRangeStop: v.timeRangeStop}\r\n\r\ntimeRangeSeconds = int(v: uint(v: v.timeRangeStop) - uint(v: v.timeRangeStart)) / 1000000000\r\n\r\nwindowSize =\r\n    if timeRangeSeconds < 3 * 24 * 3600 then 1h\r\n    else if timeRangeSeconds < 30 * 24 * 3600 then 1d\r\n    else 30d\r\n\r\nfrom(bucket: \"jokley_bucket\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) =>\r\n      r[\"device_name\"] == \"fan\" and\r\n      r[\"_measurement\"] == \"device_frmpayload_data_RO1_status\"\r\n  )\r\n  |> elapsed(unit: 1s)\r\n  |> map(fn: (r) => ({ r with elapsedFloat: float(v: r.elapsed)/3600.0 }))\r\n  |> filter(fn: (r) => r[\"_value\"] == \"ON\")\r\n  |> aggregateWindow(every: windowSize, fn: sum, column: \"elapsedFloat\")\r\n  |> yield(name: \"sum\")\r\n",
+          "refId": "A"
         }
       ],
-      "title": "Empfang RSSI",
-      "type": "bargauge"
+      "title": "Betriebsstunden",
+      "type": "barchart"
     },
     {
       "datasource": {
@@ -1347,6 +1261,141 @@
       ],
       "title": "Sonden Temperatur / Luftfeuchte / Trockenmasse",
       "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "P5697886F9CA74929"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "continuous-YlBl"
+          },
+          "mappings": [],
+          "max": -30,
+          "min": -105,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red"
+              },
+              {
+                "color": "light-red",
+                "value": 3600
+              },
+              {
+                "color": "super-light-orange",
+                "value": 3700
+              },
+              {
+                "color": "super-light-yellow",
+                "value": 3800
+              },
+              {
+                "color": "blue",
+                "value": 3900
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "rssi probe01"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Sonde 1"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "rssi probe02"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Sonde 2"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "rssi outdoor00"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Outdoor"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "rssi fan"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Lüfter"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 12,
+        "x": 12,
+        "y": 21
+      },
+      "id": 23,
+      "options": {
+        "displayMode": "gradient",
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "maxVizHeight": 300,
+        "minVizHeight": 10,
+        "minVizWidth": 0,
+        "namePlacement": "auto",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showUnfilled": true,
+        "sizing": "auto",
+        "valueMode": "color"
+      },
+      "pluginVersion": "12.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "P5697886F9CA74929"
+          },
+          "query": "from(bucket: \"jokley_bucket\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"device_name\"] == \"outdoor00\" or r[\"device_name\"] == \"fan\" or r[\"device_name\"] == \"probe01\" or r[\"device_name\"] == \"probe02\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"rssi\")\r\n  |> group(columns: [\"device_name\", \"_measurement\", \"_field\"])\r\n  |> aggregateWindow(every: 1h, fn: mean, createEmpty: false)\r\n  |> yield(name: \"last\")",
+          "refId": "Probe_01"
+        }
+      ],
+      "title": "Empfang RSSI",
+      "type": "bargauge"
     },
     {
       "datasource": {
@@ -1621,7 +1670,7 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 13,
+        "h": 19,
         "w": 18,
         "x": 0,
         "y": 32
@@ -1782,17 +1831,6 @@
             "width": 0
           },
           {
-            "id": "intervall_enable",
-            "labelWidth": 20,
-            "section": "",
-            "title": "Intervall enable",
-            "tooltip": "",
-            "type": "boolean",
-            "uid": "fbda7218-cd20-4c66-a12d-f1d1c7a52cff",
-            "value": false,
-            "width": 20
-          },
-          {
             "id": "self_learning_enabled",
             "labelWidth": 30,
             "section": "",
@@ -1806,25 +1844,25 @@
           {
             "id": "efficiency_window_hours",
             "labelWidth": 30,
-            "min": 0,
             "max": 5,
-            "step": 0.5,
+            "min": 0,
             "section": "",
+            "step": 0.5,
             "title": "Zeitfenster Effizienz (Std.)",
             "tooltip": "",
             "type": "slider",
             "uid": "1b7e9c42-3a6d-4f8b-9c21-5d3e7a9f0b11",
             "unit": "h",
-            "value": 2.0,
+            "value": 2,
             "width": 0
           },
           {
             "id": "base_min_efficiency_threshold",
             "labelWidth": 30,
-            "min": 0,
             "max": 1,
-            "step": 0.1,
+            "min": 0,
             "section": "",
+            "step": 0.1,
             "title": "Mindest-Effizienz (Basis)",
             "tooltip": "",
             "type": "slider",
@@ -1836,10 +1874,10 @@
           {
             "id": "good_drying_level",
             "labelWidth": 30,
-            "min": 0,
             "max": 1,
-            "step": 0.01,
+            "min": 0,
             "section": "",
+            "step": 0.01,
             "title": "Optimaler Trocknungsgrad",
             "tooltip": "",
             "type": "slider",
@@ -1850,11 +1888,11 @@
           },
           {
             "id": "efficiency_learning_up",
-            "labelWidth": 20,
-            "min": 0.9,
+            "labelWidth": 30,
             "max": 1.1,
-            "step": 0.01,
+            "min": 0.9,
             "section": "",
+            "step": 0.01,
             "title": "Lernrate Aufwärts",
             "tooltip": "",
             "type": "slider",
@@ -1866,10 +1904,10 @@
           {
             "id": "efficiency_learning_down",
             "labelWidth": 30,
-            "min": 0.9,
             "max": 1.1,
-            "step": 0.01,
+            "min": 0.9,
             "section": "",
+            "step": 0.01,
             "title": "Lernrate Abwärts",
             "tooltip": "",
             "type": "slider",
@@ -1881,16 +1919,16 @@
           {
             "id": "ts_weight",
             "labelWidth": 30,
-            "min": 0,
             "max": 1,
-            "step": 0.1,
+            "min": 0,
             "section": "",
+            "step": 0.1,
             "title": "Gewichtung TS",
             "tooltip": "",
             "type": "slider",
             "uid": "7b3e1d9f-6a2c-4f8d-b5e1-9c2a7d4f6e66",
             "unit": "",
-            "value": 0.30,
+            "value": 0.3,
             "width": 0
           }
         ],
@@ -2192,7 +2230,7 @@
         "h": 18,
         "w": 5,
         "x": 0,
-        "y": 45
+        "y": 51
       },
       "id": 29,
       "options": {
