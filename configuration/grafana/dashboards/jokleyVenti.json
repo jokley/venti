@@ -955,7 +955,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Time"
+              "options": "device_frmpayload_data_humidity value probe02"
             },
             "properties": [
               {
@@ -993,7 +993,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "device_frmpayload_data_temperature value {application_name=\"jokley\", dev_eui=\"1e58b2a3fc9f5b17\", device_name=\"probe02\", f_port=\"2\"}"
+              "options": "device_frmpayload_data_temperature value probe02"
             },
             "properties": [
               {
@@ -1035,7 +1035,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Time"
+              "options": "device_frmpayload_data_trockenmasse value probe02"
             },
             "properties": [
               {
@@ -1234,7 +1234,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Time"
+              "options": "device_frmpayload_data_humidity value probe02"
             },
             "properties": [
               {
@@ -1272,7 +1272,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "device_frmpayload_data_temperature value {application_name=\"jokley\", dev_eui=\"1e58b2a3fc9f5b17\", device_name=\"probe02\", f_port=\"2\"}"
+              "options": "device_frmpayload_data_temperature value probe02"
             },
             "properties": [
               {
@@ -1310,7 +1310,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Time"
+              "options": "device_frmpayload_data_trockenmasse value probe02"
             },
             "properties": [
               {
