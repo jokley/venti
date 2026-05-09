@@ -24,7 +24,7 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 2,
+  "id": 3,
   "links": [],
   "panels": [
     {
@@ -955,7 +955,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "device_frmpayload_data_humidity value probe02"
+              "options": "Time"
             },
             "properties": [
               {
@@ -993,7 +993,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "device_frmpayload_data_temperature value probe02"
+              "options": "device_frmpayload_data_temperature value {application_name=\"jokley\", dev_eui=\"1e58b2a3fc9f5b17\", device_name=\"probe02\", f_port=\"2\"}"
             },
             "properties": [
               {
@@ -1035,7 +1035,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "device_frmpayload_data_trockenmasse value probe02"
+              "options": "Time"
             },
             "properties": [
               {
@@ -1234,7 +1234,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "device_frmpayload_data_humidity value probe02"
+              "options": "Time"
             },
             "properties": [
               {
@@ -1272,7 +1272,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "device_frmpayload_data_temperature value probe02"
+              "options": "device_frmpayload_data_temperature value {application_name=\"jokley\", dev_eui=\"1e58b2a3fc9f5b17\", device_name=\"probe02\", f_port=\"2\"}"
             },
             "properties": [
               {
@@ -1310,7 +1310,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "device_frmpayload_data_trockenmasse value probe02"
+              "options": "Time"
             },
             "properties": [
               {
@@ -1789,7 +1789,7 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 19,
+        "h": 11,
         "w": 18,
         "x": 0,
         "y": 32
@@ -1882,7 +1882,7 @@
             "id": "uschutz_on",
             "labelWidth": 20,
             "max": 40,
-            "min": 20,
+            "min": 25,
             "section": "",
             "step": 1,
             "title": "ÜSchutz on",
@@ -1950,105 +1950,15 @@
             "width": 0
           },
           {
-            "id": "self_learning_enabled",
-            "labelWidth": 30,
+            "id": "intervall_enable",
+            "labelWidth": 20,
             "section": "",
-            "title": "Selbstlernen aktiv",
+            "title": "Intervall enable",
             "tooltip": "",
             "type": "boolean",
-            "uid": "8f3c2a91-5d7e-4c6f-b8a1-2e9d4f7b3c10",
+            "uid": "fbda7218-cd20-4c66-a12d-f1d1c7a52cff",
             "value": false,
             "width": 20
-          },
-          {
-            "id": "efficiency_window_hours",
-            "labelWidth": 30,
-            "max": 5,
-            "min": 0,
-            "section": "",
-            "step": 0.5,
-            "title": "Zeitfenster Effizienz (Std.)",
-            "tooltip": "",
-            "type": "slider",
-            "uid": "1b7e9c42-3a6d-4f8b-9c21-5d3e7a9f0b11",
-            "unit": "h",
-            "value": 2,
-            "width": 0
-          },
-          {
-            "id": "base_min_efficiency_threshold",
-            "labelWidth": 30,
-            "max": 1,
-            "min": 0,
-            "section": "",
-            "step": 0.1,
-            "title": "Mindest-Effizienz (Basis)",
-            "tooltip": "",
-            "type": "slider",
-            "uid": "6c2d8f13-9a47-4e2b-b6d9-0a3c5e7f2d22",
-            "unit": "",
-            "value": 0.25,
-            "width": 0
-          },
-          {
-            "id": "good_drying_level",
-            "labelWidth": 30,
-            "max": 1,
-            "min": 0,
-            "section": "",
-            "step": 0.01,
-            "title": "Optimaler Trocknungsgrad",
-            "tooltip": "",
-            "type": "slider",
-            "uid": "2e9f4a71-8b3c-4d6e-a1f2-7c5b9d3e8f33",
-            "unit": "",
-            "value": 0.35,
-            "width": 0
-          },
-          {
-            "id": "efficiency_learning_up",
-            "labelWidth": 30,
-            "max": 1.1,
-            "min": 0.9,
-            "section": "",
-            "step": 0.01,
-            "title": "Lernrate Aufwärts",
-            "tooltip": "",
-            "type": "slider",
-            "uid": "9a1b3c5d-7e2f-4a8c-b6d1-3f9e0c2b4a44",
-            "unit": "",
-            "value": 1.01,
-            "width": 0
-          },
-          {
-            "id": "efficiency_learning_down",
-            "labelWidth": 30,
-            "max": 1.1,
-            "min": 0.9,
-            "section": "",
-            "step": 0.01,
-            "title": "Lernrate Abwärts",
-            "tooltip": "",
-            "type": "slider",
-            "uid": "4d8c2b7e-1f3a-4e9b-a6c2-8b5d1f7a9c55",
-            "unit": "",
-            "value": 0.99,
-            "width": 0
-          },
-          {
-            "id": "ts_weight",
-            "labelWidth": 30,
-            "max": 1,
-            "min": 0,
-            "section": "",
-            "step": 0.1,
-            "title": "Gewichtung TS",
-            "tooltip": "",
-            "type": "slider",
-            "uid": "7b3e1d9f-6a2c-4f8d-b5e1-9c2a7d4f6e66",
-            "unit": "",
-            "value": 0.3,
-            "width": 0
           }
         ],
         "initial": {
@@ -2349,7 +2259,7 @@
         "h": 18,
         "w": 5,
         "x": 0,
-        "y": 51
+        "y": 43
       },
       "id": 29,
       "options": {
@@ -2379,7 +2289,7 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "jokleyVenti",
+  "title": "jokleyVenti copy",
   "uid": "bb40a0f9-7d84-4cd0-b7f5-11df7469ab6c",
-  "version": 12
+  "version": 4
 }
