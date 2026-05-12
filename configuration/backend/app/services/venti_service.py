@@ -70,6 +70,7 @@ def venti_auto_param(
     intervall_on,
     intervall_time,
     intervall_duration,
+    notifications_enabled,
     self_learning_enabled,
     efficiency_window_hours,
     base_min_efficiency_threshold,
@@ -92,6 +93,7 @@ def venti_auto_param(
     logger.info('Intervall on: {}'.format(intervall_on))
     logger.info('Intervall time: {}'.format(intervall_time))
     logger.info('Intervall duration: {}'.format(intervall_duration))
+    logger.info('Notifications enabled: {}'.format(notifications_enabled))
     logger.info('Self learning enabled: {}'.format(self_learning_enabled))
     logger.info('Efficiency window hours: {}'.format(efficiency_window_hours))
     logger.info('Base min efficiency threshold: {}'.format(base_min_efficiency_threshold))
@@ -109,6 +111,7 @@ def venti_auto_param(
     intervall_on = int(intervall_on * 10)
     intervall_time = int(intervall_time * 10)
     intervall_duration = int(intervall_duration * 10)
+    notifications_enabled = _to_bool(notifications_enabled)
     self_learning_enabled = _to_bool(self_learning_enabled)
     efficiency_window_hours = int(efficiency_window_hours * 10)
     base_min_efficiency_threshold = int(base_min_efficiency_threshold * 100)
@@ -133,6 +136,7 @@ def venti_auto_param(
         .field("intervall_on", intervall_on)
         .field("intervall_time", intervall_time)
         .field("intervall_duration", intervall_duration)
+        .field("notifications_enabled", notifications_enabled)
         .field("self_learning_enabled", self_learning_enabled)
         .field("efficiency_window_hours", efficiency_window_hours)
         .field("base_min_efficiency_threshold", base_min_efficiency_threshold)

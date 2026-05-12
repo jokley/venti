@@ -301,6 +301,7 @@ The UI/backend parameter surface includes:
 - `intervall_on`
 - `intervall_time`
 - `intervall_duration`
+- `notifications_enabled`
 - `self_learning_enabled`
 - `efficiency_window_hours`
 - `base_min_efficiency_threshold`
@@ -311,6 +312,7 @@ The UI/backend parameter surface includes:
 
 The default fallback values are defined in [influx_service.py](/home/pi/Projects/venti/configuration/backend/app/services/influx_service.py:4):
 
+- `notifications_enabled = True`
 - `efficiency_window_hours = 2.0`
 - `self_learning_enabled = False`
 - `base_min_efficiency_threshold = 0.25`

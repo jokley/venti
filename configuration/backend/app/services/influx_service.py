@@ -12,6 +12,7 @@ VENTI_PARAM_DEFAULTS = {
     "intervall_on": 95.0,
     "intervall_time": 12.0,
     "intervall_duration": 12.0,
+    "notifications_enabled": True,
     "self_learning_enabled": False,
     "efficiency_window_hours": 2.0,
     "base_min_efficiency_threshold": 0.25,
@@ -39,7 +40,7 @@ VENTI_PARAM_SCALES = {
     "ts_weight": 100,
 }
 
-VENTI_PARAM_BOOL_FIELDS = {"self_learning_enabled"}
+VENTI_PARAM_BOOL_FIELDS = {"self_learning_enabled", "notifications_enabled"}
 
 
 def _hours_to_flux_duration(hours):

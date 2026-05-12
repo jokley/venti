@@ -1638,12 +1638,12 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 11,
+        "h": 12,
         "w": 18,
         "x": 0,
         "y": 22
       },
-      "id": 37,
+      "id": 42,
       "options": {
         "buttonGroup": {
           "orientation": "center",
@@ -1797,6 +1797,17 @@
             "unit": "min",
             "value": 12,
             "width": 0
+          },
+          {
+            "id": "notifications_enabled",
+            "labelWidth": 30,
+            "section": "",
+            "title": "Benachrichtigungen",
+            "tooltip": "",
+            "type": "boolean",
+            "uid": "d5e3a6b0-2c4f-4b91-a7d8-0f6c2e8a9b71",
+            "value": true,
+            "width": 20
           }
         ],
         "initial": {
@@ -1847,7 +1858,7 @@
           "code": "if (context.panel.response && context.panel.response.ok) {\n  context.grafana.notifySuccess(['Update', 'Values updated successfully.']);\n  context.grafana.locationService.reload();\n} else {\n  context.grafana.notifyError(['Update', 'An error occurred updating values.']);\n}\n",
           "confirm": true,
           "contentType": "application/json",
-          "getPayload": "const payload = {};\ncontext.panel.elements.forEach((element) => {\n  if (!element.value) {\n    return;\n  }\n  payload[element.id] = element.value;\n})\nreturn payload;",
+          "getPayload": "const payload = {};\ncontext.panel.elements.forEach((element) => {\n  if (element.value === undefined || element.value === null) {\n    return;\n  }\n  payload[element.id] = element.value;\n})\nreturn payload;",
           "method": "POST",
           "payload": {},
           "payloadMode": "all",
@@ -1917,7 +1928,7 @@
         ]
       },
       "gridPos": {
-        "h": 11,
+        "h": 12,
         "w": 2,
         "x": 18,
         "y": 22
@@ -1982,7 +1993,7 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 11,
+        "h": 12,
         "w": 2,
         "x": 20,
         "y": 22
@@ -2049,7 +2060,7 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 11,
+        "h": 12,
         "w": 2,
         "x": 22,
         "y": 22
@@ -2094,7 +2105,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 33
+        "y": 34
       },
       "id": 40,
       "panels": [
@@ -2133,7 +2144,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 34
+        "y": 35
       },
       "id": 41,
       "panels": [
@@ -2150,13 +2161,13 @@
             "h": 10,
             "w": 24,
             "x": 0,
-            "y": 47
+            "y": 36
           },
           "id": 36,
           "options": {
             "buttonGroup": {
               "orientation": "center",
-              "size": "lg"
+              "size": "md"
             },
             "confirmModal": {
               "body": "Please confirm to update changed values",
@@ -2354,7 +2365,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 35
+        "y": 36
       },
       "id": 39,
       "panels": [
@@ -2379,7 +2390,7 @@
             "h": 9,
             "w": 24,
             "x": 0,
-            "y": 58
+            "y": 66
           },
           "id": 30,
           "options": {
@@ -2420,9 +2431,9 @@
             "h": 19,
             "w": 24,
             "x": 0,
-            "y": 67
+            "y": 75
           },
-          "id": 20,
+          "id": 43,
           "options": {
             "buttonGroup": {
               "orientation": "center",
@@ -2578,6 +2589,17 @@
                 "width": 0
               },
               {
+                "id": "notifications_enabled",
+                "labelWidth": 30,
+                "section": "",
+                "title": "Benachrichtigungen",
+                "tooltip": "",
+                "type": "boolean",
+                "uid": "d5e3a6b0-2c4f-4b91-a7d8-0f6c2e8a9b71",
+                "value": true,
+                "width": 20
+              },
+              {
                 "id": "self_learning_enabled",
                 "labelWidth": 30,
                 "section": "",
@@ -2614,7 +2636,7 @@
                 "tooltip": "",
                 "type": "slider",
                 "uid": "6c2d8f13-9a47-4e2b-b6d9-0a3c5e7f2d22",
-                "unit": " ",
+                "unit": "",
                 "value": 0.25,
                 "width": 0
               },
@@ -2629,7 +2651,7 @@
                 "tooltip": "",
                 "type": "slider",
                 "uid": "2e9f4a71-8b3c-4d6e-a1f2-7c5b9d3e8f33",
-                "unit": " ",
+                "unit": "",
                 "value": 0.35,
                 "width": 0
               },
@@ -2644,7 +2666,7 @@
                 "tooltip": "",
                 "type": "slider",
                 "uid": "9a1b3c5d-7e2f-4a8c-b6d1-3f9e0c2b4a44",
-                "unit": " ",
+                "unit": "",
                 "value": 1.01,
                 "width": 0
               },
@@ -2659,7 +2681,7 @@
                 "tooltip": "",
                 "type": "slider",
                 "uid": "4d8c2b7e-1f3a-4e9b-a6c2-8b5d1f7a9c55",
-                "unit": " ",
+                "unit": "",
                 "value": 0.99,
                 "width": 0
               },
@@ -2674,7 +2696,7 @@
                 "tooltip": "",
                 "type": "slider",
                 "uid": "7b3e1d9f-6a2c-4f8d-b5e1-9c2a7d4f6e66",
-                "unit": " ",
+                "unit": "",
                 "value": 0.3,
                 "width": 0
               }
@@ -2727,7 +2749,7 @@
               "code": "if (context.panel.response && context.panel.response.ok) {\n  context.grafana.notifySuccess(['Update', 'Values updated successfully.']);\n  context.grafana.locationService.reload();\n} else {\n  context.grafana.notifyError(['Update', 'An error occurred updating values.']);\n}\n",
               "confirm": true,
               "contentType": "application/json",
-              "getPayload": "const payload = {};\ncontext.panel.elements.forEach((element) => {\n  if (!element.value) {\n    return;\n  }\n  payload[element.id] = element.value;\n})\nreturn payload;",
+              "getPayload": "const payload = {};\ncontext.panel.elements.forEach((element) => {\n  if (element.value === undefined || element.value === null) {\n    return;\n  }\n  payload[element.id] = element.value;\n})\nreturn payload;",
               "method": "POST",
               "payload": {},
               "payloadMode": "all",
@@ -2762,7 +2784,7 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "jokleyVenti Copy",
-  "uid": "83c6b3b4-a562-4d36-b32f-a1e3a2b20342",
-  "version": 69
+  "title": "jokleyVenti_",
+  "uid": "bb40a0f9-7d84-4cd0-b7f5-11df7469ab6c",
+  "version": 71
 }
