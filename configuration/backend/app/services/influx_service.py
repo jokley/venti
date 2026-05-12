@@ -47,24 +47,46 @@ def _hours_to_flux_duration(hours):
     seconds = max(0, int(round(float(hours) * 3600)))
     return f"{seconds}s"
 
+from collections import namedtuple
+
 def get_venti_control_values():
     client = get_influxdb_client()
-    query = ''' from(bucket: "jokley_bucket")
-                    |> range(start: -1y)
-                    |> filter(fn: (r) => r["_measurement"] == "venti")
-		            |> last()
-                '''
+
+    query = '''
+        from(bucket: "jokley_bucket")
+            |> range(start: -1y)
+            |> filter(fn: (r) => r["_measurement"] == "venti")
+            |> last()
+    '''
+
     result = client.query_api().query(query=query)
 
-    records = []
+    startTime = None
+    mode = None
+    stockaufbau = None
+    trockenmasse = None
+
     for table in result:
         for r in table.records:
-            records.append((r.get_time(), r.get_value()))
-    
-    names = ['mode', 'stockaufbau', 'trockenMasseSoll']
-    values = [dict(zip(names, records))]
+
+            field = r.get_field()
+            value = r.get_value()
+
+            if field == "mode":
+                startTime = r.get_time()
+                mode = value
+
+            elif field == "stockaufbau":
+                stockaufbau = value
+
+            elif field == "trockenmasse":
+                trockenmasse = float(value) / 10.0   # ✅ ONLY HERE
+
     client.close()
-    return values
+
+    Venti = namedtuple("Venti", ["startTime", "mode", "stockaufbau", "trockenmasse"])
+
+    return Venti(startTime, mode, stockaufbau, trockenmasse)
 
 
 def get_last_controller_state():

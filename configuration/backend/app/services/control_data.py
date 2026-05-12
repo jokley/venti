@@ -44,11 +44,11 @@ def build_control_data():
 
     dataVenti = get_venti_control_values()
 
-    startTime = dataVenti[0]['mode'][0]
-    mode = dataVenti[0]['mode'][1]
+    startTime = dataVenti.startTime
+    mode = dataVenti.mode
 
-    tsSoll = dataVenti[0]['trockenMasseSoll'][1]
-    stock = int(dataVenti[0]['stockaufbau'][1]) * 3600
+    tsSoll = dataVenti.trockenmasse
+    stock = int(dataVenti.stockaufbau) * 3600
 
     data = get_min_max_values()
     dataOut = get_outdoor_values()

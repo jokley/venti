@@ -45,9 +45,14 @@ def venti_auto(cmd, trockenMasse,stockAufbau):
 
     write_api = client.write_api(write_options=SYNCHRONOUS)
 
+    trockenMasse = int(trockenMasse * 10)
+
     record = [
-	Point("venti").field("mode", cmd).field("trockenmasse", trockenMasse).field("stockaufbau", stockAufbau),
-    ]      
+    Point("venti")
+        .field("mode", str(cmd))
+        .field("trockenmasse", trockenMasse)
+        .field("stockaufbau", str(stockAufbau))
+    ] 
 
     write_api.write(bucket="jokley_bucket", org=ORG, record=record)
     client.close()

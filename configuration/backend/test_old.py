@@ -95,7 +95,7 @@ def venti_control():
     dataVenti = get_venti_control_values()
     startTime = dataVenti[0]['mode'][0]
     mode = dataVenti[0]['mode'][1]
-    tsSoll =dataVenti[0]['trockenMasseSoll'][1]
+    tsSoll =dataVenti[0]['trockenmasse'][1]
     stock = int(dataVenti[0]['stockaufbau'][1])
     stock *= 3600
 
@@ -343,7 +343,7 @@ def get_venti_control_values():
             results.append((record.get_time(), record.get_value()))
     
     results2 = []
-    names = ['mode','stockaufbau','trockenMasseSoll']
+    names = ['mode','stockaufbau','trockenmasse']
     results2.append(dict(zip(names,results)))
     dicti={}
     dicti = results2
@@ -541,7 +541,7 @@ def influx():
     dataVenti = get_venti_control_values()
     startTime = dataVenti[0]['mode'][0]
     mode = dataVenti[0]['mode'][1]
-    tsSoll =dataVenti[0]['trockenMasseSoll'][1]
+    tsSoll =dataVenti[0]['trockenmasse'][1]
     stock = int(dataVenti[0]['stockaufbau'][1])
     stock *= 3600
     stockini = dataVenti[0]['stockaufbau'][1]
@@ -573,7 +573,7 @@ def controlValues():
     dataVenti = get_venti_control_values()
     startTime = dataVenti[0]['mode'][0]
     mode = dataVenti[0]['mode'][1]
-    tsSoll =dataVenti[0]['trockenMasseSoll'][1]
+    tsSoll =dataVenti[0]['trockenmasse'][1]
     stockini = dataVenti[0]['stockaufbau'][1]
 
     iniDict = {'cmd':mode, 'stock':stockini , 'tm':tsSoll} 
