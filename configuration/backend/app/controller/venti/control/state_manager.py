@@ -1,5 +1,5 @@
-from app.services.influx_service import get_last_controller_state
-from app.services.venti_service import write_controller_state
+from app.services.influx_service import get_last_controller_state, get_last_heizung_controller_state
+from app.services.venti_service import write_controller_state, write_heizung_controller_state
 from app.utils.logger import logger
 
 
@@ -22,18 +22,45 @@ class ControlStateManager:
         self.last_bad_drying_snapshot = None
         self.adaptive_min_efficiency_threshold = None
 
+        # Heizung memory:
+        # - timestamp when heater went off → drives nachlauf calculation
+        # - last known active state → edge detection EIN→AUS
+        # - lock flag → blocks venti_control while heizung or nachlauf active
+        self.heizung_off_ts = None
+        self.heizung_was_active = False
+        self.heizung_lock = False
+        self.last_heizung_state = None
+        self.last_heizung_command = None
+        self.last_heizung_mode = None
+        self.last_heizung_details = None
+        self.last_heizung_ts = None
+        self.last_heizung_relay_command = None
+        self.last_heizung_forced_venti_command = None
+
     # =========================
     # 🔁 RESTORE
     # =========================
     def restore(self):
         data = get_last_controller_state()
+        heizung_data = get_last_heizung_controller_state()
 
-        if not data:
+        if not data and not heizung_data:
             logger.info("No persisted controller state found")
             return None
 
-        # Restore the last known controller result so transitions,
-        # mode changes, and adaptive threshold logic can resume cleanly.
+        if heizung_data:
+            self.restore_heizung(heizung_data)
+
+        if not data:
+            return {
+                "state": self.last_state,
+                "command": self.last_command,
+                "mode": self.last_mode,
+                "details": self.last_details,
+                "started_at": self.last_ts,
+                "adaptive_min_efficiency_threshold": self.adaptive_min_efficiency_threshold,
+            }
+
         self.last_state = data.get("state")
         self.last_command = data.get("command")
         self.last_mode = data.get("mode")
@@ -43,6 +70,7 @@ class ControlStateManager:
             (self.last_details or {}).get("adaptive_threshold")
             or (self.last_details or {}).get("min_efficiency_threshold")
         )
+
         if self.last_state == "INEFFICIENT_DRYING" and self.last_ts is not None:
             self.last_inefficient_stop = self.last_ts
             self.last_bad_drying_snapshot = self._extract_bad_drying_snapshot(
@@ -76,12 +104,32 @@ class ControlStateManager:
             "adaptive_min_efficiency_threshold": self.adaptive_min_efficiency_threshold,
         }
 
+    def restore_heizung(self, data):
+        self.last_heizung_state = data.get("state")
+        self.last_heizung_command = data.get("command")
+        self.last_heizung_mode = data.get("mode")
+        self.last_heizung_details = data.get("details", {})
+        self.last_heizung_ts = data.get("started_at")
+        self.last_heizung_relay_command = self.last_heizung_command
+
+        if self.last_heizung_state == "HEIZUNG_NACHLAUF" and self.last_heizung_ts is not None:
+            self.heizung_off_ts = self.last_heizung_ts
+            self.heizung_was_active = False
+            self.heizung_lock = True
+            logger.info(
+                "Restored heizung nachlauf – lock gesetzt (off_ts=%s)",
+                self.heizung_off_ts,
+            )
+        elif self.last_heizung_state == "HEIZUNG_ACTIVE":
+            self.heizung_was_active = True
+            self.heizung_lock = True
+            self.last_heizung_forced_venti_command = "on"
+            logger.info("Restored heizung active – lock gesetzt")
+
     # =========================
     # 💾 PERSIST
     # =========================
     def persist(self, state, command, mode, details, ctx):
-        # Persistence is the bridge between in-memory control logic and the
-        # next controller cycle after a restart or redeploy.
         write_controller_state(
             state=state,
             command=command,
@@ -97,9 +145,63 @@ class ControlStateManager:
 
         logger.debug("State persisted: %s (%s)", state, command)
 
+    # =========================
+    # 🔥 HEIZUNG
+    # =========================
+    def update_heizung(self, heizung_active, ctx):
+        """
+        Einmal pro heizung_control() Zyklus aufrufen.
+
+        - Erkennt Flanke EIN→AUS und setzt heizung_off_ts
+        - Aktualisiert heizung_was_active
+        - Setzt heizung_lock (wird von venti_control geprüft)
+
+        Nachlauf-Prüfung erfolgt NACH diesem Aufruf in heizung_control(),
+        weil heizung_off_since erst danach korrekt berechnet werden kann.
+        heizung_lock wird deshalb in heizung_control() nochmals gesetzt.
+        """
+        if self.heizung_was_active and not heizung_active:
+            self.heizung_off_ts = ctx.now
+            logger.info("Heizung abgegangen – Nachlauf startet (off_ts=%s)", ctx.now)
+
+        self.heizung_was_active = heizung_active
+
+        # Vorläufiger Lock – wird in heizung_control() nach
+        # Nachlauf-Berechnung endgültig gesetzt
+        if heizung_active:
+            self.heizung_lock = True
+
+    def persist_heizung(self, state, command, mode, details, ctx):
+        write_heizung_controller_state(
+            state=state,
+            command=command,
+            mode=mode,
+            details=details
+        )
+
+        self.last_heizung_state = state
+        self.last_heizung_command = command
+        self.last_heizung_mode = mode
+        self.last_heizung_details = details
+        self.last_heizung_ts = ctx.now
+
+        logger.debug("Heizung state persisted: %s (%s)", state, command)
+
+    def release_heizung_lock(self):
+        """
+        Gibt den Lock frei wenn weder Heizung noch Nachlauf aktiv.
+        Wird von heizung_control() aufgerufen wenn Nachlauf endet.
+        Setzt heizung_off_ts zurück damit kein Nachlauf mehr erkannt wird.
+        """
+        self.heizung_lock = False
+        self.heizung_off_ts = None
+        self.last_heizung_forced_venti_command = None
+        logger.info("Heizung Lock freigegeben – venti_control wieder aktiv")
+
+    # =========================
+    # 🧠 SELF-LEARNING
+    # =========================
     def remember_bad_drying(self, ctx, metrics, details=None):
-        # Capture the full situation of a bad drying run so a later restart
-        # can require meaningfully better conditions before retrying.
         details = details or {}
         self.last_bad_drying_snapshot = {
             "timestamp": ctx.now,
@@ -126,8 +228,6 @@ class ControlStateManager:
         self.last_inefficient_stop = ctx.now
 
     def clear_bad_drying(self):
-        # Once drying is active again we no longer need to block retries
-        # based on the previous failed snapshot.
         self.last_bad_drying_snapshot = None
 
     def retry_conditions_improved(self, ctx):
@@ -136,9 +236,6 @@ class ControlStateManager:
         if not snapshot:
             return True, None
 
-        # Compare the current potential drying situation against the last
-        # known bad run. A new retry is allowed only if the relevant values
-        # improved and the others did not get worse.
         current_sdef_diff = (
             ctx.sDefOut - ctx.sDefMin
             if ctx.sDefOut is not None and ctx.sDefMin is not None
@@ -219,9 +316,10 @@ class ControlStateManager:
             "window_hours": details.get("window_hours"),
         }
 
+    # =========================
+    # 📈 ADAPTIVE THRESHOLD
+    # =========================
     def get_adaptive_threshold(self, default_value):
-        # Initialize lazily so classic mode does not need to care about the
-        # adaptive threshold state at all.
         if self.adaptive_min_efficiency_threshold is None:
             self.adaptive_min_efficiency_threshold = default_value
         return self.adaptive_min_efficiency_threshold
@@ -232,8 +330,6 @@ class ControlStateManager:
         if not has_history:
             return threshold
 
-        # Good drying slightly lowers the stop threshold. Weak drying slightly
-        # raises it. The floor/ceiling keeps learning bounded and predictable.
         if efficiency > ctx.good_drying_level:
             threshold *= ctx.efficiency_learning_down
         else:

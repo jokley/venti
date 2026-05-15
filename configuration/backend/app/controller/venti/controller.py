@@ -27,12 +27,8 @@ decision_engine = DryingDecisionEngine()
 
 
 def evaluate(ctx):
-    # Always compute metrics first so both classic mode and self-learning
-    # decisions can log the same drying telemetry.
     metrics = efficiency_engine.compute(ctx)
 
-    # In self-learning mode the active stop threshold can drift over time.
-    # In classic mode we keep it fixed at the configured base value.
     if ctx.self_learning_enabled:
         ctx.min_efficiency_threshold = state_manager.get_adaptive_threshold(
             ctx.base_min_efficiency_threshold
@@ -42,17 +38,12 @@ def evaluate(ctx):
 
     decision = decision_engine.decide(ctx, metrics)
 
-    # Self-learning remembers a bad run so the next restart can require
-    # better conditions before trying again.
     if ctx.self_learning_enabled and decision.reason == "INEFFICIENT_DRYING":
         state_manager.remember_bad_drying(ctx, metrics, decision.details)
 
-    # A successful drying run clears the previous bad-run snapshot.
     if ctx.self_learning_enabled and decision.reason == "DRYING_ACTIVE":
         state_manager.clear_bad_drying()
 
-    # The adaptive threshold is updated after the decision so the current
-    # cycle uses the old value and the next cycle sees the learned value.
     if ctx.self_learning_enabled:
         updated_threshold = state_manager.update_adaptive_threshold(
             metrics["efficiency"],
@@ -72,8 +63,6 @@ def evaluate(ctx):
         and (ctx.tsSoll - ctx.tsMin) <= 0.5
     )
 
-    # Preserve the old behavior: after a long idle period near target TS,
-    # switch auto mode fully off instead of only keeping the fan off.
     if auto_disable_triggered:
         venti_auto("off", ctx.tsSoll, "0")
         decision = Decision(
@@ -106,7 +95,6 @@ previous_state = None
 def restore_controller_runtime_state():
     global previous_mode, previous_state
 
-    # Skip restore when runtime memory is already initialized.
     if (
         previous_mode is not None
         or previous_state is not None
@@ -145,11 +133,19 @@ def venti_control():
     # 1. RESTORE STATE
     restore_controller_runtime_state()
 
-    # 2. BUILD CONTEXT
+    # 2. HEIZUNG VERRIEGELUNG
+    # heizung_control() läuft als eigenständiger Job und setzt den Lock.
+    # Solange Heizung oder Nachlauf aktiv übernimmt heizung_control()
+    # den Lüfter – venti_control() bleibt komplett draußen.
+    if state_manager.heizung_lock:
+        logger.info("venti_control gesperrt – Heizung Lock aktiv")
+        return
+
+    # 3. BUILD CONTEXT
     data = build_control_data()
     ctx = VentiContext(data)
 
-    # 3. DECISION ENGINE
+    # 4. DECISION ENGINE
     decision = evaluate(ctx)
     effective_mode = decision.details.get("mode_override", ctx.mode)
 
@@ -160,7 +156,7 @@ def venti_control():
         != decision.details.get("adaptive_threshold")
     )
 
-    # 4. EXECUTE CONTROL
+    # 5. EXECUTE CONTROL
     venti_cmd(decision.command)
 
     # Persist only on relevant state changes to avoid noisy writes.
@@ -217,8 +213,7 @@ def venti_control():
 
     previous_state = decision.reason
 
-    # Alerts and summaries are evaluated after the control decision so they
-    # report what actually happened in this control cycle.
+    # 9. ALERTS
     for alert in (
         check_battery_alerts(ctx, alert_state.battery)
         + check_rssi_alerts(ctx, alert_state.rssi)

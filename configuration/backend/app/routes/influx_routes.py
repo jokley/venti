@@ -2,7 +2,9 @@ from flask import Blueprint, jsonify
 from ..utils.logger import logger
 from ..services.influx_service import (
     get_venti_control_values,
-    get_venti_control_param_actual_values
+    get_venti_control_param_actual_values,
+    get_heizung_control_values,
+    get_heizung_param_actual_values
 )
 
 influx_bp = Blueprint('influx', __name__)
@@ -34,3 +36,17 @@ def control_values():
 @influx_bp.route('/controlParamValues', methods=['GET'])
 def control_param_values():
     return jsonify(get_venti_control_param_actual_values())
+
+
+
+@influx_bp.route('/heizungValues', methods=['GET'])
+def heizung_values():
+    dataHeizung = get_heizung_control_values()
+    return jsonify({
+        'heizung_cmd': dataHeizung.mode,
+        'heizung_dauer': dataHeizung.heizung_dauer,   # Stunden, float
+    })
+
+@influx_bp.route('/heizungParamValues', methods=['GET'])
+def heizung_param_values():
+    return jsonify(get_heizung_param_actual_values())

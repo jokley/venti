@@ -11,13 +11,28 @@ from .influx_service import (
     get_last_auto_start,
     get_fan_runtime_since,
     get_2h_values,
+    get_heizung_control_values,
+    get_heizung_param_actual_values,
 )
 
-from datetime import timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from app.utils.time_utils import (
     get_timestamp_now_epoche,
     get_timestamp_now_offset
 )
+
+from ..controller.venti.control.state_manager import state_manager
+
+
+def _elapsed_seconds_since(start_time, now_epoch):
+    if start_time is None:
+        return 999999
+
+    if start_time.tzinfo is None:
+        start_time = start_time.replace(tzinfo=timezone.utc)
+
+    return max(0, int(now_epoch - start_time.timestamp()))
+
 
 def battery_mv_to_percent(mv):
     if mv is None:
@@ -42,11 +57,14 @@ def battery_mv_to_percent(mv):
 
 def build_control_data():
 
+    # =========================
+    # 📡 DATA FETCH
+    # =========================
     dataVenti = get_venti_control_values()
+    dataHeizung = get_heizung_control_values()
 
     startTime = dataVenti.startTime
     mode = dataVenti.mode
-
     tsSoll = dataVenti.trockenmasse
     stock = int(dataVenti.stockaufbau) * 3600
 
@@ -54,12 +72,13 @@ def build_control_data():
     dataOut = get_outdoor_values()
     dataLastTime = get_venti_lastTimeOn()
     params = get_venti_control_param_actual_values()
-    
+    heizung_params = get_heizung_param_actual_values()
+
     raw_battery = get_battery_data()
     battery = {
         device: battery_mv_to_percent(value)
         for device, value in raw_battery.items()
-}
+    }
     rssi = get_rssi_data()
     sensor_age = get_sensor_age()
     fan_runtime = get_fan_runtime_today()
@@ -84,6 +103,27 @@ def build_control_data():
     lastOff = (
         dataLastTime[0]['lastTimeOff'] + timedelta(seconds=DST)
     ).replace(tzinfo=timezone.utc).timestamp()
+
+    # =========================
+    # 🔥 HEIZUNG – Timing
+    # =========================
+    heizung_mode = dataHeizung.mode
+    heizung_dauer = dataHeizung.heizung_dauer * 3600   # h → s
+    now_utc = datetime.now(timezone.utc).timestamp()
+
+    # startTime der Heizung – None wenn noch nie gesetzt (Erstinbetriebnahme)
+    remainingTimeHeizung = _elapsed_seconds_since(dataHeizung.startTime, now_utc)
+
+    # Nachlauf: wie viele Sekunden seit Heizung abging
+    # Quelle: state_manager, wird gesetzt wenn heizung_active EIN→AUS kippt
+    heizung_off_since = (
+        int(now - state_manager.heizung_off_ts)
+        if state_manager.heizung_off_ts is not None
+        else 999999   # nie abgegangen → kein Nachlauf aktiv
+    )
+
+    # nachlauf in Sekunden (Param ist in Minuten, ganzzahlig)
+    heizung_nachlauf_s = heizung_params["heizung_nachlauf"] * 60
 
     # =========================
     # 📦 CONTEXT DATA
@@ -129,18 +169,26 @@ def build_control_data():
         "uschutz_on": params["uschutz_on"],
         "uschutz_hys": params["uschutz_hys"],
 
+        # =========================
+        # 🔥 HEIZUNG
+        # =========================
+        "heizung_enabled":        heizung_params["heizung_enabled"],
+        "heizung_mode":           heizung_mode,
+        "heizung_dauer":          heizung_dauer,
+        "remainingTimeHeizung":   remainingTimeHeizung,
+        "heizung_nachlauf":       heizung_nachlauf_s,
+        "heizung_off_since":      heizung_off_since,
 
         # =========================
-        # 🧠 SYSTEM HEALTH (NEW LAYER)
+        # 🧠 SYSTEM HEALTH
         # =========================
         "battery": battery,
         "rssi": rssi,
         "sensor_age": sensor_age,
 
         # =========================
-        # 🧠 FAN Runtime 
+        # 🧠 FAN RUNTIME
         # =========================
-
         "fan_runtime_today": fan_runtime,
         "fan_runtime_auto": fan_runtime_auto,
         "auto_start": auto_start,
@@ -157,5 +205,4 @@ def build_control_data():
         "efficiency_learning_up": params["efficiency_learning_up"],
         "efficiency_learning_down": params["efficiency_learning_down"],
         "ts_weight": params["ts_weight"],
-
     }

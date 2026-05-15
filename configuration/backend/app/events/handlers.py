@@ -112,6 +112,22 @@ def handle_decision_log(event: Event):
         logger.info(f"Reason: {details.get('reason')}")
         logger.info(f"Effizienz: {details.get('efficiency')} | Limit: {details.get('adaptive_threshold')}")
 
+    # --- HEIZUNG ACTIVE ---
+    elif decision.reason == "HEIZUNG_ACTIVE":
+        logger.info("Heizung aktiv")
+        logger.info(f"Modus: {details.get('heizung_mode')}")
+        logger.info(f"Restzeit: {details.get('remaining')}")
+
+    # --- HEIZUNG NACHLAUF ---
+    elif decision.reason == "HEIZUNG_NACHLAUF":
+        logger.info("Heizung Nachlauf")
+        logger.info(f"Noch: {details.get('nachlauf_remaining')}")
+
+    elif decision.reason in ("HEIZUNG_IDLE", "HEIZUNG_DISABLED"):
+        logger.info("Heizung inaktiv")
+        logger.info(f"Modus: {details.get('heizung_mode')}")
+        logger.info(f"Grund: {details.get('reason')}")
+
 def handle_mode_change(event: Event):
     """Handle mode changes (Manual -> Auto, etc)"""
     try:

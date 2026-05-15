@@ -46,26 +46,30 @@ def fmt_duration(seconds):
 
 def pretty_reason(reason):
     mapping = {
-        "INTERVAL_ACTIVE": "Intervalllüftung",
-        "DRYING_ACTIVE": "Trocknung",
-        "STOCK_BUILDING": "Stockaufbau",
-        "OVERHEAT": "Überhitzung",
-        "AUTO_IDLE": "Automatik pausiert",
-        "MANUAL_MODE": "Manueller Modus",
+        "INTERVAL_ACTIVE":    "Intervalllüftung",
+        "DRYING_ACTIVE":      "Trocknung",
+        "STOCK_BUILDING":     "Stockaufbau",
+        "OVERHEAT":           "Überhitzung",
+        "AUTO_IDLE":          "Automatik pausiert",
+        "MANUAL_MODE":        "Manueller Modus",
         "INEFFICIENT_DRYING": "Ineffiziente Trocknung",
+        "HEIZUNG_ACTIVE":     "Heizung aktiv",
+        "HEIZUNG_NACHLAUF":   "Heizung Nachlauf",
+        "HEIZUNG_IDLE":       "Heizung inaktiv",
+        "HEIZUNG_DISABLED":   "Heizung deaktiviert",
     }
     return mapping.get(reason, reason)
 
 
 def pretty_detail_reason(reason):
     mapping = {
-        "drying_conditions_not_met": "Trocknung nicht möglich",
-        "inefficient_cooldown": "Pause nach ineffizienter Trocknung",
-        "waiting_better_than_last_bad_drying": "Warte auf bessere Bedingungen als beim letzten Fehlversuch",
-        "humidity_low": "Feuchte zu niedrig",
-        "ts_target_reached": "TS Ziel erreicht",
-        "interval_wait": "Warte auf Intervall",
-        None: "Kein spezieller Grund",
+        "drying_conditions_not_met":                "Trocknung nicht möglich",
+        "inefficient_cooldown":                     "Pause nach ineffizienter Trocknung",
+        "waiting_better_than_last_bad_drying":      "Warte auf bessere Bedingungen als beim letzten Fehlversuch",
+        "humidity_low":                             "Feuchte zu niedrig",
+        "ts_target_reached":                        "TS Ziel erreicht",
+        "interval_wait":                            "Warte auf Intervall",
+        None:                                       "Kein spezieller Grund",
     }
     return mapping.get(reason, reason)
 
@@ -111,6 +115,21 @@ def build_message(decision):
             f"(Δ {fmt_float(d.get('sDefDiff'))})\n"
             f"📉 TS Diff: {fmt_float(d.get('tsDiff'))}"
         )
+
+    elif state == "HEIZUNG_ACTIVE":
+        return (
+            f"🔥 Heizung läuft\n"
+            f"⏳ Restzeit: {fmt_duration(d.get('remaining'))}"
+        )
+
+    elif state == "HEIZUNG_NACHLAUF":
+        return (
+            f"🌡 Heizung Nachlauf\n"
+            f"⏳ Noch: {fmt_duration(d.get('nachlauf_remaining'))}"
+        )
+
+    elif state in ("HEIZUNG_IDLE", "HEIZUNG_DISABLED"):
+        return "Heizung inaktiv"
 
     elif state == "AUTO_IDLE":
         return "😴 Automatik pausiert"
@@ -178,11 +197,23 @@ def build_event_message(event):
             f"📉 TS Δ 2h: {fmt_float(old_d.get('ts_change_2h'))}\n\n"
         )
 
+    elif old == "HEIZUNG_ACTIVE":
+        msg += (
+            f"🔥 Heizung beendet\n"
+            f"⏱ Dauer: {fmt_duration(duration)}\n\n"
+        )
+
+    elif old == "HEIZUNG_NACHLAUF":
+        msg += (
+            f"🌡 Heizung Nachlauf beendet\n"
+            f"⏱ Dauer: {fmt_duration(duration)}\n\n"
+        )
+
     # =========================
     # 🟢 NEW STATE (started)
     # =========================
 
-    if new == "AUTO_IDLE":
+    if new in ("AUTO_IDLE", "HEIZUNG_IDLE", "HEIZUNG_DISABLED"):
         msg += f"➡️ {pretty_reason(new)}\n"
     else:
         msg += f"➡️ {pretty_reason(new)} gestartet\n"
@@ -260,6 +291,26 @@ def build_event_message(event):
             f"📈 Limit: {fmt_temp(new_d.get('threshold'))}\n"
             f"Δ {fmt_float(new_d.get('diff'))}"
         )
+
+    # --- HEIZUNG ACTIVE ---
+    elif new == "HEIZUNG_ACTIVE":
+        msg += (
+            f"🔥 Heizung läuft\n"
+            f"⚙️ Modus: {new_d.get('heizung_mode', '-')}\n"
+            f"⏳ Restzeit: {fmt_duration(new_d.get('remaining'))}"
+        )
+
+    # --- HEIZUNG NACHLAUF ---
+    elif new == "HEIZUNG_NACHLAUF":
+        msg += (
+            f"🌡 Abkühlung läuft\n"
+            f"⏳ Noch: {fmt_duration(new_d.get('nachlauf_remaining'))}\n"
+            f"⏱ Gesamt: {fmt_duration(new_d.get('heizung_nachlauf'))}"
+        )
+
+    # --- HEIZUNG IDLE ---
+    elif new in ("HEIZUNG_IDLE", "HEIZUNG_DISABLED"):
+        msg += f"⚙️ Modus: {new_d.get('heizung_mode', '-')}"
 
     # --- fallback ---
     else:

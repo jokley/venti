@@ -15,11 +15,13 @@ class DryingDecisionEngine:
 
         # Global decision order:
         # 1. Manual modes
-        # 2. Overheat protection
-        # 3. Stock building
-        # 4. Drying logic (classic or self-learning)
-        # 5. Interval ventilation
-        # 6. Idle fallback
+        # 2. Heizung active / nachlauf
+        # 3. Overheat protection
+        # 4. Stock building
+        # 5. Drying logic (classic or self-learning)
+        # 6. Interval ventilation
+        # 7. Idle fallback
+
         if ctx.mode == "on":
             step("manual_on", True, "MANUAL_MODE")
             return Decision(
@@ -44,6 +46,37 @@ class DryingDecisionEngine:
                     "trace": trace,
                 },
             )
+
+        # =========================
+        # 🔥 HEIZUNG
+        # Übersteuert Automatik komplett – Lüfter muss laufen solange
+        # Heizung aktiv ist oder Nachlauf noch nicht abgelaufen.
+        # =========================
+        if ctx.heizung_enabled:
+            if ctx.heizung_active:
+                step("heizung_active", True, "HEIZUNG_ACTIVE")
+                return Decision(
+                    "on",
+                    "HEIZUNG_ACTIVE",
+                    {
+                        "heizung_mode": ctx.heizung_mode,
+                        "remaining": max(0, ctx.heizung_dauer - ctx.remainingTimeHeizung),
+                        "trace": trace,
+                    },
+                )
+
+            if ctx.heizung_off_since < ctx.heizung_nachlauf:
+                step("heizung_nachlauf", True, "HEIZUNG_NACHLAUF")
+                return Decision(
+                    "on",
+                    "HEIZUNG_NACHLAUF",
+                    {
+                        "nachlauf_remaining": ctx.heizung_nachlauf - ctx.heizung_off_since,
+                        "heizung_nachlauf": ctx.heizung_nachlauf,
+                        "heizung_off_since": ctx.heizung_off_since,
+                        "trace": trace,
+                    },
+                )
 
         if ctx.overheat:
             step("overheat", True, "OVERHEAT")
