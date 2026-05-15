@@ -24,7 +24,7 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 7,
+  "id": 8,
   "links": [],
   "panels": [
     {
@@ -1521,7 +1521,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "device_frmpayload_data_RO1_status value {application_name=\"jokley\", dev_eui=\"a840418c51868361\", device_name=\"fan\", f_port=\"2\"}"
+              "options": "Lüfter"
             },
             "properties": [
               {
@@ -1538,6 +1538,33 @@
                   "fixedColor": "#4bbfe8e8",
                   "mode": "fixed"
                 }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Heizung"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "dark-red",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "custom.gradientMode",
+                "value": "scheme"
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 30
+              },
+              {
+                "id": "displayName",
+                "value": "Heizung"
               }
             ]
           }
@@ -1570,7 +1597,7 @@
             "type": "influxdb",
             "uid": "P5697886F9CA74929"
           },
-          "query": "sensor =\r\nfrom(bucket: \"jokley_bucket\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"device_name\"] !~ /^outdoor/)\r\n  |> filter(fn: (r) =>\r\n    r[\"_measurement\"] == \"device_frmpayload_data_temperature\" or\r\n    r[\"_measurement\"] == \"device_frmpayload_data_humidity\" or\r\n    r[\"_measurement\"] == \"device_frmpayload_data_trockenmasse\"\r\n  )\r\n  |> group(columns: [\"device_name\", \"_measurement\", \"_field\"])\r\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\r\n\r\nfan =\r\nfrom(bucket: \"jokley_bucket\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"device_name\"] == \"fan\")\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"device_frmpayload_data_RO1_status\")\r\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)\r\n  |> map(fn: (r) => ({\r\n      r with\r\n      _value: if r._value == \"ON\" then 10 else 0\r\n  }))\r\n\r\nunion(tables: [sensor, fan])",
+          "query": "sensor =\r\nfrom(bucket: \"jokley_bucket\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"device_name\"] !~ /^outdoor/)\r\n  |> filter(fn: (r) =>\r\n    r[\"_measurement\"] == \"device_frmpayload_data_temperature\" or\r\n    r[\"_measurement\"] == \"device_frmpayload_data_humidity\" or\r\n    r[\"_measurement\"] == \"device_frmpayload_data_trockenmasse\"\r\n  )\r\n  |> group(columns: [\"device_name\", \"_measurement\", \"_field\"])\r\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\r\n\r\nfan =\r\nfrom(bucket: \"jokley_bucket\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"device_name\"] == \"fan\")\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"device_frmpayload_data_RO1_status\")\r\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)\r\n  |> map(fn: (r) => ({\r\n      r with\r\n      _field: \"Lüfter\",\r\n      _value: if r._value == \"ON\" then 10 else 0\r\n  }))\r\n\r\nheizung =\r\nfrom(bucket: \"jokley_bucket\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"device_name\"] == \"fan\")\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"device_frmpayload_data_RO2_status\")\r\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)\r\n  |> map(fn: (r) => ({\r\n      r with\r\n      _field: \"Heizung\",\r\n      _value: if r._value == \"ON\" then 10 else 0\r\n  }))\r\n\r\nunion(tables: [sensor, fan, heizung])\r\n",
           "refId": "A"
         }
       ],
@@ -3258,7 +3285,7 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "jokleyVentiHeat",
-  "uid": "1f6f6d67-c80e-4e0b-aed2-d2eaacd2c505",
-  "version": 14
+  "title": "jokleyVentiHeat Copy",
+  "uid": "9802a850-9b40-4884-af26-04f46bbdcb0f",
+  "version": 1
 }
