@@ -59,6 +59,9 @@ class VentiContext:
         # =========================
         self.sDef_2h_ago = d.get("sDef_2h_ago")
         self.ts_2h_ago = d.get("ts_2h_ago")
+        self.temp_change_2h = d.get("temp_change_2h", 0)
+        self.sdef_change_2h = d.get("sdef_change_2h", 0)
+        self.ts_change_2h = d.get("ts_change_2h", 0)
         self.efficiency_window = d.get("efficiency_window", 2 * 3600)
         self.self_learning_enabled = d.get("self_learning_enabled", False)
         self.base_min_efficiency_threshold = d.get("base_min_efficiency_threshold", 0.25)
@@ -73,6 +76,9 @@ class VentiContext:
         self.heizung_enabled = d.get("heizung_enabled", False)
         self.heizung_mode = d.get("heizung_mode", "off")
         self.heizung_dauer = d.get("heizung_dauer", 0)        # Sekunden
+        self.heizung_sdef_limit = d.get("heizung_sdef_limit", 0)
+        self.heizung_sdef_hys = d.get("heizung_sdef_hys", 1.0)
+        self.heizung_sdef_was_active = d.get("heizung_sdef_was_active", False)
         self.remainingTimeHeizung = d.get("remainingTimeHeizung", 999999)
         self.heizung_nachlauf = d.get("heizung_nachlauf", 0)  # Sekunden
         self.heizung_off_since = d.get("heizung_off_since", 999999)

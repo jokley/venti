@@ -307,7 +307,7 @@
         ]
       },
       "gridPos": {
-        "h": 3,
+        "h": 2,
         "w": 2,
         "x": 8,
         "y": 0
@@ -460,6 +460,21 @@
             "uid": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
             "unit": "h",
             "value": "0"
+          },
+          {
+            "id": "heizung_sdef_limit",
+            "labelWidth": 15,
+            "max": 20,
+            "min": 0,
+            "section": "",
+            "step": 0.5,
+            "title": "SDEF Limit",
+            "tooltip": "0 deaktiviert die SDEF-Regel. Nach Ablauf der Dauer schaltet die Heizung bei SDEF >= Limit aus.",
+            "type": "slider",
+            "uid": "c8b1d4a2-8ef7-4f5b-b2dc-9b9876543210",
+            "unit": "SDEF",
+            "value": 0,
+            "width": 0
           }
         ],
         "initial": {
@@ -913,6 +928,125 @@
           "mappings": [
             {
               "options": {
+                "AUTO_IDLE": {
+                  "color": "blue",
+                  "index": 2,
+                  "text": "💤 Auto pause"
+                },
+                "DRYING_ACTIVE": {
+                  "color": "green",
+                  "index": 3,
+                  "text": "𖣘  Auto "
+                },
+                "INEFFICIENT_DRYING": {
+                  "color": "super-light-yellow",
+                  "index": 4,
+                  "text": "⚠️ Auto ineffizient"
+                },
+                "INTERVAL_ACTIVE": {
+                  "color": "blue",
+                  "index": 6,
+                  "text": "⏱️ Intervall"
+                },
+                "MANUAL_MODE": {
+                  "color": "blue",
+                  "index": 0,
+                  "text": "🛠️ Hand"
+                },
+                "OVERHEAT": {
+                  "color": "semi-dark-red",
+                  "index": 5,
+                  "text": "🚨 Heustock heiß"
+                },
+                "STOCK_BUILDING": {
+                  "color": "#69bfb9",
+                  "index": 1,
+                  "text": "🏗️ Stockaufbau"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "state"
+            },
+            "properties": [
+              {
+                "id": "displayName"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 2,
+        "w": 2,
+        "x": 8,
+        "y": 2
+      },
+      "id": 46,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "vertical",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/^state$/",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "value",
+        "wideLayout": true
+      },
+      "pluginVersion": "12.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "P5697886F9CA74929"
+          },
+          "query": "    from(bucket: \"jokley_bucket\")\r\n      |> range(start: -30d)\r\n      |> filter(fn: (r) => r[\"_measurement\"] == \"heizung_state\")\r\n      |> filter(fn: (r) => r[\"_field\"] == \"state\")\r\n      |> last()\r\n \r\n",
+          "refId": "A"
+        }
+      ],
+      "title": "Heizung Status",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "P5697886F9CA74929"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "green",
+            "mode": "fixed"
+          },
+          "displayName": ".",
+          "mappings": [
+            {
+              "options": {
                 "0": {
                   "color": "#19d2ff",
                   "index": 1,
@@ -956,10 +1090,10 @@
         ]
       },
       "gridPos": {
-        "h": 3,
+        "h": 2,
         "w": 2,
         "x": 8,
-        "y": 3
+        "y": 4
       },
       "id": 26,
       "options": {
@@ -1571,6 +1705,15 @@
           "hide": false,
           "query": "from(bucket: \"jokley_bucket\")\r\n  |> range(start: -2d)\r\n  |> filter(fn: (r) => r[\"device_name\"] == \"fan\")\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"device_frmpayload_data_RO1_status\")\r\n  |> filter(fn: (r) => r[\"_value\"] == \"ON\")\r\n  |> last()\r\n  |> map(fn: (r) => ({ r with OFF: if uint(v: now()) - uint(v: r._time) >= uint(v: 600000000000) then uint(v: now()) - uint(v: r._time) else uint(v: 0)}))\r\n  |> yield(name: \"last\")",
           "refId": "C"
+        },
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "P5697886F9CA74929"
+          },
+          "hide": false,
+          "query": "mode = from(bucket: \"jokley_bucket\")\r\n  |> range(start: -2d)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"heizung\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"mode\")\r\n  |> last()\r\n  |> findRecord(fn: (key) => true, idx: 0)\r\n\r\nfrom(bucket: \"jokley_bucket\")\r\n  |> range(start: -2d)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"heizung\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"heizung_dauer\")\r\n  |> last()\r\n  |> map(fn: (r) => {\r\n      duration_ns = int(v: r._value) * 360000000000\r\n      elapsed_ns = int(v: uint(v: now()) - uint(v: r._time))\r\n      remaining_ns = duration_ns - elapsed_ns\r\n\r\n      return {\r\n        r with\r\n        _field: \"Heizung Restzeit\",\r\n        _value: if mode._value == \"auto\" and remaining_ns > 0 then remaining_ns else 0\r\n      }\r\n  })\r\n  |> yield(name: \"heizung_restzeit\")\r\n",
+          "refId": "D"
         }
       ],
       "title": "Lüfter",
@@ -2348,6 +2491,21 @@
             "unit": "min",
             "value": 20,
             "width": 0
+          },
+          {
+            "id": "heizung_sdef_hys",
+            "labelWidth": 25,
+            "max": 5,
+            "min": 0,
+            "section": "",
+            "step": 0.5,
+            "title": "SDEF Hysterese",
+            "tooltip": "Heizung schaltet nach SDEF-Aus erst wieder ein, wenn SDEF <= Limit minus Hysterese ist",
+            "type": "slider",
+            "uid": "e5f6a7b8-c9d0-1234-efab-345678901234",
+            "unit": "SDEF",
+            "value": 1,
+            "width": 0
           }
         ],
         "initial": {
@@ -3102,5 +3260,5 @@
   "timezone": "",
   "title": "jokleyVentiHeat",
   "uid": "1f6f6d67-c80e-4e0b-aed2-d2eaacd2c505",
-  "version": 6
+  "version": 14
 }

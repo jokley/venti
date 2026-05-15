@@ -97,8 +97,8 @@ Die wichtigsten Backend-Endpunkte:
 | `POST` | `/ventiParams` | Luefter-Regelparameter setzen |
 | `GET` | `/controlValues` | Aktuelle Luefter-Steuerwerte lesen |
 | `GET` | `/controlParamValues` | Aktuelle Luefterparameter lesen |
-| `POST` | `/heizung` | Heizungsmodus setzen: `heizung_cmd`, `heizung_dauer` |
-| `POST` | `/heizungParams` | Heizungsparameter setzen |
+| `POST` | `/heizung` | Heizungsmodus setzen: `heizung_cmd`, `heizung_dauer`, `heizung_sdef_limit` |
+| `POST` | `/heizungParams` | Heizungsparameter setzen, inkl. `heizung_sdef_hys` |
 | `GET` | `/heizungValues` | Aktuelle Heizungs-Steuerwerte lesen |
 | `GET` | `/heizungParamValues` | Aktuelle Heizungsparameter lesen |
 | `GET` | `/debug` | Aktuellen Regelkontext ausgeben |

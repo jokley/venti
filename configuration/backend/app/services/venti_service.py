@@ -250,13 +250,15 @@ def heizung_venti_cmd(heizung: str, venti: str):
         logger.error(f"Heizung/Venti_cmd error: {e}")
 
 
-def heizung_auto(cmd, heizung_dauer):
+def heizung_auto(cmd, heizung_dauer, heizung_sdef_limit=0):
     """
     Writes heating mode and duration to InfluxDB.
 
     cmd:           "off" | "on" | "auto"
-    heizung_dauer: duration in hours (float), stored as int * 10
-                   only relevant when cmd == "auto"
+    heizung_dauer:      duration in hours (float), stored as int * 10
+                        only relevant when cmd == "auto"
+    heizung_sdef_limit: outdoor SDEF threshold, stored as int * 10.
+                        0 disables SDEF control.
     """
     ORG = Config.INFLUX_ORG
 
@@ -265,11 +267,15 @@ def heizung_auto(cmd, heizung_dauer):
 
     heizung_dauer = float(heizung_dauer or 0)
     heizung_dauer = int(heizung_dauer * 10)
+    heizung_sdef_limit = float(heizung_sdef_limit or 0)
+    heizung_sdef_limit = max(0.0, min(20.0, heizung_sdef_limit))
+    heizung_sdef_limit = int(heizung_sdef_limit * 10)
 
     record = [
         Point("heizung")
         .field("mode", str(cmd))
         .field("heizung_dauer", heizung_dauer)
+        .field("heizung_sdef_limit", heizung_sdef_limit)
     ]
 
     write_api.write(bucket=Config.INFLUX_BUCKET, org=ORG, record=record)
@@ -279,6 +285,7 @@ def heizung_auto(cmd, heizung_dauer):
 def heizung_auto_param(
     heizung_enabled,
     heizung_nachlauf,
+    heizung_sdef_hys,
 ):
     """
     Writes heating configuration parameters to InfluxDB.
@@ -286,10 +293,8 @@ def heizung_auto_param(
     heizung_enabled:  bool   – feature active on this installation
     heizung_nachlauf: float  – cooldown time in minutes after heater stops,
                                stored as int * 10
-
-    Designed to be extended later with:
-        heizung_sdef_on / heizung_sdef_off  – auto_sdef mode thresholds
-        heizung_time_from / heizung_time_to – auto_time mode schedule
+    heizung_sdef_hys: float  – hysteresis below heizung_sdef_limit,
+                               stored as int * 10
     """
     ORG = Config.INFLUX_ORG
 
@@ -297,9 +302,13 @@ def heizung_auto_param(
     logger.info('Heizung Parameter geändert:')
     logger.info('Heizung enabled: {}'.format(heizung_enabled))
     logger.info('Heizung Nachlauf: {} min'.format(heizung_nachlauf))
+    logger.info('Heizung SDEF Hysterese: {}'.format(heizung_sdef_hys))
 
     heizung_enabled = _to_bool(heizung_enabled)
     heizung_nachlauf = int(heizung_nachlauf * 10)   # Minuten * 10
+    heizung_sdef_hys = float(heizung_sdef_hys or 0)
+    heizung_sdef_hys = max(0.0, min(5.0, heizung_sdef_hys))
+    heizung_sdef_hys = int(heizung_sdef_hys * 10)
 
     client = get_influxdb_client()
     write_api = client.write_api(write_options=SYNCHRONOUS)
@@ -308,9 +317,7 @@ def heizung_auto_param(
         Point("heizung_param")
         .field("heizung_enabled", heizung_enabled)
         .field("heizung_nachlauf", heizung_nachlauf)
-        # Zukunft auto_sdef:
-        # .field("heizung_sdef_on",  int(heizung_sdef_on * 10))
-        # .field("heizung_sdef_off", int(heizung_sdef_off * 10))
+        .field("heizung_sdef_hys", heizung_sdef_hys)
         # Zukunft auto_time:
         # .field("heizung_time_from", str(heizung_time_from))  # "06:00"
         # .field("heizung_time_to",   str(heizung_time_to))    # "18:00"

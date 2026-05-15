@@ -55,6 +55,7 @@ def pretty_reason(reason):
         "INEFFICIENT_DRYING": "Ineffiziente Trocknung",
         "HEIZUNG_ACTIVE":     "Heizung aktiv",
         "HEIZUNG_NACHLAUF":   "Heizung Nachlauf",
+        "HEIZUNG_SDEF_LIMIT": "Heizung SDEF Limit",
         "HEIZUNG_IDLE":       "Heizung inaktiv",
         "HEIZUNG_DISABLED":   "Heizung deaktiviert",
     }
@@ -126,6 +127,13 @@ def build_message(decision):
         return (
             f"🌡 Heizung Nachlauf\n"
             f"⏳ Noch: {fmt_duration(d.get('nachlauf_remaining'))}"
+        )
+
+    elif state == "HEIZUNG_SDEF_LIMIT":
+        return (
+            f"🔥 Heizung SDEF Limit\n"
+            f"🌬 SDef: {fmt_float(d.get('sDefOut'))}\n"
+            f"📈 Limit: {fmt_float(d.get('heizung_sdef_limit'))}"
         )
 
     elif state in ("HEIZUNG_IDLE", "HEIZUNG_DISABLED"):
@@ -306,6 +314,15 @@ def build_event_message(event):
             f"🌡 Abkühlung läuft\n"
             f"⏳ Noch: {fmt_duration(new_d.get('nachlauf_remaining'))}\n"
             f"⏱ Gesamt: {fmt_duration(new_d.get('heizung_nachlauf'))}"
+        )
+
+    # --- HEIZUNG SDEF LIMIT ---
+    elif new == "HEIZUNG_SDEF_LIMIT":
+        msg += (
+            f"🔥 Heizung durch SDEF gestoppt\n"
+            f"🌬 SDef: {fmt_float(new_d.get('sDefOut'))}\n"
+            f"📈 Limit: {fmt_float(new_d.get('heizung_sdef_limit'))}\n"
+            f"↩ Hysterese: {fmt_float(new_d.get('heizung_sdef_hys'))}"
         )
 
     # --- HEIZUNG IDLE ---

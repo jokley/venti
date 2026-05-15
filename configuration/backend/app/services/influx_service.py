@@ -59,9 +59,7 @@ from collections import namedtuple
 HEIZUNG_PARAM_DEFAULTS = {
     "heizung_enabled": False,
     "heizung_nachlauf": 20,         # Minuten, ganzzahlig, keine Skalierung
-    # Zukunft auto_sdef:
-    # "heizung_sdef_on":  8.0,      # g/kg – Heizung EIN wenn SDef < dieser Wert
-    # "heizung_sdef_off": 10.0,     # g/kg – Heizung AUS wenn SDef > dieser Wert
+    "heizung_sdef_hys": 1.0,
     # Zukunft auto_time:
     # "heizung_time_from": "06:00",
     # "heizung_time_to":   "18:00",
@@ -74,16 +72,15 @@ HEIZUNG_PARAM_BOOL_FIELDS = {
 # Nur Felder die einen Scale brauchen – nachlauf ist nicht dabei
 HEIZUNG_PARAM_SCALES = {
     "heizung_nachlauf": 10,
-    # Zukunft auto_sdef:
-    # "heizung_sdef_on":  10,
-    # "heizung_sdef_off": 10,
+    "heizung_sdef_hys": 10,
 }
 
 
 # -----------------------------------------------------------------------------
 # 📦 get_heizung_control_values()
 # Liest letzten Eintrag aus Measurement "heizung"
-# Gibt zurück: startTime, mode, heizung_dauer (in Stunden, float)
+# Gibt zurück: startTime, mode, heizung_dauer (in Stunden, float),
+#              heizung_sdef_limit (float)
 # -----------------------------------------------------------------------------
 
 def get_heizung_control_values():
@@ -99,6 +96,7 @@ def get_heizung_control_values():
     startTime = None
     mode = None
     heizung_dauer = 0.0
+    heizung_sdef_limit = 0.0
 
     for table in result:
         for r in table.records:
@@ -109,14 +107,19 @@ def get_heizung_control_values():
                 mode = value
             elif field == "heizung_dauer":
                 heizung_dauer = float(value) / 10.0
+            elif field == "heizung_sdef_limit":
+                heizung_sdef_limit = float(value) / 10.0
 
     client.close()
 
     if mode is None:
         mode = "off"
 
-    Heizung = namedtuple("Heizung", ["startTime", "mode", "heizung_dauer"])
-    return Heizung(startTime, mode, heizung_dauer)
+    Heizung = namedtuple(
+        "Heizung",
+        ["startTime", "mode", "heizung_dauer", "heizung_sdef_limit"]
+    )
+    return Heizung(startTime, mode, heizung_dauer, heizung_sdef_limit)
 
 
 # -----------------------------------------------------------------------------

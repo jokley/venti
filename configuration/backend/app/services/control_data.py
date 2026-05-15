@@ -175,6 +175,8 @@ def build_control_data():
         "heizung_enabled":        heizung_params["heizung_enabled"],
         "heizung_mode":           heizung_mode,
         "heizung_dauer":          heizung_dauer,
+        "heizung_sdef_limit":     dataHeizung.heizung_sdef_limit,
+        "heizung_sdef_hys":       heizung_params["heizung_sdef_hys"],
         "remainingTimeHeizung":   remainingTimeHeizung,
         "heizung_nachlauf":       heizung_nachlauf_s,
         "heizung_off_since":      heizung_off_since,

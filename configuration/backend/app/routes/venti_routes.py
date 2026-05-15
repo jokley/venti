@@ -106,26 +106,27 @@ def heizung_switch():
     data = request.get_json()
     CMD = data.get('heizung_cmd')
     DAUER = float(data.get('heizung_dauer') or 0)
+    SDEF_LIMIT = float(data.get('heizung_sdef_limit') or 0)
 
     if CMD == 'on':
-        heizung_auto('on', 0)
+        heizung_auto('on', 0, SDEF_LIMIT)
         _trigger_heizung_control_now()   # Lock sofort setzen
         logger.info('****************************************')
         logger.info('Heizung Hand ein')
         return jsonify('Heizung on')
 
     elif CMD == 'off':
-        heizung_auto('off', 0)
+        heizung_auto('off', 0, SDEF_LIMIT)
         _trigger_heizung_control_now()   # Lock sofort freigeben
         logger.info('****************************************')
         logger.info('Heizung Hand aus')
         return jsonify('Heizung off')
 
     elif CMD == 'auto':
-        heizung_auto('auto', DAUER)
+        heizung_auto('auto', DAUER, SDEF_LIMIT)
         _trigger_heizung_control_now()   # Lock + Timer sofort auswerten
         logger.info('****************************************')
-        logger.info('Heizung Auto – Dauer: %sh', DAUER)
+        logger.info('Heizung Auto – Dauer: %sh, SDEF Limit: %s', DAUER, SDEF_LIMIT)
         return jsonify('Heizung auto')
 
     return jsonify('No command sent!')

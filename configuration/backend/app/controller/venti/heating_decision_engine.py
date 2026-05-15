@@ -28,6 +28,9 @@ class HeatingDecisionEngine:
                 {
                     "heizung_mode": ctx.heizung_mode,
                     "remaining": max(0, ctx.heizung_dauer - ctx.remainingTimeHeizung),
+                    "sDefOut": ctx.sDefOut,
+                    "heizung_sdef_limit": ctx.heizung_sdef_limit,
+                    "heizung_sdef_hys": ctx.heizung_sdef_hys,
                     "venti_forced": True,
                 },
             )
@@ -42,6 +45,20 @@ class HeatingDecisionEngine:
                     "heizung_nachlauf": ctx.heizung_nachlauf,
                     "heizung_off_since": ctx.heizung_off_since,
                     "venti_forced": True,
+                },
+            )
+
+        if self._sdef_limit_reached(ctx):
+            return Decision(
+                "off",
+                "HEIZUNG_SDEF_LIMIT",
+                {
+                    "heizung_mode": ctx.heizung_mode,
+                    "sDefOut": ctx.sDefOut,
+                    "heizung_sdef_limit": ctx.heizung_sdef_limit,
+                    "heizung_sdef_hys": ctx.heizung_sdef_hys,
+                    "reason": "sdef_limit_reached",
+                    "venti_forced": False,
                 },
             )
 
@@ -60,6 +77,37 @@ class HeatingDecisionEngine:
             return True
 
         if ctx.heizung_mode == "auto":
-            return ctx.remainingTimeHeizung <= ctx.heizung_dauer
+            if ctx.remainingTimeHeizung <= ctx.heizung_dauer:
+                return True
+
+            return self._compute_sdef_active(ctx)
 
         return False
+
+    def _compute_sdef_active(self, ctx):
+        limit = ctx.heizung_sdef_limit or 0
+
+        if limit <= 0:
+            return False
+
+        if ctx.sDefOut is None:
+            return bool(ctx.heizung_sdef_was_active)
+
+        hys = max(0, ctx.heizung_sdef_hys or 0)
+
+        if ctx.sDefOut >= limit:
+            return False
+
+        if ctx.sDefOut <= limit - hys:
+            return True
+
+        return bool(ctx.heizung_sdef_was_active)
+
+    def _sdef_limit_reached(self, ctx):
+        return (
+            ctx.heizung_mode == "auto"
+            and (ctx.heizung_sdef_limit or 0) > 0
+            and ctx.remainingTimeHeizung > ctx.heizung_dauer
+            and ctx.sDefOut is not None
+            and ctx.sDefOut >= ctx.heizung_sdef_limit
+        )

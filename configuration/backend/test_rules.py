@@ -26,6 +26,8 @@ decision_module = load_module("decision", os.path.join(os.path.dirname(__file__)
 VentiContext = context_module.VentiContext
 Decision = decision_module.Decision
 
+from controller.venti.heating_decision_engine import HeatingDecisionEngine
+
 # For testing rules, we'll recreate the logic inline to avoid import issues
 def overheating(ctx):
     """Recreate overheating rule logic for testing"""
@@ -535,6 +537,88 @@ def test_rule_engine_evaluation():
 
     print("✓ Rule engine evaluation tests passed")
 
+def heizung_ctx(overrides=None):
+    data = {
+        "heizung_enabled": True,
+        "heizung_mode": "auto",
+        "heizung_dauer": 3600,
+        "remainingTimeHeizung": 7200,
+        "heizung_nachlauf": 0,
+        "heizung_off_since": 999999,
+        "heizung_sdef_limit": 10.0,
+        "heizung_sdef_hys": 1.0,
+        "heizung_sdef_was_active": False,
+        "sDefOut": 10.0,
+    }
+    if overrides:
+        data.update(overrides)
+    return VentiContext(data)
+
+def test_heating_sdef_engine():
+    """Test heating auto SDEF decision logic."""
+    print("Testing heating SDEF engine...")
+    engine = HeatingDecisionEngine()
+
+    ctx = heizung_ctx({
+        "remainingTimeHeizung": 60,
+        "sDefOut": 15.0,
+    })
+    result = engine.decide(ctx)
+    assert result.command == "on", "Duration phase should keep heating on"
+    assert result.reason == "HEIZUNG_ACTIVE", "Duration phase should be active"
+    print("✓ Heating SDEF: Duration has priority")
+
+    ctx = heizung_ctx({
+        "heizung_sdef_limit": 0,
+        "sDefOut": 5.0,
+    })
+    result = engine.decide(ctx)
+    assert result.command == "off", "Limit 0 should disable SDEF control after duration"
+    assert result.reason == "HEIZUNG_IDLE", "Limit 0 should fall back to idle after duration"
+    print("✓ Heating SDEF: Limit 0 disables SDEF")
+
+    ctx = heizung_ctx({
+        "sDefOut": 10.0,
+        "heizung_sdef_was_active": True,
+    })
+    result = engine.decide(ctx)
+    assert result.command == "off", "SDEF at limit should turn heating off"
+    assert result.reason == "HEIZUNG_SDEF_LIMIT", "Should expose SDEF limit reason"
+    print("✓ Heating SDEF: Limit exceeded turns off")
+
+    ctx = heizung_ctx({
+        "sDefOut": 8.8,
+    })
+    result = engine.decide(ctx)
+    assert result.command == "on", "Below limit minus hysteresis should turn heating on"
+    assert result.reason == "HEIZUNG_ACTIVE", "Below hysteresis should be active"
+    print("✓ Heating SDEF: Below hysteresis turns on")
+
+    ctx = heizung_ctx({
+        "sDefOut": 9.5,
+        "heizung_sdef_was_active": True,
+    })
+    result = engine.decide(ctx)
+    assert result.command == "on", "Inside hysteresis should keep previous on state"
+    print("✓ Heating SDEF: Hysteresis keeps previous on state")
+
+    ctx = heizung_ctx({
+        "sDefOut": 9.5,
+        "heizung_sdef_was_active": False,
+    })
+    result = engine.decide(ctx)
+    assert result.command == "off", "Inside hysteresis should keep previous off state"
+    print("✓ Heating SDEF: Hysteresis keeps previous off state")
+
+    ctx = heizung_ctx({
+        "heizung_mode": "on",
+        "sDefOut": 20.0,
+    })
+    result = engine.decide(ctx)
+    assert result.command == "on", "Manual on should ignore SDEF"
+    assert result.reason == "HEIZUNG_ACTIVE", "Manual on should be active"
+    print("✓ Heating SDEF: Manual on ignores SDEF")
+
 def run_all_tests():
     """Run all rule tests"""
     print("🧪 Running comprehensive Venti controller rule tests...\n")
@@ -564,6 +648,9 @@ def run_all_tests():
     print()
 
     test_rule_engine_evaluation()
+    print()
+
+    test_heating_sdef_engine()
     print()
 
     print("🎉 All rule tests passed! ✅")

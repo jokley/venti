@@ -45,6 +45,7 @@ def heizung_values():
     return jsonify({
         'heizung_cmd': dataHeizung.mode,
         'heizung_dauer': dataHeizung.heizung_dauer,   # Stunden, float
+        'heizung_sdef_limit': dataHeizung.heizung_sdef_limit,
     })
 
 @influx_bp.route('/heizungParamValues', methods=['GET'])

@@ -26,6 +26,7 @@ def heizung_control():
     try:
         data = build_control_data()
         ctx = VentiContext(data)
+        ctx.heizung_sdef_was_active = state_manager.heizung_was_active
 
         # First pass: detect active heating and update off timestamp on falling edge.
         heizung_active = heating_engine._compute_active(ctx) if ctx.heizung_enabled else False
