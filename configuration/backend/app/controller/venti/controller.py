@@ -144,10 +144,24 @@ def venti_control():
     # 3. BUILD CONTEXT
     data = build_control_data()
     ctx = VentiContext(data)
+    ctx.venti_auto_lockout_remaining = (
+        state_manager.get_venti_auto_lockout_remaining(ctx.now)
+    )
 
     # 4. DECISION ENGINE
     decision = evaluate(ctx)
     effective_mode = decision.details.get("mode_override", ctx.mode)
+
+    if (
+        ctx.mode == "auto"
+        and previous_state in ("DRYING_ACTIVE", "INTERVAL_ACTIVE")
+        and decision.reason in ("AUTO_IDLE", "INEFFICIENT_DRYING")
+        and (decision.details or {}).get("reason") != "auto_lockout"
+    ):
+        state_manager.start_venti_auto_lockout(ctx, decision)
+        decision.details["lockout_remaining"] = (
+            state_manager.get_venti_auto_lockout_remaining(ctx.now)
+        )
 
     mode_changed = previous_mode != effective_mode
     state_changed = previous_state != decision.reason

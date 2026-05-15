@@ -54,6 +54,7 @@ class VentiContext:
         self.auto_start = d.get("auto_start")
         self.is_fan_on = d.get("is_fan_on", False)
         self.fan_runtime_current = d.get("fan_runtime_current", 0)
+        self.venti_auto_lockout_remaining = d.get("venti_auto_lockout_remaining", 0)
         # =========================
         # 🧠 EFFICIENCY ENGINE
         # =========================
@@ -79,6 +80,7 @@ class VentiContext:
         self.heizung_sdef_limit = d.get("heizung_sdef_limit", 0)
         self.heizung_sdef_hys = d.get("heizung_sdef_hys", 1.0)
         self.heizung_sdef_was_active = d.get("heizung_sdef_was_active", False)
+        self.heizung_sdef_lockout_remaining = d.get("heizung_sdef_lockout_remaining", 0)
         self.remainingTimeHeizung = d.get("remainingTimeHeizung", 999999)
         self.heizung_nachlauf = d.get("heizung_nachlauf", 0)  # Sekunden
         self.heizung_off_since = d.get("heizung_off_since", 999999)

@@ -44,7 +44,24 @@ class HeatingDecisionEngine:
                     "nachlauf_remaining": ctx.heizung_nachlauf - ctx.heizung_off_since,
                     "heizung_nachlauf": ctx.heizung_nachlauf,
                     "heizung_off_since": ctx.heizung_off_since,
+                    "lockout_remaining": ctx.heizung_sdef_lockout_remaining,
+                    "sdef_lockout": (ctx.heizung_sdef_lockout_remaining or 0) > 0,
                     "venti_forced": True,
+                },
+            )
+
+        if self._sdef_lockout_active(ctx):
+            return Decision(
+                "off",
+                "HEIZUNG_SDEF_LOCKOUT",
+                {
+                    "heizung_mode": ctx.heizung_mode,
+                    "lockout_remaining": ctx.heizung_sdef_lockout_remaining,
+                    "sDefOut": ctx.sDefOut,
+                    "heizung_sdef_limit": ctx.heizung_sdef_limit,
+                    "heizung_sdef_hys": ctx.heizung_sdef_hys,
+                    "reason": "sdef_lockout",
+                    "venti_forced": False,
                 },
             )
 
@@ -90,6 +107,9 @@ class HeatingDecisionEngine:
         if limit <= 0:
             return False
 
+        if self._sdef_lockout_active(ctx):
+            return False
+
         if ctx.sDefOut is None:
             return bool(ctx.heizung_sdef_was_active)
 
@@ -110,4 +130,12 @@ class HeatingDecisionEngine:
             and ctx.remainingTimeHeizung > ctx.heizung_dauer
             and ctx.sDefOut is not None
             and ctx.sDefOut >= ctx.heizung_sdef_limit
+        )
+
+    def _sdef_lockout_active(self, ctx):
+        return (
+            ctx.heizung_mode == "auto"
+            and (ctx.heizung_sdef_limit or 0) > 0
+            and ctx.remainingTimeHeizung > ctx.heizung_dauer
+            and (ctx.heizung_sdef_lockout_remaining or 0) > 0
         )

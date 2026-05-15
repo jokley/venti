@@ -104,6 +104,23 @@ class DryingDecisionEngine:
                 },
             )
 
+        if ctx.venti_auto_lockout_remaining > 0:
+            step("auto_lockout", True, "AUTO_IDLE")
+            return Decision(
+                "off",
+                "AUTO_IDLE",
+                {
+                    "reason": "auto_lockout",
+                    "lockout_remaining": ctx.venti_auto_lockout_remaining,
+                    "sDefOut": ctx.sDefOut,
+                    "threshold": ctx.sdefMinThreshold,
+                    "tsDiff": ctx.tsSoll - ctx.tsMin if ctx.tsSoll is not None and ctx.tsMin is not None else None,
+                    "efficiency": metrics["efficiency"],
+                    "adaptive_threshold": ctx.min_efficiency_threshold,
+                    "trace": trace,
+                },
+            )
+
         # Both modes share the same outer controller flow.
         # Only the drying branch changes when self-learning is enabled.
         if ctx.self_learning_enabled:

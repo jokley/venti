@@ -6,6 +6,7 @@ Run with: python test_rules.py
 
 import sys
 import os
+import types
 
 # Add the backend app to the path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'app'))
@@ -27,6 +28,18 @@ VentiContext = context_module.VentiContext
 Decision = decision_module.Decision
 
 from controller.venti.heating_decision_engine import HeatingDecisionEngine
+
+
+def load_drying_decision_engine():
+    fake_state_manager_module = types.ModuleType("controller.venti.control.state_manager")
+    fake_state_manager_module.state_manager = types.SimpleNamespace(
+        retry_conditions_improved=lambda ctx: (True, None),
+        last_bad_drying_snapshot=None,
+    )
+    sys.modules["controller.venti.control.state_manager"] = fake_state_manager_module
+
+    from controller.venti.efficiency.drying_decision_engine import DryingDecisionEngine
+    return DryingDecisionEngine
 
 # For testing rules, we'll recreate the logic inline to avoid import issues
 def overheating(ctx):
@@ -619,6 +632,112 @@ def test_heating_sdef_engine():
     assert result.reason == "HEIZUNG_ACTIVE", "Manual on should be active"
     print("✓ Heating SDEF: Manual on ignores SDEF")
 
+def test_heating_sdef_lockout():
+    """Test heating SDEF lockout decision logic."""
+    print("Testing heating SDEF lockout...")
+    engine = HeatingDecisionEngine()
+
+    ctx = heizung_ctx({
+        "sDefOut": 8.8,
+        "heizung_sdef_lockout_remaining": 600,
+    })
+    result = engine.decide(ctx)
+    assert result.command == "off", "Lockout should keep heating off"
+    assert result.reason == "HEIZUNG_SDEF_LOCKOUT", "Should expose lockout reason"
+    assert result.details["lockout_remaining"] == 600, "Should include remaining lockout"
+    print("✓ Heating SDEF lockout: Blocks SDEF restart")
+
+    ctx = heizung_ctx({
+        "remainingTimeHeizung": 60,
+        "sDefOut": 8.8,
+        "heizung_sdef_lockout_remaining": 600,
+    })
+    result = engine.decide(ctx)
+    assert result.command == "on", "Initial duration should ignore lockout"
+    assert result.reason == "HEIZUNG_ACTIVE", "Initial duration should stay active"
+    print("✓ Heating SDEF lockout: Initial duration has priority")
+
+    ctx = heizung_ctx({
+        "heizung_mode": "on",
+        "sDefOut": 8.8,
+        "heizung_sdef_lockout_remaining": 600,
+    })
+    result = engine.decide(ctx)
+    assert result.command == "on", "Manual on should ignore lockout"
+    assert result.reason == "HEIZUNG_ACTIVE", "Manual on should stay active"
+    print("✓ Heating SDEF lockout: Manual on ignores lockout")
+
+    ctx = heizung_ctx({
+        "sDefOut": 8.8,
+        "heizung_sdef_lockout_remaining": 0,
+    })
+    result = engine.decide(ctx)
+    assert result.command == "on", "Expired lockout should allow SDEF restart"
+    assert result.reason == "HEIZUNG_ACTIVE", "Below hysteresis should restart after lockout"
+    print("✓ Heating SDEF lockout: Restart allowed after expiry")
+
+def test_venti_auto_lockout_engine():
+    """Test fan auto lockout blocks normal auto starts only."""
+    print("Testing venti auto lockout...")
+    DryingDecisionEngine = load_drying_decision_engine()
+    engine = DryingDecisionEngine()
+    metrics = {
+        "efficiency": 0.5,
+        "sdef_gain": 0.0,
+        "ts_gain": 0.0,
+        "window_hours": 2,
+    }
+
+    ctx = VentiContext({
+        "mode": "auto",
+        "tempMax": 25.0,
+        "uschutz_on": 35.0,
+        "stock": 0,
+        "remainingTimeStock": 7200,
+        "sDefOut": 15.0,
+        "sDefMin": 9.0,
+        "sdefMinThreshold": 10.0,
+        "sdef_hys_half": 0.5,
+        "sdef_on": 12.0,
+        "tsSoll": 20.0,
+        "tsMin": 15.0,
+        "ts_hys_half": 0.5,
+        "humMax": 80.0,
+        "intervall_on": 70.0,
+        "venti_auto_lockout_remaining": 600,
+    })
+    result = engine.decide(ctx, metrics)
+    assert result.command == "off", "Lockout should block drying/interval starts"
+    assert result.reason == "AUTO_IDLE", "Lockout should return auto idle"
+    assert result.details["reason"] == "auto_lockout", "Should expose lockout reason"
+    print("✓ Venti auto lockout: Blocks normal auto starts")
+
+    ctx = VentiContext({
+        "mode": "auto",
+        "tempMax": 36.0,
+        "uschutz_on": 35.0,
+        "stock": 0,
+        "remainingTimeStock": 7200,
+        "venti_auto_lockout_remaining": 600,
+    })
+    result = engine.decide(ctx, metrics)
+    assert result.command == "on", "Overheat should bypass lockout"
+    assert result.reason == "OVERHEAT", "Overheat should keep priority"
+    print("✓ Venti auto lockout: Overheat bypasses lockout")
+
+    ctx = VentiContext({
+        "mode": "auto",
+        "tempMax": 25.0,
+        "uschutz_on": 35.0,
+        "stock": 3600,
+        "remainingTimeStock": 1200,
+        "venti_auto_lockout_remaining": 600,
+    })
+    result = engine.decide(ctx, metrics)
+    assert result.command == "on", "Stock building should bypass lockout"
+    assert result.reason == "STOCK_BUILDING", "Stock building should keep priority"
+    print("✓ Venti auto lockout: Stock building bypasses lockout")
+
 def run_all_tests():
     """Run all rule tests"""
     print("🧪 Running comprehensive Venti controller rule tests...\n")
@@ -651,6 +770,12 @@ def run_all_tests():
     print()
 
     test_heating_sdef_engine()
+    print()
+
+    test_heating_sdef_lockout()
+    print()
+
+    test_venti_auto_lockout_engine()
     print()
 
     print("🎉 All rule tests passed! ✅")

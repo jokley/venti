@@ -27,10 +27,28 @@ def heizung_control():
         data = build_control_data()
         ctx = VentiContext(data)
         ctx.heizung_sdef_was_active = state_manager.heizung_was_active
+        ctx.heizung_sdef_lockout_remaining = (
+            state_manager.get_heizung_sdef_lockout_remaining(ctx.now)
+        )
 
         # First pass: detect active heating and update off timestamp on falling edge.
+        heizung_was_active = state_manager.heizung_was_active
         heizung_active = heating_engine._compute_active(ctx) if ctx.heizung_enabled else False
         ctx.heizung_active = heizung_active
+
+        if (
+            heizung_was_active
+            and not heizung_active
+            and ctx.heizung_mode == "auto"
+            and (ctx.heizung_sdef_limit or 0) > 0
+            and ctx.remainingTimeHeizung > ctx.heizung_dauer
+            and ctx.sDefOut is not None
+            and ctx.sDefOut >= ctx.heizung_sdef_limit
+        ):
+            state_manager.start_heizung_sdef_lockout(ctx)
+            ctx.heizung_sdef_lockout_remaining = (
+                state_manager.get_heizung_sdef_lockout_remaining(ctx.now)
+            )
 
         # Flanke EIN→AUS erkennen, heizung_off_ts setzen,
         # heizung_was_active aktualisieren
