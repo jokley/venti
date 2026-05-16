@@ -27,13 +27,13 @@ def heizung_control():
         data = build_control_data()
         ctx = VentiContext(data)
         ctx.heizung_sdef_was_active = state_manager.heizung_was_active
-        ctx.heizung_sdef_lockout_remaining = (
-            state_manager.get_heizung_sdef_lockout_remaining(ctx.now)
+        ctx.heizung_sdef_delay_remaining = (
+            state_manager.get_heizung_sdef_delay_remaining(ctx.now)
         )
 
         # First pass: detect active heating and update off timestamp on falling edge.
         heizung_was_active = state_manager.heizung_was_active
-        heizung_active = heating_engine._compute_active(ctx) if ctx.heizung_enabled else False
+        heizung_active = heating_engine._compute_active(ctx)
         ctx.heizung_active = heizung_active
 
         if (
@@ -45,9 +45,9 @@ def heizung_control():
             and ctx.sDefOut is not None
             and ctx.sDefOut >= ctx.heizung_sdef_limit
         ):
-            state_manager.start_heizung_sdef_lockout(ctx)
-            ctx.heizung_sdef_lockout_remaining = (
-                state_manager.get_heizung_sdef_lockout_remaining(ctx.now)
+            state_manager.start_heizung_sdef_delay(ctx)
+            ctx.heizung_sdef_delay_remaining = (
+                state_manager.get_heizung_sdef_delay_remaining(ctx.now)
             )
 
         # Flanke EIN→AUS erkennen, heizung_off_ts setzen,
@@ -96,10 +96,14 @@ def heizung_control():
                 details.get("nachlauf_remaining"),
             )
         else:
-            heizung_cmd("off")
-            logger.info(
-                "Heizung inaktiv, kein Nachlauf – Lüfter durch venti_control"
-            )
+            if ctx.heizung_nachlauf <= 0:
+                heizung_venti_cmd("off", "off")
+                logger.info("Heizung inaktiv, kein Nachlauf – Heizung und Lüfter AUS")
+            else:
+                heizung_cmd("off")
+                logger.info(
+                    "Heizung inaktiv, kein Nachlauf – Lüfter durch venti_control"
+                )
 
         state_changed = state_manager.last_heizung_state != decision.reason
         command_changed = state_manager.last_heizung_command != decision.command

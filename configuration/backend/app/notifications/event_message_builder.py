@@ -56,7 +56,6 @@ def pretty_reason(reason):
         "HEIZUNG_ACTIVE":     "Heizung aktiv",
         "HEIZUNG_NACHLAUF":   "Heizung Nachlauf",
         "HEIZUNG_SDEF_LIMIT": "Heizung SDEF Limit",
-        "HEIZUNG_SDEF_LOCKOUT": "Heizung SDEF Sperre",
         "HEIZUNG_IDLE":       "Heizung inaktiv",
         "HEIZUNG_DISABLED":   "Heizung deaktiviert",
     }
@@ -66,9 +65,10 @@ def pretty_reason(reason):
 def pretty_detail_reason(reason):
     mapping = {
         "drying_conditions_not_met":                "Trocknung nicht möglich",
+        "drying_delay":                             "Delay nach Trocknungs-Aus",
+        "sdef_delay":                               "Delay nach SDEF-Aus",
         "inefficient_cooldown":                     "Pause nach ineffizienter Trocknung",
         "waiting_better_than_last_bad_drying":      "Warte auf bessere Bedingungen als beim letzten Fehlversuch",
-        "auto_lockout":                             "Sperrzeit gegen Schwingen",
         "humidity_low":                             "Feuchte zu niedrig",
         "ts_target_reached":                        "TS Ziel erreicht",
         "interval_wait":                            "Warte auf Intervall",
@@ -132,17 +132,14 @@ def build_message(decision):
         )
 
     elif state == "HEIZUNG_SDEF_LIMIT":
-        return (
+        msg = (
             f"🔥 Heizung SDEF Limit\n"
             f"🌬 SDef: {fmt_float(d.get('sDefOut'))}\n"
             f"📈 Limit: {fmt_float(d.get('heizung_sdef_limit'))}"
         )
-
-    elif state == "HEIZUNG_SDEF_LOCKOUT":
-        return (
-            f"⏳ Heizung SDEF Sperre\n"
-            f"Noch: {fmt_duration(d.get('lockout_remaining'))}"
-        )
+        if d.get("delay_remaining") is not None:
+            msg += f"\n⏳ Delay: {fmt_duration(d.get('delay_remaining'))}"
+        return msg
 
     elif state in ("HEIZUNG_IDLE", "HEIZUNG_DISABLED"):
         return "Heizung inaktiv"
@@ -281,8 +278,8 @@ def build_event_message(event):
         if new_d.get("cooldown_remaining") is not None:
             msg += f"⏳ Pause: {fmt_duration(new_d.get('cooldown_remaining'))}\n"
 
-        if new_d.get("lockout_remaining") is not None:
-            msg += f"⏳ Sperre: {fmt_duration(new_d.get('lockout_remaining'))}\n"
+        if new_d.get("delay_remaining") is not None:
+            msg += f"⏳ Delay: {fmt_duration(new_d.get('delay_remaining'))}\n"
 
     # --- MANUAL MODE ---
     elif new == "MANUAL_MODE":
@@ -335,15 +332,8 @@ def build_event_message(event):
             f"📈 Limit: {fmt_float(new_d.get('heizung_sdef_limit'))}\n"
             f"↩ Hysterese: {fmt_float(new_d.get('heizung_sdef_hys'))}"
         )
-
-    # --- HEIZUNG SDEF LOCKOUT ---
-    elif new == "HEIZUNG_SDEF_LOCKOUT":
-        msg += (
-            f"⏳ SDEF Sperre aktiv\n"
-            f"Noch: {fmt_duration(new_d.get('lockout_remaining'))}\n"
-            f"🌬 SDef: {fmt_float(new_d.get('sDefOut'))}\n"
-            f"📈 Limit: {fmt_float(new_d.get('heizung_sdef_limit'))}"
-        )
+        if new_d.get("delay_remaining") is not None:
+            msg += f"\n⏳ Delay: {fmt_duration(new_d.get('delay_remaining'))}"
 
     # --- HEIZUNG IDLE ---
     elif new in ("HEIZUNG_IDLE", "HEIZUNG_DISABLED"):

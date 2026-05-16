@@ -632,53 +632,55 @@ def test_heating_sdef_engine():
     assert result.reason == "HEIZUNG_ACTIVE", "Manual on should be active"
     print("✓ Heating SDEF: Manual on ignores SDEF")
 
-def test_heating_sdef_lockout():
-    """Test heating SDEF lockout decision logic."""
-    print("Testing heating SDEF lockout...")
+def test_heating_sdef_delay():
+    """Test heating SDEF delay decision logic."""
+    print("Testing heating SDEF delay...")
     engine = HeatingDecisionEngine()
 
     ctx = heizung_ctx({
         "sDefOut": 8.8,
-        "heizung_sdef_lockout_remaining": 600,
+        "heizung_sdef_delay_remaining": 600,
     })
     result = engine.decide(ctx)
-    assert result.command == "off", "Lockout should keep heating off"
-    assert result.reason == "HEIZUNG_SDEF_LOCKOUT", "Should expose lockout reason"
-    assert result.details["lockout_remaining"] == 600, "Should include remaining lockout"
-    print("✓ Heating SDEF lockout: Blocks SDEF restart")
+    assert result.command == "off", "Delay should keep SDEF restart off"
+    assert result.reason == "HEIZUNG_SDEF_LIMIT", "Should remain in SDEF limit state"
+    assert result.details["reason"] == "sdef_delay", "Should expose delay reason"
+    assert result.details["delay_remaining"] == 600, "Should include remaining delay"
+    print("✓ Heating SDEF delay: Blocks only SDEF restart")
 
     ctx = heizung_ctx({
         "remainingTimeHeizung": 60,
         "sDefOut": 8.8,
-        "heizung_sdef_lockout_remaining": 600,
+        "heizung_sdef_delay_remaining": 600,
     })
     result = engine.decide(ctx)
-    assert result.command == "on", "Initial duration should ignore lockout"
+    assert result.command == "on", "Initial duration should ignore delay"
     assert result.reason == "HEIZUNG_ACTIVE", "Initial duration should stay active"
-    print("✓ Heating SDEF lockout: Initial duration has priority")
+    print("✓ Heating SDEF delay: Initial duration has priority")
 
     ctx = heizung_ctx({
         "heizung_mode": "on",
+        "heizung_enabled": False,
         "sDefOut": 8.8,
-        "heizung_sdef_lockout_remaining": 600,
+        "heizung_sdef_delay_remaining": 600,
     })
     result = engine.decide(ctx)
-    assert result.command == "on", "Manual on should ignore lockout"
+    assert result.command == "on", "Manual on should ignore delay and enabled flag"
     assert result.reason == "HEIZUNG_ACTIVE", "Manual on should stay active"
-    print("✓ Heating SDEF lockout: Manual on ignores lockout")
+    print("✓ Heating SDEF delay: Manual on ignores delay")
 
     ctx = heizung_ctx({
         "sDefOut": 8.8,
-        "heizung_sdef_lockout_remaining": 0,
+        "heizung_sdef_delay_remaining": 0,
     })
     result = engine.decide(ctx)
-    assert result.command == "on", "Expired lockout should allow SDEF restart"
-    assert result.reason == "HEIZUNG_ACTIVE", "Below hysteresis should restart after lockout"
-    print("✓ Heating SDEF lockout: Restart allowed after expiry")
+    assert result.command == "on", "Expired delay should allow SDEF restart"
+    assert result.reason == "HEIZUNG_ACTIVE", "Below hysteresis should restart after delay"
+    print("✓ Heating SDEF delay: Restart allowed after expiry")
 
-def test_venti_auto_lockout_engine():
-    """Test fan auto lockout blocks normal auto starts only."""
-    print("Testing venti auto lockout...")
+def test_venti_drying_delay_engine():
+    """Test fan drying delay blocks drying starts only."""
+    print("Testing venti drying delay...")
     DryingDecisionEngine = load_drying_decision_engine()
     engine = DryingDecisionEngine()
     metrics = {
@@ -686,7 +688,32 @@ def test_venti_auto_lockout_engine():
         "sdef_gain": 0.0,
         "ts_gain": 0.0,
         "window_hours": 2,
+        "has_history": False,
     }
+
+    ctx = VentiContext({
+        "mode": "auto",
+        "tempMax": 25.0,
+        "uschutz_on": 35.0,
+        "stock": 0,
+        "remainingTimeStock": 7200,
+        "sDefOut": 15.0,
+        "sDefMin": 9.0,
+        "sdefMinThreshold": 10.0,
+        "sdef_hys_half": 0.5,
+        "sdef_on": 12.0,
+        "tsSoll": 20.0,
+        "tsMin": 15.0,
+        "ts_hys_half": 0.5,
+        "humMax": 50.0,
+        "intervall_on": 70.0,
+        "venti_drying_delay_remaining": 600,
+    })
+    result = engine.decide(ctx, metrics)
+    assert result.command == "off", "Delay should block drying start"
+    assert result.reason == "AUTO_IDLE", "Delay should return auto idle"
+    assert result.details["reason"] == "drying_delay", "Should expose delay reason"
+    print("✓ Venti drying delay: Blocks drying start")
 
     ctx = VentiContext({
         "mode": "auto",
@@ -704,13 +731,17 @@ def test_venti_auto_lockout_engine():
         "ts_hys_half": 0.5,
         "humMax": 80.0,
         "intervall_on": 70.0,
-        "venti_auto_lockout_remaining": 600,
+        "remainingTimeInterval": 7200,
+        "remainingTimeIntervalOn": 0,
+        "remainingTimeIntervalDiff": 0,
+        "intervall_time": 3600,
+        "intervall_duration": 300,
+        "venti_drying_delay_remaining": 600,
     })
     result = engine.decide(ctx, metrics)
-    assert result.command == "off", "Lockout should block drying/interval starts"
-    assert result.reason == "AUTO_IDLE", "Lockout should return auto idle"
-    assert result.details["reason"] == "auto_lockout", "Should expose lockout reason"
-    print("✓ Venti auto lockout: Blocks normal auto starts")
+    assert result.command == "on", "Interval should bypass drying delay"
+    assert result.reason == "INTERVAL_ACTIVE", "Interval should keep priority"
+    print("✓ Venti drying delay: Interval bypasses delay")
 
     ctx = VentiContext({
         "mode": "auto",
@@ -718,12 +749,12 @@ def test_venti_auto_lockout_engine():
         "uschutz_on": 35.0,
         "stock": 0,
         "remainingTimeStock": 7200,
-        "venti_auto_lockout_remaining": 600,
+        "venti_drying_delay_remaining": 600,
     })
     result = engine.decide(ctx, metrics)
-    assert result.command == "on", "Overheat should bypass lockout"
+    assert result.command == "on", "Overheat should bypass delay"
     assert result.reason == "OVERHEAT", "Overheat should keep priority"
-    print("✓ Venti auto lockout: Overheat bypasses lockout")
+    print("✓ Venti drying delay: Overheat bypasses delay")
 
     ctx = VentiContext({
         "mode": "auto",
@@ -731,12 +762,12 @@ def test_venti_auto_lockout_engine():
         "uschutz_on": 35.0,
         "stock": 3600,
         "remainingTimeStock": 1200,
-        "venti_auto_lockout_remaining": 600,
+        "venti_drying_delay_remaining": 600,
     })
     result = engine.decide(ctx, metrics)
-    assert result.command == "on", "Stock building should bypass lockout"
+    assert result.command == "on", "Stock building should bypass delay"
     assert result.reason == "STOCK_BUILDING", "Stock building should keep priority"
-    print("✓ Venti auto lockout: Stock building bypasses lockout")
+    print("✓ Venti drying delay: Stock building bypasses delay")
 
 def run_all_tests():
     """Run all rule tests"""
@@ -772,10 +803,10 @@ def run_all_tests():
     test_heating_sdef_engine()
     print()
 
-    test_heating_sdef_lockout()
+    test_heating_sdef_delay()
     print()
 
-    test_venti_auto_lockout_engine()
+    test_venti_drying_delay_engine()
     print()
 
     print("🎉 All rule tests passed! ✅")

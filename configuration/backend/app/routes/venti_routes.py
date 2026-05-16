@@ -6,6 +6,7 @@ from ..services.venti_service import (
 )
 from ..controller.venti.controller import venti_control
 from ..controller.venti.controller_Heizung import heizung_control
+from ..controller.venti.control.state_manager import state_manager
 from ..extensions.extensions import scheduler
 from ..services.influx_service import (
     VENTI_PARAM_DEFAULTS,
@@ -59,6 +60,7 @@ def switch():
     STOCK = data.get('stock', '0')
 
     if CMD == 'on':
+        state_manager.clear_venti_drying_delay()
         venti_cmd(CMD)
         venti_auto(CMD, TM, '0')
         logger.info('****************************************')
@@ -66,6 +68,7 @@ def switch():
         return jsonify('Venti on')
 
     elif CMD == 'off':
+        state_manager.clear_venti_drying_delay()
         venti_cmd(CMD)
         venti_auto(CMD, TM, '0')
         logger.info('****************************************')
@@ -73,6 +76,7 @@ def switch():
         return jsonify('Venti off')
 
     elif CMD == 'auto':
+        state_manager.clear_venti_drying_delay()
         venti_auto(CMD, TM, STOCK)
         _trigger_venti_control_now()
         logger.info('Automatik aktiviert')
@@ -109,6 +113,7 @@ def heizung_switch():
     SDEF_LIMIT = float(data.get('heizung_sdef_limit') or 0)
 
     if CMD == 'on':
+        state_manager.clear_heizung_sdef_delay()
         heizung_auto('on', 0, SDEF_LIMIT)
         _trigger_heizung_control_now()   # Lock sofort setzen
         logger.info('****************************************')
@@ -116,6 +121,7 @@ def heizung_switch():
         return jsonify('Heizung on')
 
     elif CMD == 'off':
+        state_manager.clear_heizung_sdef_delay()
         heizung_auto('off', 0, SDEF_LIMIT)
         _trigger_heizung_control_now()   # Lock sofort freigeben
         logger.info('****************************************')
@@ -123,6 +129,7 @@ def heizung_switch():
         return jsonify('Heizung off')
 
     elif CMD == 'auto':
+        state_manager.clear_heizung_sdef_delay()
         heizung_auto('auto', DAUER, SDEF_LIMIT)
         _trigger_heizung_control_now()   # Lock + Timer sofort auswerten
         logger.info('****************************************')

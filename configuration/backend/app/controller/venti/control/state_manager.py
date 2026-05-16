@@ -1,10 +1,9 @@
 from app.services.influx_service import get_last_controller_state, get_last_heizung_controller_state
 from app.services.venti_service import write_controller_state, write_heizung_controller_state
 from app.utils.logger import logger
-import time
 
 
-AUTO_LOCKOUT_SECONDS = 20 * 60
+AUTO_DELAY_SECONDS = 20 * 60
 
 
 class ControlStateManager:
@@ -40,8 +39,8 @@ class ControlStateManager:
         self.last_heizung_ts = None
         self.last_heizung_relay_command = None
         self.last_heizung_forced_venti_command = None
-        self.heizung_sdef_lockout_ts = None
-        self.venti_auto_lockout_ts = None
+        self.heizung_sdef_delay_started_at = None
+        self.venti_drying_delay_started_at = None
 
     # =========================
     # 🔁 RESTORE
@@ -76,13 +75,6 @@ class ControlStateManager:
             (self.last_details or {}).get("adaptive_threshold")
             or (self.last_details or {}).get("min_efficiency_threshold")
         )
-
-        if self._should_restore_venti_lockout(data):
-            self.venti_auto_lockout_ts = self.last_ts
-            logger.info(
-                "Restored venti auto lockout – remaining=%ss",
-                self.get_venti_auto_lockout_remaining(time.time()),
-            )
 
         if self.last_state == "INEFFICIENT_DRYING" and self.last_ts is not None:
             self.last_inefficient_stop = self.last_ts
@@ -129,8 +121,6 @@ class ControlStateManager:
             self.heizung_off_ts = self.last_heizung_ts
             self.heizung_was_active = False
             self.heizung_lock = True
-            if (self.last_heizung_details or {}).get("sdef_lockout"):
-                self.heizung_sdef_lockout_ts = self.last_heizung_ts
             logger.info(
                 "Restored heizung nachlauf – lock gesetzt (off_ts=%s)",
                 self.heizung_off_ts,
@@ -140,16 +130,6 @@ class ControlStateManager:
             self.heizung_lock = True
             self.last_heizung_forced_venti_command = "on"
             logger.info("Restored heizung active – lock gesetzt")
-        elif (
-            self.last_heizung_state in ("HEIZUNG_SDEF_LIMIT", "HEIZUNG_SDEF_LOCKOUT")
-            and self.last_heizung_ts is not None
-            and time.time() - self.last_heizung_ts < AUTO_LOCKOUT_SECONDS
-        ):
-            self.heizung_sdef_lockout_ts = self.last_heizung_ts
-            logger.info(
-                "Restored heizung SDEF lockout – remaining=%ss",
-                self.get_heizung_sdef_lockout_remaining(time.time()),
-            )
 
     # =========================
     # 💾 PERSIST
@@ -224,63 +204,38 @@ class ControlStateManager:
         logger.info("Heizung Lock freigegeben – venti_control wieder aktiv")
 
     # =========================
-    # ⏳ AUTO LOCKOUTS
+    # ⏳ AUTO DELAYS
     # =========================
-    def start_heizung_sdef_lockout(self, ctx):
-        self.heizung_sdef_lockout_ts = ctx.now
-        logger.info(
-            "Heizung SDEF Sperre gestartet – %ss",
-            AUTO_LOCKOUT_SECONDS,
-        )
+    def start_heizung_sdef_delay(self, ctx):
+        self.heizung_sdef_delay_started_at = ctx.now
+        logger.info("Heizung SDEF Delay gestartet – %ss", AUTO_DELAY_SECONDS)
 
-    def get_heizung_sdef_lockout_remaining(self, now):
-        return self._lockout_remaining(self.heizung_sdef_lockout_ts, now)
+    def clear_heizung_sdef_delay(self):
+        self.heizung_sdef_delay_started_at = None
 
-    def start_venti_auto_lockout(self, ctx, decision):
-        self.venti_auto_lockout_ts = ctx.now
-        logger.info(
-            "Venti Auto Sperre gestartet – state=%s reason=%s duration=%ss",
-            decision.reason,
-            (decision.details or {}).get("reason"),
-            AUTO_LOCKOUT_SECONDS,
-        )
+    def get_heizung_sdef_delay_remaining(self, now):
+        return self._delay_remaining(self.heizung_sdef_delay_started_at, now)
 
-    def get_venti_auto_lockout_remaining(self, now):
-        return self._lockout_remaining(self.venti_auto_lockout_ts, now)
+    def start_venti_drying_delay(self, ctx):
+        self.venti_drying_delay_started_at = ctx.now
+        logger.info("Venti Trocknungs-Delay gestartet – %ss", AUTO_DELAY_SECONDS)
 
-    def _lockout_remaining(self, started_at, now):
+    def clear_venti_drying_delay(self):
+        self.venti_drying_delay_started_at = None
+
+    def get_venti_drying_delay_remaining(self, now):
+        return self._delay_remaining(self.venti_drying_delay_started_at, now)
+
+    def _delay_remaining(self, started_at, now):
         if started_at is None:
             return 0
 
-        remaining = AUTO_LOCKOUT_SECONDS - int(now - started_at)
+        remaining = AUTO_DELAY_SECONDS - int(now - started_at)
 
         if remaining <= 0:
             return 0
 
         return remaining
-
-    def _should_restore_venti_lockout(self, data):
-        started_at = data.get("started_at")
-
-        if started_at is None or time.time() - started_at >= AUTO_LOCKOUT_SECONDS:
-            return False
-
-        state = data.get("state")
-        mode = data.get("mode")
-        details = data.get("details") or {}
-        reason = details.get("reason")
-
-        if mode != "auto":
-            return False
-
-        if state == "INEFFICIENT_DRYING":
-            return True
-
-        return state == "AUTO_IDLE" and reason in (
-            "auto_lockout",
-            "drying_conditions_not_met",
-            "waiting_better_than_last_bad_drying",
-        )
 
     # =========================
     # 🧠 SELF-LEARNING
