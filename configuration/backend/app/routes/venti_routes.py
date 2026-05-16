@@ -54,28 +54,18 @@ def _trigger_heizung_control_now():
 
 
 def _run_control_now_and_sync_job(job_id, interval_minutes, control_func):
-    _pause_scheduler_job(job_id)
     try:
         control_func()
     finally:
         _sync_scheduler_job(job_id, interval_minutes)
 
 
-def _pause_scheduler_job(job_id):
-    try:
-        scheduler.pause_job(job_id)
-    except Exception:
-        logger.debug("Scheduler Job %s konnte nicht pausiert werden", job_id)
-
-
 def _sync_scheduler_job(job_id, interval_minutes):
-    next_run_time = datetime.now() + timedelta(minutes=interval_minutes)
+    next_run_time = datetime.now(scheduler.timezone) + timedelta(minutes=interval_minutes)
 
     try:
-        scheduler.reschedule_job(
+        scheduler.modify_job(
             job_id,
-            trigger="interval",
-            minutes=interval_minutes,
             next_run_time=next_run_time,
         )
         logger.debug(
