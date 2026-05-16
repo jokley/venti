@@ -24,7 +24,7 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 5,
+  "id": 1,
   "links": [],
   "panels": [
     {
@@ -242,38 +242,48 @@
               "options": {
                 "AUTO_IDLE": {
                   "color": "blue",
-                  "index": 2,
+                  "index": 4,
                   "text": "💤 Auto pause"
                 },
                 "DRYING_ACTIVE": {
                   "color": "green",
-                  "index": 3,
+                  "index": 5,
                   "text": "𖣘  Auto "
                 },
                 "INEFFICIENT_DRYING": {
                   "color": "super-light-yellow",
-                  "index": 4,
+                  "index": 6,
                   "text": "⚠️ Auto ineffizient"
                 },
                 "INTERVAL_ACTIVE": {
                   "color": "blue",
-                  "index": 6,
+                  "index": 8,
                   "text": "⏱️ Intervall"
                 },
                 "MANUAL_MODE": {
                   "color": "blue",
-                  "index": 0,
+                  "index": 2,
                   "text": "🛠️ Hand"
                 },
                 "OVERHEAT": {
                   "color": "semi-dark-red",
-                  "index": 5,
+                  "index": 7,
                   "text": "🚨 Heustock heiß"
                 },
                 "STOCK_BUILDING": {
                   "color": "#69bfb9",
-                  "index": 1,
+                  "index": 3,
                   "text": "🏗️ Stockaufbau"
+                },
+                "VENTI_MANUAL_OFF": {
+                  "color": "blue",
+                  "index": 1,
+                  "text": "✋ Hand aus"
+                },
+                "VENTI_MANUAL_ON": {
+                  "color": "blue",
+                  "index": 0,
+                  "text": "✋ Hand ein"
                 }
               },
               "type": "value"
@@ -312,7 +322,7 @@
         "x": 11,
         "y": 0
       },
-      "id": 31,
+      "id": 44,
       "options": {
         "colorMode": "value",
         "graphMode": "none",
@@ -2786,5 +2796,5 @@
   "timezone": "",
   "title": "jokleyVenti",
   "uid": "47a24cfa-bd5f-415d-96cf-fae2441ecb49",
-  "version": 1
+  "version": 2
 }
