@@ -30,6 +30,7 @@ def heizung_control():
         ctx.heizung_sdef_delay_remaining = (
             state_manager.get_heizung_sdef_delay_remaining(ctx.now)
         )
+        ctx.heizung_manual_command = state_manager.heizung_manual_command
 
         # First pass: detect active heating and update off timestamp on falling edge.
         heizung_was_active = state_manager.heizung_was_active
@@ -64,7 +65,7 @@ def heizung_control():
 
         decision = heating_engine.decide(ctx)
         details = decision.details or {}
-        heizung_active = decision.reason == "HEIZUNG_ACTIVE"
+        heizung_active = decision.reason in ("HEIZUNG_ACTIVE", "HEIZUNG_MANUAL_ON")
         nachlauf_active = decision.reason == "HEIZUNG_NACHLAUF"
         ctx.heizung_active = heizung_active
 
@@ -96,24 +97,19 @@ def heizung_control():
                 details.get("nachlauf_remaining"),
             )
         else:
-            if ctx.heizung_nachlauf <= 0:
-                heizung_venti_cmd("off", "off")
-                logger.info("Heizung inaktiv, kein Nachlauf – Heizung und Lüfter AUS")
-            else:
-                heizung_cmd("off")
-                logger.info(
-                    "Heizung inaktiv, kein Nachlauf – Lüfter durch venti_control"
-                )
+            heizung_cmd("off")
+            logger.info("Heizung inaktiv – Lüfter durch venti_control")
 
         state_changed = state_manager.last_heizung_state != decision.reason
         command_changed = state_manager.last_heizung_command != decision.command
-        mode_changed = state_manager.last_heizung_mode != ctx.heizung_mode
+        effective_mode = ctx.heizung_manual_command or ctx.heizung_mode
+        mode_changed = state_manager.last_heizung_mode != effective_mode
 
         if state_changed or command_changed or mode_changed:
             state_manager.persist_heizung(
                 state=decision.reason,
                 command=decision.command,
-                mode=ctx.heizung_mode,
+                mode=effective_mode,
                 details=details,
                 ctx=ctx
             )
@@ -125,6 +121,7 @@ def heizung_control():
 
         if heizung_detector.state_start_ts is None and decision.reason in (
             "HEIZUNG_ACTIVE",
+            "HEIZUNG_MANUAL_ON",
             "HEIZUNG_NACHLAUF",
         ):
             heizung_detector.restore(

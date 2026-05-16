@@ -52,8 +52,12 @@ def pretty_reason(reason):
         "OVERHEAT":           "Überhitzung",
         "AUTO_IDLE":          "Automatik pausiert",
         "MANUAL_MODE":        "Manueller Modus",
+        "VENTI_MANUAL_ON":    "Lüfter Hand ein",
+        "VENTI_MANUAL_OFF":   "Lüfter Hand aus",
         "INEFFICIENT_DRYING": "Ineffiziente Trocknung",
         "HEIZUNG_ACTIVE":     "Heizung aktiv",
+        "HEIZUNG_MANUAL_ON":  "Heizung Hand ein",
+        "HEIZUNG_MANUAL_OFF": "Heizung Hand aus",
         "HEIZUNG_NACHLAUF":   "Heizung Nachlauf",
         "HEIZUNG_SDEF_LIMIT": "Heizung SDEF Limit",
         "HEIZUNG_IDLE":       "Heizung inaktiv",
@@ -119,7 +123,7 @@ def build_message(decision):
             f"📉 TS Diff: {fmt_float(d.get('tsDiff'))}"
         )
 
-    elif state == "HEIZUNG_ACTIVE":
+    elif state in ("HEIZUNG_ACTIVE", "HEIZUNG_MANUAL_ON"):
         return (
             f"🔥 Heizung läuft\n"
             f"⏳ Restzeit: {fmt_duration(d.get('remaining'))}"
@@ -141,11 +145,17 @@ def build_message(decision):
             msg += f"\n⏳ Delay: {fmt_duration(d.get('delay_remaining'))}"
         return msg
 
-    elif state in ("HEIZUNG_IDLE", "HEIZUNG_DISABLED"):
+    elif state in ("HEIZUNG_IDLE", "HEIZUNG_DISABLED", "HEIZUNG_MANUAL_OFF"):
         return "Heizung inaktiv"
 
     elif state == "AUTO_IDLE":
         return "😴 Automatik pausiert"
+
+    elif state == "VENTI_MANUAL_ON":
+        return "Lüfter Hand ein"
+
+    elif state == "VENTI_MANUAL_OFF":
+        return "Lüfter Hand aus"
 
     elif state == "MANUAL_MODE":
         return "🛑 Manueller Modus"
@@ -210,7 +220,7 @@ def build_event_message(event):
             f"📉 TS Δ 2h: {fmt_float(old_d.get('ts_change_2h'))}\n\n"
         )
 
-    elif old == "HEIZUNG_ACTIVE":
+    elif old in ("HEIZUNG_ACTIVE", "HEIZUNG_MANUAL_ON"):
         msg += (
             f"🔥 Heizung beendet\n"
             f"⏱ Dauer: {fmt_duration(duration)}\n\n"
@@ -226,7 +236,7 @@ def build_event_message(event):
     # 🟢 NEW STATE (started)
     # =========================
 
-    if new in ("AUTO_IDLE", "HEIZUNG_IDLE", "HEIZUNG_DISABLED"):
+    if new in ("AUTO_IDLE", "HEIZUNG_IDLE", "HEIZUNG_DISABLED", "VENTI_MANUAL_OFF", "HEIZUNG_MANUAL_OFF"):
         msg += f"➡️ {pretty_reason(new)}\n"
     else:
         msg += f"➡️ {pretty_reason(new)} gestartet\n"
@@ -289,6 +299,13 @@ def build_event_message(event):
             f"📉 TS Diff: {fmt_float(new_d.get('tsDiff'))}"
         )
 
+    # --- VENTI MANUAL ---
+    elif new in ("VENTI_MANUAL_ON", "VENTI_MANUAL_OFF"):
+        msg += (
+            f"⏱ Laufzeit: {fmt_duration(new_d.get('runtime'))}\n"
+            f"📉 TS Diff: {fmt_float(new_d.get('tsDiff'))}"
+        )
+
     # --- INEFFICIENT DRYING ---
     elif new == "INEFFICIENT_DRYING":
         msg += (
@@ -309,7 +326,7 @@ def build_event_message(event):
         )
 
     # --- HEIZUNG ACTIVE ---
-    elif new == "HEIZUNG_ACTIVE":
+    elif new in ("HEIZUNG_ACTIVE", "HEIZUNG_MANUAL_ON"):
         msg += (
             f"🔥 Heizung läuft\n"
             f"⚙️ Modus: {new_d.get('heizung_mode', '-')}\n"
@@ -336,7 +353,7 @@ def build_event_message(event):
             msg += f"\n⏳ Delay: {fmt_duration(new_d.get('delay_remaining'))}"
 
     # --- HEIZUNG IDLE ---
-    elif new in ("HEIZUNG_IDLE", "HEIZUNG_DISABLED"):
+    elif new in ("HEIZUNG_IDLE", "HEIZUNG_DISABLED", "HEIZUNG_MANUAL_OFF"):
         msg += f"⚙️ Modus: {new_d.get('heizung_mode', '-')}"
 
     # --- fallback ---

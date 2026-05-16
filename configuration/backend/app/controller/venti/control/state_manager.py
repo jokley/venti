@@ -39,6 +39,7 @@ class ControlStateManager:
         self.last_heizung_ts = None
         self.last_heizung_relay_command = None
         self.last_heizung_forced_venti_command = None
+        self.heizung_manual_command = None
         self.heizung_sdef_delay_started_at = None
         self.venti_drying_delay_started_at = None
 
@@ -121,15 +122,21 @@ class ControlStateManager:
             self.heizung_off_ts = self.last_heizung_ts
             self.heizung_was_active = False
             self.heizung_lock = True
+            if self.last_heizung_mode == "off":
+                self.heizung_manual_command = "off"
             logger.info(
                 "Restored heizung nachlauf – lock gesetzt (off_ts=%s)",
                 self.heizung_off_ts,
             )
-        elif self.last_heizung_state == "HEIZUNG_ACTIVE":
+        elif self.last_heizung_state in ("HEIZUNG_ACTIVE", "HEIZUNG_MANUAL_ON"):
             self.heizung_was_active = True
             self.heizung_lock = True
             self.last_heizung_forced_venti_command = "on"
+            if self.last_heizung_mode == "on" or self.last_heizung_state == "HEIZUNG_MANUAL_ON":
+                self.heizung_manual_command = "on"
             logger.info("Restored heizung active – lock gesetzt")
+        elif self.last_heizung_mode == "off" or self.last_heizung_state == "HEIZUNG_MANUAL_OFF":
+            self.heizung_manual_command = "off"
 
     # =========================
     # 💾 PERSIST
@@ -175,6 +182,55 @@ class ControlStateManager:
         # Nachlauf-Berechnung endgültig gesetzt
         if heizung_active:
             self.heizung_lock = True
+
+    def set_heizung_manual_on(self):
+        """
+        Synchronisiert einen direkt geschalteten manuellen EIN-Befehl.
+        Der Scheduler liest diesen Override und persistiert danach heizung_state.
+        """
+        self.heizung_manual_command = "on"
+        self.heizung_was_active = True
+        self.heizung_off_ts = None
+        self.heizung_lock = True
+        self.last_heizung_forced_venti_command = "on"
+        logger.info("Heizung Hand EIN synchronisiert – lock gesetzt")
+
+    def start_heizung_manual_nachlauf(self, now, nachlauf_seconds, was_active=True):
+        """
+        Synchronisiert einen direkt geschalteten manuellen AUS-Befehl.
+        Bei konfiguriertem Nachlauf bleibt der Lock aktiv, sonst wird er
+        sofort freigegeben.
+        """
+        self.heizung_manual_command = "off"
+
+        can_start_nachlauf = (
+            was_active
+            or getattr(self, "heizung_was_active", False)
+            or getattr(self, "heizung_lock", False)
+            or getattr(self, "last_heizung_state", None) in (
+                "HEIZUNG_ACTIVE",
+                "HEIZUNG_MANUAL_ON",
+                "HEIZUNG_NACHLAUF",
+            )
+            or getattr(self, "last_heizung_mode", None) == "on"
+            or getattr(self, "last_heizung_command", None) == "on"
+            or getattr(self, "last_heizung_forced_venti_command", None) == "on"
+        )
+
+        if can_start_nachlauf and self.heizung_off_ts is None:
+            self.heizung_off_ts = now
+
+        if nachlauf_seconds > 0 and self.heizung_off_ts is not None:
+            self.heizung_was_active = False
+            self.heizung_lock = True
+            self.last_heizung_forced_venti_command = "on"
+            logger.info(
+                "Heizung Hand AUS synchronisiert – Nachlauf startet (off_ts=%s)",
+                self.heizung_off_ts,
+            )
+        else:
+            self.heizung_was_active = False
+            self.release_heizung_lock()
 
     def persist_heizung(self, state, command, mode, details, ctx):
         write_heizung_controller_state(

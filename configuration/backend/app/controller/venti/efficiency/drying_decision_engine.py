@@ -23,10 +23,10 @@ class DryingDecisionEngine:
         # 7. Idle fallback
 
         if ctx.mode == "on":
-            step("manual_on", True, "MANUAL_MODE")
+            step("manual_on", True, "VENTI_MANUAL_ON")
             return Decision(
                 "on",
-                "MANUAL_MODE",
+                "VENTI_MANUAL_ON",
                 {
                     "mode": ctx.mode,
                     "runtime": ctx.remainingTimeInterval,
@@ -36,11 +36,12 @@ class DryingDecisionEngine:
             )
 
         if ctx.mode != "auto":
-            step("manual_mode", True, "MANUAL_MODE")
+            step("manual_off", True, "VENTI_MANUAL_OFF")
             return Decision(
                 "off",
-                "MANUAL_MODE",
+                "VENTI_MANUAL_OFF",
                 {
+                    "mode": ctx.mode,
                     "runtime": ctx.remainingTimeInterval,
                     "tsDiff": ctx.tsSoll - ctx.tsMin if ctx.tsSoll is not None and ctx.tsMin is not None else None,
                     "trace": trace,

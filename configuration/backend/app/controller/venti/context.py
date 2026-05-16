@@ -81,6 +81,7 @@ class VentiContext:
         self.heizung_sdef_hys = d.get("heizung_sdef_hys", 1.0)
         self.heizung_sdef_was_active = d.get("heizung_sdef_was_active", False)
         self.heizung_sdef_delay_remaining = d.get("heizung_sdef_delay_remaining", 0)
+        self.heizung_manual_command = d.get("heizung_manual_command")
         self.remainingTimeHeizung = d.get("remainingTimeHeizung", 999999)
         self.heizung_nachlauf = d.get("heizung_nachlauf", 0)  # Sekunden
         self.heizung_off_since = d.get("heizung_off_since", 999999)

@@ -317,7 +317,7 @@ def test_interval_active():
     ctx = VentiContext({
         "mode": "auto", "humMax": 80.0, "intervall_on": 70.0,
         "temp_change_2h": 1.0,
-        "remainingTimeInterval": 4000, "intervall_time": 3600,
+        "remainingTimeInterval": 1000, "intervall_time": 3600,
         "remainingTimeIntervalOn": 200, "intervall_duration": 300,
         "remainingTimeIntervalDiff": -2400
     })
@@ -591,6 +591,17 @@ def test_heating_sdef_engine():
     print("✓ Heating SDEF: Limit 0 disables SDEF")
 
     ctx = heizung_ctx({
+        "heizung_dauer": 0,
+        "remainingTimeHeizung": 0,
+        "heizung_sdef_limit": 0,
+        "sDefOut": 5.0,
+    })
+    result = engine.decide(ctx)
+    assert result.command == "off", "Duration 0 should not start duration heating"
+    assert result.reason == "HEIZUNG_IDLE", "Duration 0 and SDEF 0 should stay idle"
+    print("✓ Heating SDEF: Duration 0 does not start heating")
+
+    ctx = heizung_ctx({
         "sDefOut": 10.0,
         "heizung_sdef_was_active": True,
     })
@@ -629,7 +640,7 @@ def test_heating_sdef_engine():
     })
     result = engine.decide(ctx)
     assert result.command == "on", "Manual on should ignore SDEF"
-    assert result.reason == "HEIZUNG_ACTIVE", "Manual on should be active"
+    assert result.reason == "HEIZUNG_MANUAL_ON", "Manual on should expose manual state"
     print("✓ Heating SDEF: Manual on ignores SDEF")
 
 def test_heating_sdef_delay():
@@ -666,7 +677,7 @@ def test_heating_sdef_delay():
     })
     result = engine.decide(ctx)
     assert result.command == "on", "Manual on should ignore delay and enabled flag"
-    assert result.reason == "HEIZUNG_ACTIVE", "Manual on should stay active"
+    assert result.reason == "HEIZUNG_MANUAL_ON", "Manual on should expose manual state"
     print("✓ Heating SDEF delay: Manual on ignores delay")
 
     ctx = heizung_ctx({
@@ -677,6 +688,152 @@ def test_heating_sdef_delay():
     assert result.command == "on", "Expired delay should allow SDEF restart"
     assert result.reason == "HEIZUNG_ACTIVE", "Below hysteresis should restart after delay"
     print("✓ Heating SDEF delay: Restart allowed after expiry")
+
+def test_heating_manual_nachlauf_sync():
+    """Test manual heater off can drive fan cooldown without heizung_auto off."""
+    print("Testing heating manual nachlauf sync...")
+    engine = HeatingDecisionEngine()
+
+    ctx = heizung_ctx({
+        "heizung_manual_command": "off",
+        "heizung_nachlauf": 1200,
+        "heizung_off_since": 30,
+    })
+    result = engine.decide(ctx)
+    assert result.command == "off", "Manual off should keep heater relay off"
+    assert result.reason == "HEIZUNG_NACHLAUF", "Manual off should start fan cooldown"
+    assert result.details["nachlauf_remaining"] == 1170, "Cooldown remaining should be calculated"
+    print("✓ Heating manual off: Nachlauf stays active")
+
+    ctx = heizung_ctx({
+        "heizung_manual_command": "off",
+        "heizung_nachlauf": 0,
+        "heizung_off_since": 0,
+    })
+    result = engine.decide(ctx)
+    assert result.command == "off", "Manual off should keep heater off"
+    assert result.reason == "HEIZUNG_MANUAL_OFF", "No nachlauf should expose manual off"
+    print("✓ Heating manual off: No nachlauf falls back to idle")
+
+    ctx = heizung_ctx({
+        "heizung_mode": "off",
+        "heizung_nachlauf": 1200,
+        "heizung_off_since": 30,
+    })
+    result = engine.decide(ctx)
+    assert result.command == "off", "Form mode off should keep heater relay off"
+    assert result.reason == "HEIZUNG_NACHLAUF", "Nachlauf should not be hidden by manual off mode"
+    assert result.details["nachlauf_remaining"] == 1170, "Cooldown remaining should be calculated"
+    print("✓ Heating manual off mode: Nachlauf stays visible")
+
+    ctx = heizung_ctx({
+        "heizung_manual_command": "on",
+        "heizung_enabled": False,
+        "sDefOut": 20.0,
+    })
+    result = engine.decide(ctx)
+    assert result.command == "on", "Manual on should directly force heater on"
+    assert result.reason == "HEIZUNG_MANUAL_ON", "Manual on should expose manual state"
+    print("✓ Heating manual on: Direct override is active")
+
+def test_heating_manual_state_manager_sync():
+    """Test manual off helper starts cooldown only from an active heater."""
+    print("Testing heating manual state manager sync...")
+
+    class FakeStateManager:
+        heizung_manual_command = None
+        heizung_was_active = False
+        heizung_off_ts = None
+        heizung_lock = False
+        last_heizung_forced_venti_command = None
+
+        def release_heizung_lock(self):
+            self.heizung_lock = False
+            self.heizung_off_ts = None
+            self.last_heizung_forced_venti_command = None
+
+    manager = FakeStateManager()
+    fake_app = types.ModuleType("app")
+    fake_app.__path__ = []
+    fake_services = types.ModuleType("app.services")
+    fake_utils = types.ModuleType("app.utils")
+    fake_influx = types.ModuleType("app.services.influx_service")
+    fake_influx.get_last_controller_state = lambda: None
+    fake_influx.get_last_heizung_controller_state = lambda: None
+    fake_venti_service = types.ModuleType("app.services.venti_service")
+    fake_venti_service.write_controller_state = lambda **kwargs: None
+    fake_venti_service.write_heizung_controller_state = lambda **kwargs: None
+    fake_logger_module = types.ModuleType("app.utils.logger")
+    fake_logger_module.logger = types.SimpleNamespace(
+        info=lambda *args, **kwargs: None,
+        debug=lambda *args, **kwargs: None,
+    )
+    sys.modules["app"] = fake_app
+    sys.modules["app.services"] = fake_services
+    sys.modules["app.services.influx_service"] = fake_influx
+    sys.modules["app.services.venti_service"] = fake_venti_service
+    sys.modules["app.utils"] = fake_utils
+    sys.modules["app.utils.logger"] = fake_logger_module
+
+    sync_method = load_module(
+        "state_manager_for_manual_sync",
+        os.path.join(
+            os.path.dirname(__file__),
+            "app",
+            "controller",
+            "venti",
+            "control",
+            "state_manager.py",
+        ),
+    ).ControlStateManager.start_heizung_manual_nachlauf
+
+    sync_method(manager, now=1000, nachlauf_seconds=1200, was_active=True)
+    assert manager.heizung_manual_command == "off", "Manual off override should be stored"
+    assert manager.heizung_off_ts == 1000, "Active heater should start cooldown timestamp"
+    assert manager.heizung_lock is True, "Cooldown should hold heater lock"
+    print("✓ Manual state sync: Active heater starts nachlauf")
+
+    manager = FakeStateManager()
+    sync_method(manager, now=1000, nachlauf_seconds=1200, was_active=False)
+    assert manager.heizung_manual_command == "off", "Manual off override should be stored"
+    assert manager.heizung_off_ts is None, "Idle heater should not start fresh cooldown"
+    assert manager.heizung_lock is False, "Idle heater should not hold lock"
+    print("✓ Manual state sync: Idle heater does not start nachlauf")
+
+def test_venti_manual_states():
+    """Test fan manual modes expose explicit on/off states."""
+    print("Testing venti manual states...")
+    DryingDecisionEngine = load_drying_decision_engine()
+    engine = DryingDecisionEngine()
+    metrics = {
+        "efficiency": 0.5,
+        "sdef_gain": 0.0,
+        "ts_gain": 0.0,
+        "window_hours": 2,
+        "has_history": False,
+    }
+
+    ctx = VentiContext({
+        "mode": "on",
+        "remainingTimeInterval": 120,
+        "tsSoll": 20.0,
+        "tsMin": 18.0,
+    })
+    result = engine.decide(ctx, metrics)
+    assert result.command == "on", "Manual fan on should command on"
+    assert result.reason == "VENTI_MANUAL_ON", "Manual fan on should expose explicit state"
+    print("✓ Venti manual on: explicit state")
+
+    ctx = VentiContext({
+        "mode": "off",
+        "remainingTimeInterval": 120,
+        "tsSoll": 20.0,
+        "tsMin": 18.0,
+    })
+    result = engine.decide(ctx, metrics)
+    assert result.command == "off", "Manual fan off should command off"
+    assert result.reason == "VENTI_MANUAL_OFF", "Manual fan off should expose explicit state"
+    print("✓ Venti manual off: explicit state")
 
 def test_venti_drying_delay_engine():
     """Test fan drying delay blocks drying starts only."""
@@ -804,6 +961,15 @@ def run_all_tests():
     print()
 
     test_heating_sdef_delay()
+    print()
+
+    test_heating_manual_nachlauf_sync()
+    print()
+
+    test_heating_manual_state_manager_sync()
+    print()
+
+    test_venti_manual_states()
     print()
 
     test_venti_drying_delay_engine()

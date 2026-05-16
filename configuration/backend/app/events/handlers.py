@@ -100,9 +100,10 @@ def handle_decision_log(event: Event):
         logger.info(f"TS Change 2h: {details.get('ts_change_2h')}")
         logger.info(f"Effizienz: {details.get('efficiency')} | Limit: {details.get('adaptive_threshold')}")
 
-    # --- MANUAL_MODE ---
-    elif decision.reason == "MANUAL_MODE":
+    # --- MANUAL STATES ---
+    elif decision.reason in ("MANUAL_MODE", "VENTI_MANUAL_ON", "VENTI_MANUAL_OFF"):
         logger.info("Automatik deaktiviert")
+        logger.info(f"State: {decision.reason}")
         logger.info(f"Laufzeit Intervall: {details.get('runtime')}")
         logger.info(f"TS diff: {details.get('tsDiff')}")
 
@@ -113,7 +114,7 @@ def handle_decision_log(event: Event):
         logger.info(f"Effizienz: {details.get('efficiency')} | Limit: {details.get('adaptive_threshold')}")
 
     # --- HEIZUNG ACTIVE ---
-    elif decision.reason == "HEIZUNG_ACTIVE":
+    elif decision.reason in ("HEIZUNG_ACTIVE", "HEIZUNG_MANUAL_ON"):
         logger.info("Heizung aktiv")
         logger.info(f"Modus: {details.get('heizung_mode')}")
         logger.info(f"Restzeit: {details.get('remaining')}")
@@ -123,7 +124,7 @@ def handle_decision_log(event: Event):
         logger.info("Heizung Nachlauf")
         logger.info(f"Noch: {details.get('nachlauf_remaining')}")
 
-    elif decision.reason in ("HEIZUNG_IDLE", "HEIZUNG_DISABLED"):
+    elif decision.reason in ("HEIZUNG_IDLE", "HEIZUNG_DISABLED", "HEIZUNG_MANUAL_OFF"):
         logger.info("Heizung inaktiv")
         logger.info(f"Modus: {details.get('heizung_mode')}")
         logger.info(f"Grund: {details.get('reason')}")

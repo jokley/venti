@@ -4,8 +4,8 @@ from .controller.venti.controller import venti_control
 from .controller.venti.controller_Heizung import heizung_control
 
 
-
-
+VENTI_CONTROL_INTERVAL_MINUTES = 4
+HEIZUNG_CONTROL_INTERVAL_MINUTES = 1
 
 
 def start_scheduler():
@@ -14,14 +14,14 @@ def start_scheduler():
         scheduler.add_job(
             venti_control,
             "interval",
-            minutes=4,
+            minutes=VENTI_CONTROL_INTERVAL_MINUTES,
             id="venti_control",
             replace_existing=True
         )
         scheduler.add_job(
             heizung_control,
             "interval",
-            minutes=1,
+            minutes=HEIZUNG_CONTROL_INTERVAL_MINUTES,
             id="heizung_control",
             replace_existing=True
         )
