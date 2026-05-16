@@ -770,7 +770,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "value {application_name=\"jokley\", dev_eui=\"a840418c51868361\", device_name=\"fan\", f_port=\"2\"}"
+              "options": "device_frmpayload_data_RO1_status _value fan"
             },
             "properties": [
               {
@@ -1091,7 +1091,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "device_frmpayload_data_humidity value {device_name=\"probe01\"}"
+              "options": "device_frmpayload_data_humidity value probe01"
             },
             "properties": [
               {
@@ -1110,7 +1110,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "device_frmpayload_data_humidity value {device_name=\"probe02\"}"
+              "options": "device_frmpayload_data_humidity value probe02"
             },
             "properties": [
               {
@@ -1129,7 +1129,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "device_frmpayload_data_temperature value {device_name=\"probe01\"}"
+              "options": "device_frmpayload_data_temperature value probe01"
             },
             "properties": [
               {
@@ -1148,7 +1148,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "device_frmpayload_data_temperature value {device_name=\"probe02\"}"
+              "options": "device_frmpayload_data_temperature value probe02"
             },
             "properties": [
               {
@@ -1167,7 +1167,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "device_frmpayload_data_trockenmasse value {device_name=\"probe01\"}"
+              "options": "device_frmpayload_data_trockenmasse value probe01"
             },
             "properties": [
               {
@@ -1190,7 +1190,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "device_frmpayload_data_trockenmasse value {device_name=\"probe02\"}"
+              "options": "device_frmpayload_data_trockenmasse value probe02"
             },
             "properties": [
               {
@@ -1213,7 +1213,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "device_frmpayload_data_RO1_status value {application_name=\"jokley\", dev_eui=\"a840418c51868361\", device_name=\"fan\", f_port=\"2\"}"
+              "options": "device_frmpayload_data_RO1_status _value fan"
             },
             "properties": [
               {
@@ -1262,7 +1262,7 @@
             "type": "influxdb",
             "uid": "P5697886F9CA74929"
           },
-          "query": "sensor =\r\nfrom(bucket: \"jokley_bucket\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"device_name\"] == \"probe01\" or r[\"device_name\"] == \"probe02\")\r\n  |> filter(fn: (r) =>\r\n    r[\"_measurement\"] == \"device_frmpayload_data_temperature\" or\r\n    r[\"_measurement\"] == \"device_frmpayload_data_humidity\" or\r\n    r[\"_measurement\"] == \"device_frmpayload_data_trockenmasse\"\r\n  )\r\n  |> group(columns: [\"device_name\", \"_measurement\", \"_field\"])\r\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\r\n\r\nfan =\r\nfrom(bucket: \"jokley_bucket\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"device_name\"] == \"fan\")\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"device_frmpayload_data_RO1_status\")\r\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)\r\n  |> map(fn: (r) => ({\r\n      r with\r\n      _value: if r._value == \"ON\" then 10 else 0\r\n  }))\r\n\r\nunion(tables: [sensor, fan])",
+          "query": "sensor =\r\nfrom(bucket: \"jokley_bucket\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"device_name\"] == \"probe01\" or r[\"device_name\"] == \"probe02\")\r\n  |> filter(fn: (r) =>\r\n    r[\"_measurement\"] == \"device_frmpayload_data_temperature\" or\r\n    r[\"_measurement\"] == \"device_frmpayload_data_humidity\" or\r\n    r[\"_measurement\"] == \"device_frmpayload_data_trockenmasse\"\r\n  )\r\n  |> group(columns: [\"device_name\", \"_measurement\", \"_field\"])\r\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\r\n\r\nfan =\r\nfrom(bucket: \"jokley_bucket\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"device_name\"] == \"fan\")\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"device_frmpayload_data_RO1_status\")\r\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)\r\n  |> map(fn: (r) => ({\r\n      r with\r\n      _value: if r._value == \"ON\" then 10.0 else 0.0\r\n  }))\r\n\r\nunion(tables: [sensor, fan])",
           "refId": "A"
         }
       ],
@@ -1377,7 +1377,7 @@
             "type": "influxdb",
             "uid": "P5697886F9CA74929"
           },
-          "query": "from(bucket: \"jokley_bucket\")\r\n  |> range(start: -2d)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"venti\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"stockaufbau\")\r\n  |> last()\r\n  |> map(fn: (r) => ({ r with Stockaufbau: if (uint(v: r._value) * uint(v: 3600000000000)) -(uint(v: now()) - uint(v: r._time))  >=0  and (uint(v: r._value) * uint(v: 3600000000000)) -(uint(v: now()) - uint(v: r._time))  <= 1844674388946713400 then (uint(v: r._value) * uint(v: 3600000000000)) -(uint(v: now()) - uint(v: r._time))  else uint(v: 0)}))\r\n  |> yield(name: \"last\")",
+          "query": "from(bucket: \"jokley_bucket\")\r\n  |> range(start: -2d)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"venti\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"stockaufbau\")\r\n  |> last()\r\n  |> map(fn: (r) => ({\r\n    _time: r._time,\r\n    _field: \"Stockaufbau\",\r\n    _value:\r\n      if (uint(v: r._value) * uint(v: 3600000000000)) - (uint(v: now()) - uint(v: r._time)) >= 0 and\r\n         (uint(v: r._value) * uint(v: 3600000000000)) - (uint(v: now()) - uint(v: r._time)) <= 1844674388946713400\r\n      then (uint(v: r._value) * uint(v: 3600000000000)) - (uint(v: now()) - uint(v: r._time))\r\n      else uint(v: 0)\r\n  }))\r\n  |> yield(name: \"last\")",
           "refId": "A"
         },
         {
@@ -1386,7 +1386,7 @@
             "uid": "P5697886F9CA74929"
           },
           "hide": false,
-          "query": "from(bucket: \"jokley_bucket\")\r\n  |> range(start: -2d)\r\n  |> filter(fn: (r) => r[\"device_name\"] == \"fan\")\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"device_frmpayload_data_RO1_status\")\r\n  |> filter(fn: (r) => r[\"_value\"] == \"OFF\")\r\n  |> last()\r\n  |> map(fn: (r) => ({ r with ON: if uint(v: now()) - uint(v: r._time) >= uint(v: 600000000000) then uint(v: now()) - uint(v: r._time) else uint(v: 0)}))\r\n  |> yield(name: \"last\")",
+          "query": "from(bucket: \"jokley_bucket\")\r\n  |> range(start: -2d)\r\n  |> filter(fn: (r) => r[\"device_name\"] == \"fan\")\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"device_frmpayload_data_RO1_status\")\r\n  |> filter(fn: (r) => r[\"_value\"] == \"OFF\")\r\n  |> last()\r\n  |> map(fn: (r) => ({\r\n    _time: r._time,\r\n    _field: \"ON\",\r\n    _value: if uint(v: now()) - uint(v: r._time) >= uint(v: 600000000000) then uint(v: now()) - uint(v: r._time) else uint(v: 0)\r\n  }))\r\n  |> yield(name: \"last\")",
           "refId": "B"
         },
         {
@@ -1395,7 +1395,7 @@
             "uid": "P5697886F9CA74929"
           },
           "hide": false,
-          "query": "from(bucket: \"jokley_bucket\")\r\n  |> range(start: -2d)\r\n  |> filter(fn: (r) => r[\"device_name\"] == \"fan\")\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"device_frmpayload_data_RO1_status\")\r\n  |> filter(fn: (r) => r[\"_value\"] == \"ON\")\r\n  |> last()\r\n  |> map(fn: (r) => ({ r with OFF: if uint(v: now()) - uint(v: r._time) >= uint(v: 600000000000) then uint(v: now()) - uint(v: r._time) else uint(v: 0)}))\r\n  |> yield(name: \"last\")",
+          "query": "from(bucket: \"jokley_bucket\")\r\n  |> range(start: -2d)\r\n  |> filter(fn: (r) => r[\"device_name\"] == \"fan\")\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"device_frmpayload_data_RO1_status\")\r\n  |> filter(fn: (r) => r[\"_value\"] == \"ON\")\r\n  |> last()\r\n  |> map(fn: (r) => ({\r\n    _time: r._time,\r\n    _field: \"OFF\",\r\n    _value: if uint(v: now()) - uint(v: r._time) >= uint(v: 600000000000) then uint(v: now()) - uint(v: r._time) else uint(v: 0)\r\n  }))\r\n  |> yield(name: \"last\")",
           "refId": "C"
         }
       ],
@@ -2390,7 +2390,7 @@
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "value {application_name=\"jokley\", dev_eui=\"a840418c51868361\", device_name=\"fan\", f_port=\"2\"}"
+                  "options": "device_frmpayload_data_RO1_status _value fan"
                 },
                 "properties": []
               }
