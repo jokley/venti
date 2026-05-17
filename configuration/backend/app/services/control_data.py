@@ -21,6 +21,7 @@ from app.utils.time_utils import (
     get_timestamp_now_offset
 )
 from app.utils.logger import logger
+from app.config import Config
 
 from ..controller.venti.control.state_manager import state_manager
 
@@ -35,15 +36,19 @@ def _elapsed_seconds_since(start_time, now_epoch):
     return max(0, int(now_epoch - start_time.timestamp()))
 
 
-def battery_mv_to_percent(mv):
+def battery_mv_to_percent(mv, panstamp=False):
     if mv is None:
         return None
 
     try:
         mv = float(mv)
 
-        MIN_V = 3500
-        MAX_V = 4200
+        if panstamp:
+            MIN_V = 2200
+            MAX_V = 3000
+        else:
+            MIN_V = 3500
+            MAX_V = 4200
 
         pct = (mv - MIN_V) / (MAX_V - MIN_V) * 100
 
@@ -77,7 +82,7 @@ def build_control_data():
 
     raw_battery = get_battery_data()
     battery = {
-        device: battery_mv_to_percent(value)
+        device: battery_mv_to_percent(value, panstamp=Config.PANSTAMP)
         for device, value in raw_battery.items()
     }
     rssi = get_rssi_data()
