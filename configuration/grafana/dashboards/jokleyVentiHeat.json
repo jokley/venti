@@ -1627,7 +1627,7 @@
             "uid": "P5697886F9CA74929"
           },
           "hide": false,
-          "query": "venti_mode = from(bucket: \"jokley_bucket\")\r\n  |> range(start: -2d)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"venti\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"mode\")\r\n  |> last()\r\n  |> findRecord(fn: (key) => true, idx: 0)\r\n\r\nstock = from(bucket: \"jokley_bucket\")\r\n  |> range(start: -2d)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"venti\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"stockaufbau\")\r\n  |> last()\r\n  |> findRecord(fn: (key) => true, idx: 0)\r\n\r\nlast_on = from(bucket: \"jokley_bucket\")\r\n  |> range(start: -2d)\r\n  |> filter(fn: (r) => r[\"device_name\"] == \"fan\")\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"device_frmpayload_data_RO1_status\")\r\n  |> filter(fn: (r) => r[\"_value\"] == \"ON\")\r\n  |> last()\r\n  |> findRecord(fn: (key) => true, idx: 0)\r\n\r\nfrom(bucket: \"jokley_bucket\")\r\n  |> range(start: -2d)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"venti_state\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"state\")\r\n  |> last()\r\n  |> map(fn: (r) => {\r\n      elapsed_ns   = int(v: uint(v: now()) - uint(v: r._time))\r\n      off_since_ns = int(v: uint(v: now()) - uint(v: last_on._time))\r\n      fan_is_on    = uint(v: now()) - uint(v: last_on._time) < uint(v: 600000000000)\r\n\r\n      stock_ns        = int(v: stock._value) * 3600000000000\r\n      stock_elapsed   = int(v: uint(v: now()) - uint(v: stock._time))\r\n      stock_remaining = stock_ns - stock_elapsed\r\n\r\n      return {\r\n        r with\r\n        _field:\r\n          if r._value == \"STOCK_BUILDING\"          then \"🌾 Stockaufbau noch\"\r\n          else if r._value == \"DRYING_ACTIVE\"      then \"💨 Trocknung seit\"\r\n          else if r._value == \"INTERVAL_ACTIVE\"    then \"⏱ Intervall seit\"\r\n          else if r._value == \"OVERHEAT\"           then \"🌡 Überhitzung seit\"\r\n          else if r._value == \"INEFFICIENT_DRYING\" then \"⚠️ Ineffizient seit\"\r\n          else if r._value == \"MANUAL_MODE\" and venti_mode._value == \"on\"\r\n            then \"✋ Manuell EIN seit\"\r\n          else if r._value == \"MANUAL_MODE\"        then \"🛑 Manuell AUS seit\"\r\n          else \"😴 Lüfter AUS seit\",\r\n\r\n        _value:\r\n          if r._value == \"STOCK_BUILDING\"\r\n            then (if stock_remaining > 0 then stock_remaining else 0)\r\n          else if fan_is_on\r\n            then elapsed_ns\r\n          else\r\n            off_since_ns\r\n      }\r\n  })\r\n  |> yield(name: \"venti_status\")",
+          "query": "venti_mode = from(bucket: \"jokley_bucket\")\r\n  |> range(start: -2d)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"venti\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"mode\")\r\n  |> last()\r\n  |> findRecord(fn: (key) => true, idx: 0)\r\n\r\nstock = from(bucket: \"jokley_bucket\")\r\n  |> range(start: -2d)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"venti\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"stockaufbau\")\r\n  |> last()\r\n  |> findRecord(fn: (key) => true, idx: 0)\r\n\r\n// Lüfter wirklich EIN? letzter ON-Heartbeat < 10min\r\nlast_on = from(bucket: \"jokley_bucket\")\r\n  |> range(start: -2d)\r\n  |> filter(fn: (r) => r[\"device_name\"] == \"fan\")\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"device_frmpayload_data_RO1_status\")\r\n  |> filter(fn: (r) => r[\"_value\"] == \"ON\")\r\n  |> last()\r\n  |> findRecord(fn: (key) => true, idx: 0)\r\n\r\nfrom(bucket: \"jokley_bucket\")\r\n  |> range(start: -2d)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"venti_state\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"state\")\r\n  |> last()\r\n  |> map(fn: (r) => {\r\n      elapsed_ns   = int(v: uint(v: now()) - uint(v: r._time))\r\n\r\n      // Relay: wie lange läuft er schon / wie lange ist er schon aus\r\n      since_last_on = uint(v: now()) - uint(v: last_on._time)\r\n      fan_is_on     = since_last_on < uint(v: 600000000000)\r\n      off_since_ns  = int(v: since_last_on)\r\n\r\n      stock_ns        = int(v: stock._value) * 3600000000000\r\n      stock_elapsed   = int(v: uint(v: now()) - uint(v: stock._time))\r\n      stock_remaining = stock_ns - stock_elapsed\r\n\r\n      s = r._value\r\n\r\n      return {\r\n        r with\r\n        _field:\r\n          if s == \"STOCK_BUILDING\"          then \"🌾 Stockaufbau noch\"\r\n          else if s == \"DRYING_ACTIVE\"      then \"💨 Trocknung seit\"\r\n          else if s == \"INTERVAL_ACTIVE\"    then \"⏱ Intervall seit\"\r\n          else if s == \"OVERHEAT\"           then \"🌡 Überhitzung seit\"\r\n          else if s == \"INEFFICIENT_DRYING\" then \"⚠️ Ineffizient seit\"\r\n          else if s == \"MANUAL_MODE\" and venti_mode._value == \"on\"\r\n            then \"✋ Manuell EIN seit\"\r\n          else if s == \"MANUAL_MODE\"        then \"🛑 Manuell AUS seit\"\r\n          else if fan_is_on                 then \"💨 Lüfter EIN seit\"\r\n          else                                   \"😴 Lüfter AUS seit\",\r\n\r\n        _value:\r\n          if s == \"STOCK_BUILDING\"\r\n            then (if stock_remaining > 0 then stock_remaining else 0)\r\n          else if fan_is_on\r\n            // Relay EIN → Zeit seit letztem ON-Heartbeat\r\n            then int(v: since_last_on)\r\n          else\r\n            // Relay AUS → Zeit seit letztem ON-Heartbeat (= AUS seit)\r\n            off_since_ns\r\n      }\r\n  })\r\n  |> yield(name: \"venti_status\")",
           "refId": "E"
         }
       ],
@@ -1667,7 +1667,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Stockaufbau"
+              "options": "🔥 Heizung Restzeit"
             },
             "properties": [
               {
@@ -2478,7 +2478,7 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 5,
+        "h": 6,
         "w": 18,
         "x": 0,
         "y": 34
@@ -2621,7 +2621,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 39
+        "y": 40
       },
       "id": 40,
       "panels": [
@@ -2634,7 +2634,7 @@
             "h": 11,
             "w": 11,
             "x": 0,
-            "y": 53
+            "y": 94
           },
           "id": 29,
           "options": {
@@ -2660,7 +2660,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 40
+        "y": 41
       },
       "id": 41,
       "panels": [
@@ -2677,7 +2677,7 @@
             "h": 10,
             "w": 24,
             "x": 0,
-            "y": 41
+            "y": 95
           },
           "id": 36,
           "options": {
@@ -2881,7 +2881,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 41
+        "y": 42
       },
       "id": 39,
       "panels": [
@@ -2903,10 +2903,10 @@
             ]
           },
           "gridPos": {
-            "h": 8,
+            "h": 16,
             "w": 24,
             "x": 0,
-            "y": 42
+            "y": 43
           },
           "id": 30,
           "options": {
@@ -2916,7 +2916,7 @@
             "prettifyLogMessage": true,
             "showCommonLabels": false,
             "showLabels": false,
-            "showTime": false,
+            "showTime": true,
             "sortOrder": "Descending",
             "wrapLogMessage": false
           },
@@ -2947,13 +2947,13 @@
             "h": 19,
             "w": 24,
             "x": 0,
-            "y": 50
+            "y": 59
           },
           "id": 45,
           "options": {
             "buttonGroup": {
               "orientation": "center",
-              "size": "lg"
+              "size": "md"
             },
             "confirmModal": {
               "body": "Please confirm to update changed values",
@@ -3152,7 +3152,7 @@
                 "tooltip": "",
                 "type": "slider",
                 "uid": "6c2d8f13-9a47-4e2b-b6d9-0a3c5e7f2d22",
-                "unit": "",
+                "unit": " ",
                 "value": 0.25,
                 "width": 0
               },
@@ -3167,7 +3167,7 @@
                 "tooltip": "",
                 "type": "slider",
                 "uid": "2e9f4a71-8b3c-4d6e-a1f2-7c5b9d3e8f33",
-                "unit": "",
+                "unit": " ",
                 "value": 0.35,
                 "width": 0
               },
@@ -3182,7 +3182,7 @@
                 "tooltip": "",
                 "type": "slider",
                 "uid": "9a1b3c5d-7e2f-4a8c-b6d1-3f9e0c2b4a44",
-                "unit": "",
+                "unit": " ",
                 "value": 1.01,
                 "width": 0
               },
@@ -3197,7 +3197,7 @@
                 "tooltip": "",
                 "type": "slider",
                 "uid": "4d8c2b7e-1f3a-4e9b-a6c2-8b5d1f7a9c55",
-                "unit": "",
+                "unit": " ",
                 "value": 0.99,
                 "width": 0
               },
@@ -3212,7 +3212,7 @@
                 "tooltip": "",
                 "type": "slider",
                 "uid": "7b3e1d9f-6a2c-4f8d-b5e1-9c2a7d4f6e66",
-                "unit": "",
+                "unit": " ",
                 "value": 0.3,
                 "width": 0
               }
@@ -3300,7 +3300,7 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "jokleyVentiHeat Copy",
+  "title": "jokleyVentiHeat",
   "uid": "9802a850-9b40-4884-af26-04f46bbdcb0f",
-  "version": 30
+  "version": 38
 }
