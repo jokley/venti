@@ -428,28 +428,41 @@ def get_min_max_values():
 def get_venti_lastTimeOn():
     client = get_influxdb_client()
     query = '''
-        on = from(bucket: "jokley_bucket")
+        from(bucket: "jokley_bucket")
             |> range(start: -1y)
             |> filter(fn: (r) => r["device_name"] == "fan")
             |> filter(fn: (r) => r["_measurement"] == "device_frmpayload_data_RO1_status")
-            |> filter(fn: (r) => r["_value"] == "ON")
-            |> last()
-
-        off = from(bucket: "jokley_bucket")
-            |> range(start: -1y)
-            |> filter(fn: (r) => r["device_name"] == "fan")
-            |> filter(fn: (r) => r["_measurement"] == "device_frmpayload_data_RO1_status")
-            |> filter(fn: (r) => r["_value"] == "OFF")
-            |> last()
-
-        union(tables: [on, off])
-            |> sort(columns: ["_measurement", "_value"])
+            |> filter(fn: (r) => r["_value"] == "ON" or r["_value"] == "OFF")
+            |> keep(columns: ["_time", "_value"])
+            |> sort(columns: ["_time"])
     '''
     result = client.query_api().query(query=query)
-    times = [r.get_time() for table in result for r in table.records]
-    names = ['lastTimeOff','lastTimeOn']
+
+    times = {
+        "lastTimeOff": None,
+        "lastTimeOn": None,
+    }
+    records = []
+
+    for table in result:
+        for r in table.records:
+            records.append((r.get_time(), str(r.get_value()).upper()))
+
+    previous_status = None
+
+    for record_time, status in sorted(records, key=lambda item: item[0]):
+
+        if status == "ON":
+            if previous_status != "ON":
+                times["lastTimeOn"] = record_time
+        elif status == "OFF":
+            if previous_status != "OFF":
+                times["lastTimeOff"] = record_time
+
+        previous_status = status
+
     client.close()
-    return [dict(zip(names, times))]
+    return [times]
 
 def get_battery_data():
     client = get_influxdb_client()

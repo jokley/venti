@@ -145,19 +145,7 @@ class DryingDecisionEngine:
             )
         ):
             step("drying_not_possible", True, "AUTO_IDLE")
-            return Decision(
-                "off",
-                "AUTO_IDLE",
-                {
-                    "reason": "drying_conditions_not_met",
-                    "sDefOut": ctx.sDefOut,
-                    "threshold": ctx.sdefMinThreshold,
-                    "tsDiff": ctx.tsSoll - ctx.tsMin if ctx.tsSoll is not None and ctx.tsMin is not None else None,
-                    "efficiency": metrics["efficiency"],
-                    "adaptive_threshold": ctx.min_efficiency_threshold,
-                    "trace": trace,
-                },
-            )
+            return self._auto_idle(ctx, metrics, trace, "drying_conditions_not_met")
 
         step("auto_idle_default", True, "AUTO_IDLE")
         return self._auto_idle(ctx, metrics, trace, "drying_conditions_not_met")
@@ -248,6 +236,15 @@ class DryingDecisionEngine:
             "tsDiff": ctx.tsSoll - ctx.tsMin if ctx.tsSoll is not None and ctx.tsMin is not None else None,
             "efficiency": metrics["efficiency"],
             "adaptive_threshold": ctx.min_efficiency_threshold,
+            "humMax": ctx.humMax,
+            "intervall_on": ctx.intervall_on,
+            "remainingTimeInterval": ctx.remainingTimeInterval,
+            "remainingTimeIntervalOn": ctx.remainingTimeIntervalOn,
+            "remainingTimeIntervalDiff": ctx.remainingTimeIntervalDiff,
+            "intervall_time": ctx.intervall_time,
+            "intervall_duration": ctx.intervall_duration,
+            "is_fan_on": ctx.is_fan_on,
+            "fan_runtime_current": ctx.fan_runtime_current,
             "trace": trace,
         }
 
@@ -260,19 +257,27 @@ class DryingDecisionEngine:
         return (ctx.venti_drying_delay_remaining or 0) > 0
 
     def _interval_decision(self, ctx, trace, step):
+        interval_start_due = (
+            not ctx.is_fan_on
+            and ctx.remainingTimeIntervalOn is not None
+            and ctx.intervall_time is not None
+            and ctx.remainingTimeIntervalOn >= ctx.intervall_time
+        )
+        interval_running = (
+            ctx.is_fan_on
+            and ctx.fan_runtime_current is not None
+            and ctx.intervall_duration is not None
+            and ctx.fan_runtime_current <= ctx.intervall_duration
+        )
+
         if (
             ctx.humMax is not None
             and ctx.intervall_on is not None
             and ctx.humMax > ctx.intervall_on
-            and (
-                ctx.remainingTimeInterval >= ctx.intervall_time
-                or (
-                    ctx.remainingTimeIntervalOn <= ctx.intervall_duration
-                    and ctx.remainingTimeIntervalDiff > 0
-                )
-            )
+            and (interval_start_due or interval_running)
         ):
             step("interval_active", True, "INTERVAL_ACTIVE")
+            runtime = ctx.fan_runtime_current if ctx.is_fan_on else 0
             return Decision(
                 "on",
                 "INTERVAL_ACTIVE",
@@ -280,7 +285,11 @@ class DryingDecisionEngine:
                     "humMax": ctx.humMax,
                     "threshold": ctx.intervall_on,
                     "interval_time": ctx.intervall_time,
+                    "interval_duration": ctx.intervall_duration,
                     "since_last_on": ctx.remainingTimeInterval,
+                    "remaining_off_time": ctx.remainingTimeIntervalOn,
+                    "runtime": runtime,
+                    "remaining": max(0, ctx.intervall_duration - runtime),
                     "trace": trace,
                 },
             )

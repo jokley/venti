@@ -2,9 +2,12 @@ from .decision import Decision
 from .context import VentiContext
 from .efficiency.drying_efficiency_engine import DryingEfficiencyEngine
 from .efficiency.drying_decision_engine import DryingDecisionEngine
+from .interval_scheduler import get_interval_scheduler_delay
+from datetime import datetime, timedelta
 
 from app.services.control_data import build_control_data
 from app.services.venti_service import venti_cmd, venti_auto
+from app.extensions.extensions import scheduler
 
 from .control.state_manager import state_manager
 
@@ -84,6 +87,30 @@ def evaluate(ctx):
     return decision
 
 
+def sync_interval_end_scheduler(decision):
+    delay_seconds = get_interval_scheduler_delay(decision)
+
+    if delay_seconds is None:
+        return False
+
+    next_run_time = datetime.now(scheduler.timezone) + timedelta(seconds=delay_seconds)
+
+    try:
+        scheduler.modify_job(
+            "venti_control",
+            next_run_time=next_run_time,
+        )
+        decision.details["scheduler_next_delay"] = delay_seconds
+        logger.debug(
+            "venti_control auf Intervall-Ende synchronisiert – nächster Lauf: %s",
+            next_run_time,
+        )
+        return True
+    except Exception:
+        logger.warning("venti_control konnte nicht auf Intervall-Ende synchronisiert werden")
+        return False
+
+
 # =========================
 # 🔁 RUNTIME STATE
 # =========================
@@ -139,7 +166,7 @@ def venti_control():
     # den Lüfter – venti_control() bleibt komplett draußen.
     if state_manager.heizung_lock:
         logger.info("venti_control gesperrt – Heizung Lock aktiv")
-        return
+        return None
 
     # 3. BUILD CONTEXT
     data = build_control_data()
@@ -188,6 +215,8 @@ def venti_control():
         type=EventType.DECISION_LOG,
         data={"decision": decision, "ctx": ctx}
     ))
+
+    sync_interval_end_scheduler(decision)
 
     # 7. MODE CHANGE HANDLING
     if mode_changed:
@@ -245,3 +274,5 @@ def venti_control():
                 "message": build_daily_summary(ctx)
             }
         ))
+
+    return decision

@@ -91,7 +91,8 @@ def handle_decision_log(event: Event):
         logger.info("Intervall Belüftung")
         logger.info(f"Hum max: {details.get('humMax')} | Schwelle: {details.get('threshold')}")
         logger.info(f"Intervall Zeit: {details.get('interval_time')}")
-        logger.info(f"Seit letztem Einschalten: {details.get('since_last_on')}")
+        logger.info(f"Dauer aus: {details.get('remaining_off_time')}")
+        logger.info(f"Restzeit: {details.get('remaining')}")
 
     # --- INEFFICIENT_DRYING ---
     elif decision.reason == "INEFFICIENT_DRYING":
@@ -112,6 +113,11 @@ def handle_decision_log(event: Event):
         logger.info("Automatik im Leerlauf")
         logger.info(f"Reason: {details.get('reason')}")
         logger.info(f"Effizienz: {details.get('efficiency')} | Limit: {details.get('adaptive_threshold')}")
+        logger.info(f"Intervall Feuchte: {details.get('humMax')} / {details.get('intervall_on')}")
+        logger.info(f"Dauer aus: {details.get('remainingTimeIntervalOn')}")
+        logger.info(f"Intervall Zeit: {details.get('intervall_time')}")
+        logger.info(f"Lüfter Hardware EIN: {details.get('is_fan_on')}")
+        logger.info(f"Laufzeit aktuell: {details.get('fan_runtime_current')}")
 
     # --- HEIZUNG ACTIVE ---
     elif decision.reason in ("HEIZUNG_ACTIVE", "HEIZUNG_MANUAL_ON"):

@@ -54,9 +54,18 @@ def _trigger_heizung_control_now():
 
 
 def _run_control_now_and_sync_job(job_id, interval_minutes, control_func):
+    decision = None
+
     try:
-        control_func()
+        decision = control_func()
     finally:
+        if (
+            job_id == "venti_control"
+            and decision is not None
+            and (decision.details or {}).get("scheduler_next_delay") is not None
+        ):
+            return
+
         _sync_scheduler_job(job_id, interval_minutes)
 
 

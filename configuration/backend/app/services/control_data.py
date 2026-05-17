@@ -20,6 +20,7 @@ from app.utils.time_utils import (
     get_timestamp_now_epoche,
     get_timestamp_now_offset
 )
+from app.utils.logger import logger
 
 from ..controller.venti.control.state_manager import state_manager
 
@@ -104,6 +105,18 @@ def build_control_data():
         dataLastTime[0]['lastTimeOff'] + timedelta(seconds=DST)
     ).replace(tzinfo=timezone.utc).timestamp()
 
+    is_fan_on = lastOn > lastOff
+    fan_runtime_current = int(now - lastOn) if is_fan_on else 0
+    logger.debug(
+        "Fan status timing: lastOn=%s lastOff=%s is_fan_on=%s since_on=%s since_off=%s diff=%s",
+        dataLastTime[0].get("lastTimeOn"),
+        dataLastTime[0].get("lastTimeOff"),
+        is_fan_on,
+        int(now - lastOn),
+        int(now - lastOff),
+        int(lastOn - lastOff),
+    )
+
     # =========================
     # 🔥 HEIZUNG – Timing
     # =========================
@@ -163,8 +176,8 @@ def build_control_data():
         "intervall_time": params["intervall_time"] * 3600,
         "intervall_duration": params["intervall_duration"] * 60,
 
-        "is_fan_on": lastOn > lastOff,
-        "fan_runtime_current": int(now - lastOff),
+        "is_fan_on": is_fan_on,
+        "fan_runtime_current": fan_runtime_current,
 
         "uschutz_on": params["uschutz_on"],
         "uschutz_hys": params["uschutz_hys"],

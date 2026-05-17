@@ -28,6 +28,7 @@ VentiContext = context_module.VentiContext
 Decision = decision_module.Decision
 
 from controller.venti.heating_decision_engine import HeatingDecisionEngine
+from controller.venti.interval_scheduler import get_interval_scheduler_delay
 
 
 def load_drying_decision_engine():
@@ -889,16 +890,120 @@ def test_venti_drying_delay_engine():
         "humMax": 80.0,
         "intervall_on": 70.0,
         "remainingTimeInterval": 7200,
-        "remainingTimeIntervalOn": 0,
+        "remainingTimeIntervalOn": 7200,
         "remainingTimeIntervalDiff": 0,
         "intervall_time": 3600,
         "intervall_duration": 300,
+        "is_fan_on": False,
+        "fan_runtime_current": 0,
         "venti_drying_delay_remaining": 600,
     })
     result = engine.decide(ctx, metrics)
     assert result.command == "on", "Interval should bypass drying delay"
     assert result.reason == "INTERVAL_ACTIVE", "Interval should keep priority"
+    assert result.details["remaining_off_time"] == 7200, "Should expose time since last off"
+    assert result.details["runtime"] == 0, "Should expose current interval runtime"
+    assert result.details["remaining"] == 300, "Should expose remaining interval duration"
+    assert result.details["interval_duration"] == 300, "Should expose configured interval duration"
     print("✓ Venti drying delay: Interval bypasses delay")
+
+    ctx = VentiContext({
+        "mode": "auto",
+        "tempMax": 25.0,
+        "uschutz_on": 35.0,
+        "stock": 0,
+        "remainingTimeStock": 7200,
+        "sDefOut": 5.0,
+        "sDefMin": 9.0,
+        "sdefMinThreshold": 10.0,
+        "sdef_hys_half": 0.5,
+        "sdef_on": 12.0,
+        "tsSoll": 14.0,
+        "tsMin": 15.0,
+        "ts_hys_half": 0.5,
+        "humMax": 80.0,
+        "intervall_on": 70.0,
+        "remainingTimeInterval": 7200,
+        "remainingTimeIntervalOn": 10,
+        "remainingTimeIntervalDiff": -7190,
+        "intervall_time": 3600,
+        "intervall_duration": 300,
+        "is_fan_on": False,
+        "fan_runtime_current": 0,
+    })
+    result = engine.decide(ctx, metrics)
+    assert result.command == "off", "Recent manual off should reset interval wait"
+    assert result.reason == "AUTO_IDLE", "Interval should not restart immediately after off"
+    assert result.details["humMax"] == 80.0, "Should expose interval humidity for diagnostics"
+    assert result.details["intervall_on"] == 70.0, "Should expose interval humidity threshold"
+    assert result.details["remainingTimeInterval"] == 7200, "Should expose time since last on"
+    assert result.details["remainingTimeIntervalOn"] == 10, "Should expose time since last off"
+    assert result.details["remainingTimeIntervalDiff"] == -7190, "Should expose last on/off ordering"
+    assert result.details["intervall_time"] == 3600, "Should expose configured interval wait"
+    assert result.details["intervall_duration"] == 300, "Should expose configured interval duration"
+    assert result.details["is_fan_on"] is False, "Should expose fan hardware state"
+    assert result.details["fan_runtime_current"] == 0, "Should expose current fan runtime"
+    print("✓ Venti interval: Recent off blocks immediate restart")
+
+    ctx = VentiContext({
+        "mode": "auto",
+        "tempMax": 25.0,
+        "uschutz_on": 35.0,
+        "stock": 0,
+        "remainingTimeStock": 7200,
+        "sDefOut": 5.0,
+        "sDefMin": 9.0,
+        "sdefMinThreshold": 10.0,
+        "sdef_hys_half": 0.5,
+        "sdef_on": 12.0,
+        "tsSoll": 14.0,
+        "tsMin": 15.0,
+        "ts_hys_half": 0.5,
+        "humMax": 80.0,
+        "intervall_on": 70.0,
+        "remainingTimeInterval": 120,
+        "remainingTimeIntervalOn": 7200,
+        "remainingTimeIntervalDiff": 7200,
+        "intervall_time": 3600,
+        "intervall_duration": 300,
+        "is_fan_on": True,
+        "fan_runtime_current": 120,
+    })
+    result = engine.decide(ctx, metrics)
+    assert result.command == "on", "Running interval should stay on until duration expires"
+    assert result.reason == "INTERVAL_ACTIVE", "Interval should remain active while runtime is within duration"
+    assert result.details["runtime"] == 120, "Should expose hardware runtime"
+    assert result.details["remaining"] == 180, "Should expose remaining runtime"
+    print("✓ Venti interval: Hardware on stays active during duration")
+
+    ctx = VentiContext({
+        "mode": "auto",
+        "tempMax": 25.0,
+        "uschutz_on": 35.0,
+        "stock": 0,
+        "remainingTimeStock": 7200,
+        "sDefOut": 5.0,
+        "sDefMin": 9.0,
+        "sdefMinThreshold": 10.0,
+        "sdef_hys_half": 0.5,
+        "sdef_on": 12.0,
+        "tsSoll": 14.0,
+        "tsMin": 15.0,
+        "ts_hys_half": 0.5,
+        "humMax": 80.0,
+        "intervall_on": 70.0,
+        "remainingTimeInterval": 400,
+        "remainingTimeIntervalOn": 7200,
+        "remainingTimeIntervalDiff": 7200,
+        "intervall_time": 3600,
+        "intervall_duration": 300,
+        "is_fan_on": True,
+        "fan_runtime_current": 400,
+    })
+    result = engine.decide(ctx, metrics)
+    assert result.command == "off", "Expired interval should fall back to off"
+    assert result.reason == "AUTO_IDLE", "Interval should end after duration"
+    print("✓ Venti interval: Hardware on ends after duration")
 
     ctx = VentiContext({
         "mode": "auto",
@@ -925,6 +1030,31 @@ def test_venti_drying_delay_engine():
     assert result.command == "on", "Stock building should bypass delay"
     assert result.reason == "STOCK_BUILDING", "Stock building should keep priority"
     print("✓ Venti drying delay: Stock building bypasses delay")
+
+
+def test_interval_scheduler_delay():
+    """Test interval end scheduler delay calculation."""
+    print("Testing interval scheduler delay...")
+
+    decision = Decision("on", "INTERVAL_ACTIVE", {"remaining": 2})
+    result = get_interval_scheduler_delay(decision)
+    assert result == 7, "Remaining 2s should schedule next check after 7s"
+    print("✓ Interval scheduler: Remaining 2s -> 7s")
+
+    decision = Decision("on", "INTERVAL_ACTIVE", {"remaining": 236})
+    result = get_interval_scheduler_delay(decision)
+    assert result == 241, "Remaining 236s should schedule next check after 241s"
+    print("✓ Interval scheduler: Remaining 236s -> 241s")
+
+    decision = Decision("on", "INTERVAL_ACTIVE", {"remaining": 300})
+    result = get_interval_scheduler_delay(decision)
+    assert result is None, "Remaining above base interval should not reschedule"
+    print("✓ Interval scheduler: Remaining 300s -> no special schedule")
+
+    decision = Decision("off", "AUTO_IDLE", {"remaining": 2})
+    result = get_interval_scheduler_delay(decision)
+    assert result is None, "AUTO_IDLE should not reschedule interval end"
+    print("✓ Interval scheduler: AUTO_IDLE -> no special schedule")
 
 def run_all_tests():
     """Run all rule tests"""
@@ -973,6 +1103,9 @@ def run_all_tests():
     print()
 
     test_venti_drying_delay_engine()
+    print()
+
+    test_interval_scheduler_delay()
     print()
 
     print("🎉 All rule tests passed! ✅")
