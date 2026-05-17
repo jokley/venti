@@ -1030,7 +1030,7 @@
             "type": "influxdb",
             "uid": "P5697886F9CA74929"
           },
-          "query": "    from(bucket: \"jokley_bucket\")\r\n      |> range(start: -30d)\r\n      |> filter(fn: (r) => r[\"_measurement\"] == \"heizung_state\")\r\n      |> filter(fn: (r) => r[\"_field\"] == \"state\")\r\n      |> last()\r\n \r\n",
+          "query": "    from(bucket: \"jokley_bucket\")\r\n      |> range(start: -30d)\r\n      |> filter(fn: (r) => r[\"_measurement\"] == \"heizung_state\")\r\n      |> filter(fn: (r) => r[\"_field\"] == \"state\")\r\n      |> last()\r\n \r\n\r\n \r\n",
           "refId": "A"
         }
       ],
@@ -1551,6 +1551,122 @@
           {
             "matcher": {
               "id": "byName",
+              "options": "🌾 Stockaufbau noch"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#69bfb79c",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "ON"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#3fedc2",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "OFF"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#19d2ff",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 6,
+        "x": 0,
+        "y": 14
+      },
+      "id": 47,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "value_and_name",
+        "wideLayout": true
+      },
+      "pluginVersion": "12.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "P5697886F9CA74929"
+          },
+          "hide": false,
+          "query": "venti_mode = from(bucket: \"jokley_bucket\")\r\n  |> range(start: -2d)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"venti\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"mode\")\r\n  |> last()\r\n  |> findRecord(fn: (key) => true, idx: 0)\r\n\r\nstock = from(bucket: \"jokley_bucket\")\r\n  |> range(start: -2d)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"venti\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"stockaufbau\")\r\n  |> last()\r\n  |> findRecord(fn: (key) => true, idx: 0)\r\n\r\nlast_on = from(bucket: \"jokley_bucket\")\r\n  |> range(start: -2d)\r\n  |> filter(fn: (r) => r[\"device_name\"] == \"fan\")\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"device_frmpayload_data_RO1_status\")\r\n  |> filter(fn: (r) => r[\"_value\"] == \"ON\")\r\n  |> last()\r\n  |> findRecord(fn: (key) => true, idx: 0)\r\n\r\nfrom(bucket: \"jokley_bucket\")\r\n  |> range(start: -2d)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"venti_state\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"state\")\r\n  |> last()\r\n  |> map(fn: (r) => {\r\n      elapsed_ns   = int(v: uint(v: now()) - uint(v: r._time))\r\n      off_since_ns = int(v: uint(v: now()) - uint(v: last_on._time))\r\n      fan_is_on    = uint(v: now()) - uint(v: last_on._time) < uint(v: 600000000000)\r\n\r\n      stock_ns        = int(v: stock._value) * 3600000000000\r\n      stock_elapsed   = int(v: uint(v: now()) - uint(v: stock._time))\r\n      stock_remaining = stock_ns - stock_elapsed\r\n\r\n      return {\r\n        r with\r\n        _field:\r\n          if r._value == \"STOCK_BUILDING\"          then \"🌾 Stockaufbau noch\"\r\n          else if r._value == \"DRYING_ACTIVE\"      then \"💨 Trocknung seit\"\r\n          else if r._value == \"INTERVAL_ACTIVE\"    then \"⏱ Intervall seit\"\r\n          else if r._value == \"OVERHEAT\"           then \"🌡 Überhitzung seit\"\r\n          else if r._value == \"INEFFICIENT_DRYING\" then \"⚠️ Ineffizient seit\"\r\n          else if r._value == \"MANUAL_MODE\" and venti_mode._value == \"on\"\r\n            then \"✋ Manuell EIN seit\"\r\n          else if r._value == \"MANUAL_MODE\"        then \"🛑 Manuell AUS seit\"\r\n          else \"😴 Lüfter AUS seit\",\r\n\r\n        _value:\r\n          if r._value == \"STOCK_BUILDING\"\r\n            then (if stock_remaining > 0 then stock_remaining else 0)\r\n          else if fan_is_on\r\n            then elapsed_ns\r\n          else\r\n            off_since_ns\r\n      }\r\n  })\r\n  |> yield(name: \"venti_status\")",
+          "refId": "E"
+        }
+      ],
+      "title": "Lüfter",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "P5697886F9CA74929"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "#09b8ff",
+            "mode": "fixed"
+          },
+          "decimals": 1,
+          "displayName": "${__field.name}",
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "ns"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
               "options": "Stockaufbau"
             },
             "properties": [
@@ -1597,11 +1713,11 @@
       },
       "gridPos": {
         "h": 3,
-        "w": 12,
-        "x": 0,
+        "w": 6,
+        "x": 6,
         "y": 14
       },
-      "id": 15,
+      "id": 48,
       "options": {
         "colorMode": "background",
         "graphMode": "area",
@@ -1626,35 +1742,9 @@
             "type": "influxdb",
             "uid": "P5697886F9CA74929"
           },
-          "query": "from(bucket: \"jokley_bucket\")\r\n  |> range(start: -2d)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"venti\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"stockaufbau\")\r\n  |> last()\r\n  |> map(fn: (r) => ({ r with Stockaufbau: if (uint(v: r._value) * uint(v: 3600000000000)) -(uint(v: now()) - uint(v: r._time))  >=0  and (uint(v: r._value) * uint(v: 3600000000000)) -(uint(v: now()) - uint(v: r._time))  <= 1844674388946713400 then (uint(v: r._value) * uint(v: 3600000000000)) -(uint(v: now()) - uint(v: r._time))  else uint(v: 0)}))\r\n  |> yield(name: \"last\")",
-          "refId": "A"
-        },
-        {
-          "datasource": {
-            "type": "influxdb",
-            "uid": "P5697886F9CA74929"
-          },
           "hide": false,
-          "query": "from(bucket: \"jokley_bucket\")\r\n  |> range(start: -2d)\r\n  |> filter(fn: (r) => r[\"device_name\"] == \"fan\")\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"device_frmpayload_data_RO1_status\")\r\n  |> filter(fn: (r) => r[\"_value\"] == \"OFF\")\r\n  |> last()\r\n  |> map(fn: (r) => ({ r with ON: if uint(v: now()) - uint(v: r._time) >= uint(v: 600000000000) then uint(v: now()) - uint(v: r._time) else uint(v: 0)}))\r\n  |> yield(name: \"last\")",
-          "refId": "B"
-        },
-        {
-          "datasource": {
-            "type": "influxdb",
-            "uid": "P5697886F9CA74929"
-          },
-          "hide": false,
-          "query": "from(bucket: \"jokley_bucket\")\r\n  |> range(start: -2d)\r\n  |> filter(fn: (r) => r[\"device_name\"] == \"fan\")\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"device_frmpayload_data_RO1_status\")\r\n  |> filter(fn: (r) => r[\"_value\"] == \"ON\")\r\n  |> last()\r\n  |> map(fn: (r) => ({ r with OFF: if uint(v: now()) - uint(v: r._time) >= uint(v: 600000000000) then uint(v: now()) - uint(v: r._time) else uint(v: 0)}))\r\n  |> yield(name: \"last\")",
-          "refId": "C"
-        },
-        {
-          "datasource": {
-            "type": "influxdb",
-            "uid": "P5697886F9CA74929"
-          },
-          "hide": false,
-          "query": "mode = from(bucket: \"jokley_bucket\")\r\n  |> range(start: -2d)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"heizung\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"mode\")\r\n  |> last()\r\n  |> findRecord(fn: (key) => true, idx: 0)\r\n\r\nfrom(bucket: \"jokley_bucket\")\r\n  |> range(start: -2d)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"heizung\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"heizung_dauer\")\r\n  |> last()\r\n  |> map(fn: (r) => {\r\n      duration_ns = int(v: r._value) * 360000000000\r\n      elapsed_ns = int(v: uint(v: now()) - uint(v: r._time))\r\n      remaining_ns = duration_ns - elapsed_ns\r\n\r\n      return {\r\n        r with\r\n        _field: \"Heizung Restzeit\",\r\n        _value: if mode._value == \"auto\" and remaining_ns > 0 then remaining_ns else 0\r\n      }\r\n  })\r\n  |> yield(name: \"heizung_restzeit\")\r\n",
-          "refId": "D"
+          "query": "// =====================\r\n// 🔥 HEIZUNG STATUS\r\n// =====================\r\nmode = from(bucket: \"jokley_bucket\")\r\n  |> range(start: -2d)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"heizung\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"mode\")\r\n  |> last()\r\n  |> findRecord(fn: (key) => true, idx: 0)\r\n\r\nstate = from(bucket: \"jokley_bucket\")\r\n  |> range(start: -2d)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"heizung_state\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"state\")\r\n  |> last()\r\n  |> findRecord(fn: (key) => true, idx: 0)\r\n\r\nnachlauf = from(bucket: \"jokley_bucket\")\r\n  |> range(start: -2d)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"heizung_param\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"heizung_nachlauf\")\r\n  |> last()\r\n  |> findRecord(fn: (key) => true, idx: 0)\r\n\r\nfrom(bucket: \"jokley_bucket\")\r\n  |> range(start: -2d)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"heizung\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"heizung_dauer\")\r\n  |> last()\r\n  |> map(fn: (r) => {\r\n      duration_ns    = int(v: r._value) * 360000000000\r\n      elapsed_ns     = int(v: uint(v: now()) - uint(v: r._time))\r\n      auto_remaining = duration_ns - elapsed_ns\r\n\r\n      nachlauf_ns        = int(v: nachlauf._value) * 60 * 1000000000\r\n      state_elapsed_ns   = int(v: uint(v: now()) - uint(v: state._time))\r\n      nachlauf_remaining = nachlauf_ns - state_elapsed_ns\r\n\r\n      return {\r\n        r with\r\n        _field: if state._value == \"HEIZUNG_NACHLAUF\"\r\n                  then \"🌡 Nachlauf noch\"\r\n                else if state._value == \"HEIZUNG_ACTIVE\" and mode._value == \"auto\"\r\n                  then \"🔥 Heizung Restzeit\"\r\n                else if state._value == \"HEIZUNG_ACTIVE\"\r\n                  then \"🔥 Heizung läuft seit\"\r\n                else\r\n                  \"💤 Heizung aus seit\",\r\n\r\n        _value: if state._value == \"HEIZUNG_NACHLAUF\"\r\n                  then (if nachlauf_remaining > 0 then nachlauf_remaining else 0)\r\n                else if state._value == \"HEIZUNG_ACTIVE\" and mode._value == \"auto\"\r\n                  then (if auto_remaining > 0 then auto_remaining else 0)\r\n                else\r\n                  state_elapsed_ns\r\n      }\r\n  })\r\n  |> yield(name: \"heizung_status\")",
+          "refId": "E"
         }
       ],
       "title": "Lüfter",
@@ -1801,23 +1891,34 @@
             "labelWidth": 10,
             "options": [
               {
+                "id": "reboot",
                 "label": "Reboot",
                 "value": "reboot"
               },
               {
+                "id": "shutdown",
                 "label": "Shutdown",
                 "value": "shutdown"
               },
               {
+                "id": "refresh",
                 "label": "Refresh",
                 "value": "refresh"
+              },
+              {
+                "id": "none",
+                "label": "-",
+                "value": ""
               }
             ],
+            "optionsSource": "Custom",
             "section": "",
+            "showIf": "",
             "title": "System",
             "tooltip": "",
             "type": "radio",
-            "value": "shutdown"
+            "uid": "9958438a-8156-4ea6-a610-c53974bfa088",
+            "value": ""
           }
         ],
         "initial": {
@@ -2533,7 +2634,7 @@
             "h": 11,
             "w": 11,
             "x": 0,
-            "y": 35
+            "y": 53
           },
           "id": 29,
           "options": {
@@ -2576,7 +2677,7 @@
             "h": 10,
             "w": 24,
             "x": 0,
-            "y": 36
+            "y": 41
           },
           "id": 36,
           "options": {
@@ -2802,17 +2903,17 @@
             ]
           },
           "gridPos": {
-            "h": 9,
+            "h": 8,
             "w": 24,
             "x": 0,
-            "y": 45
+            "y": 42
           },
           "id": 30,
           "options": {
             "dedupStrategy": "none",
             "enableInfiniteScrolling": false,
             "enableLogDetails": false,
-            "prettifyLogMessage": false,
+            "prettifyLogMessage": true,
             "showCommonLabels": false,
             "showLabels": false,
             "showTime": false,
@@ -2826,7 +2927,7 @@
                 "type": "influxdb",
                 "uid": "P5697886F9CA74929"
               },
-              "query": "    from(bucket: \"jokley_bucket\")\r\n      |> range(start: -30d)\r\n      |> filter(fn: (r) => r[\"_measurement\"] == \"venti_state\")",
+              "query": "    from(bucket: \"jokley_bucket\")\r\n      |> range(start: -1d)\r\n      |> filter(fn: (r) => r[\"_measurement\"] == \"venti_state\")",
               "refId": "A"
             }
           ],
@@ -2846,7 +2947,7 @@
             "h": 19,
             "w": 24,
             "x": 0,
-            "y": 54
+            "y": 50
           },
           "id": 45,
           "options": {
@@ -3194,12 +3295,12 @@
     "list": []
   },
   "time": {
-    "from": "now-1h",
+    "from": "now-12h",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "",
   "title": "jokleyVentiHeat Copy",
   "uid": "9802a850-9b40-4884-af26-04f46bbdcb0f",
-  "version": 17
+  "version": 30
 }
