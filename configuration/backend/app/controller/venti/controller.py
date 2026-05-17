@@ -30,8 +30,12 @@ decision_engine = DryingDecisionEngine()
 
 
 def evaluate(ctx):
+    # Die Effizienz ist nur ein Eingangssignal. Die eigentliche
+    # Prioritaetsentscheidung bleibt in DryingDecisionEngine gekapselt.
     metrics = efficiency_engine.compute(ctx)
 
+    # Self-Learning arbeitet mit einer adaptiven Schwelle aus dem
+    # Runtime-State. Classic benutzt immer den aktuell konfigurierten Basiswert.
     if ctx.self_learning_enabled:
         ctx.min_efficiency_threshold = state_manager.get_adaptive_threshold(
             ctx.base_min_efficiency_threshold
@@ -41,12 +45,18 @@ def evaluate(ctx):
 
     decision = decision_engine.decide(ctx, metrics)
 
+    # Ein ineffizienter Lauf wird als Referenz gespeichert. Der naechste
+    # Start darf erst erfolgen, wenn sich SDEF/TS gegenueber dieser Lage bessert.
     if ctx.self_learning_enabled and decision.reason == "INEFFICIENT_DRYING":
         state_manager.remember_bad_drying(ctx, metrics, decision.details)
 
+    # Sobald wieder aktiv getrocknet wird, ist die alte schlechte Referenz
+    # abgearbeitet und darf keine weiteren Starts blockieren.
     if ctx.self_learning_enabled and decision.reason == "DRYING_ACTIVE":
         state_manager.clear_bad_drying()
 
+    # Die Schwelle wird nach jeder Bewertung leicht nachgefuehrt. Ohne
+    # vollstaendige Historie bleibt sie stabil.
     if ctx.self_learning_enabled:
         updated_threshold = state_manager.update_adaptive_threshold(
             metrics["efficiency"],
@@ -56,6 +66,9 @@ def evaluate(ctx):
     else:
         updated_threshold = ctx.min_efficiency_threshold
 
+    # Sicherheitsausstieg fuer lange, wirkungslose Automatikphasen:
+    # wenn seit laengerem nichts Sinnvolles passiert und TS kaum Abstand hat,
+    # wird Auto deaktiviert statt weiter leere Zyklen zu fahren.
     auto_disable_triggered = (
         ctx.mode == "auto"
         and decision.command == "off"
@@ -122,6 +135,8 @@ previous_state = None
 def restore_controller_runtime_state():
     global previous_mode, previous_state
 
+    # Restore laeuft nur einmal nach Prozessstart. Danach ist der
+    # StateManager die In-Memory-Quelle fuer Persistenz- und Transition-Vergleiche.
     if (
         previous_mode is not None
         or previous_state is not None
@@ -169,6 +184,8 @@ def venti_control():
         return None
 
     # 3. BUILD CONTEXT
+    # build_control_data() sammelt Influx-/Parameter-/Hardwarewerte; VentiContext
+    # macht daraus die einheitliche Entscheidungsgrundlage fuer diesen Zyklus.
     data = build_control_data()
     ctx = VentiContext(data)
     ctx.venti_drying_delay_remaining = (
@@ -179,6 +196,8 @@ def venti_control():
     decision = evaluate(ctx)
     effective_mode = decision.details.get("mode_override", ctx.mode)
 
+    # venti_drying_delay ist eine Restart-Sperre nach Ende einer Trocknung.
+    # Es ist kein Minimum-ON: der aktuelle Lauf wurde hier bereits beendet.
     if (
         ctx.mode == "auto"
         and previous_state == "DRYING_ACTIVE"
@@ -200,7 +219,9 @@ def venti_control():
     # 5. EXECUTE CONTROL
     venti_cmd(decision.command)
 
-    # Persist only on relevant state changes to avoid noisy writes.
+    # Persistenz ist die State-Timeline fuer Frontend/Grafana. Wiederholte
+    # gleiche Entscheidungen werden nicht erneut geschrieben, ausser die
+    # adaptive Schwelle hat sich veraendert.
     if mode_changed or state_changed or threshold_changed:
         state_manager.persist(
             state=decision.reason,
@@ -216,6 +237,8 @@ def venti_control():
         data={"decision": decision, "ctx": ctx}
     ))
 
+    # Bei Intervall-Lueftung wird der naechste Lauf ans berechnete Ende gelegt,
+    # damit 4-Minuten-Intervalle nicht bis zum normalen Basistakt ueberziehen.
     sync_interval_end_scheduler(decision)
 
     # 7. MODE CHANGE HANDLING

@@ -32,11 +32,14 @@ def heizung_control():
         )
         ctx.heizung_manual_command = state_manager.heizung_manual_command
 
-        # First pass: detect active heating and update off timestamp on falling edge.
+        # Erste Bewertung ohne Nachlauf-Decision: wir brauchen nur die echte
+        # Aktiv-Flanke, damit SDEF-Delay und Nachlaufzeit korrekt starten.
         heizung_was_active = state_manager.heizung_was_active
         heizung_active = heating_engine._compute_active(ctx)
         ctx.heizung_active = heizung_active
 
+        # Wenn die SDEF-Automatik wegen erreichtem Limit ausgeht, startet eine
+        # Restart-Sperre. So schwingt die Heizung nicht direkt um das Limit.
         if (
             heizung_was_active
             and not heizung_active
@@ -72,6 +75,8 @@ def heizung_control():
         # =========================
         # 🔒 LOCK SETZEN / FREIGEBEN
         # =========================
+        # Der Lock ist die harte Kopplung: solange Heizung oder Nachlauf aktiv
+        # sind, darf venti_control den Luefter nicht eigenstaendig schalten.
         if heizung_active or nachlauf_active:
             state_manager.heizung_lock = True
         else:
@@ -83,6 +88,8 @@ def heizung_control():
         # 🔌 RELAYS SCHALTEN
         # =========================
 
+        # Variante A: Heizung erzwingt RO1=Luefter EIN. Nachlauf laesst die
+        # Heizung aus, haelt aber den Luefter weiter an.
         if heizung_active:
             heizung_venti_cmd("on", "on")
             logger.info(
@@ -105,6 +112,8 @@ def heizung_control():
         effective_mode = ctx.heizung_manual_command or ctx.heizung_mode
         mode_changed = state_manager.last_heizung_mode != effective_mode
 
+        # heizung_state ist die dauerhafte Timeline. Identische Zyklen bleiben
+        # im File/Influx ruhig, damit nur relevante Wechsel sichtbar werden.
         if state_changed or command_changed or mode_changed:
             state_manager.persist_heizung(
                 state=decision.reason,

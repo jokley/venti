@@ -21,6 +21,8 @@ class DryingDecisionEngine:
         # 5. Drying logic (classic or self-learning)
         # 6. Interval ventilation
         # 7. Idle fallback
+        # Fruehere Treffer gewinnen. Dadurch kann z.B. Ueberhitzung oder
+        # Heizung den normalen Trocknungs- und Intervallzweig uebersteuern.
 
         if ctx.mode == "on":
             step("manual_on", True, "VENTI_MANUAL_ON")
@@ -80,6 +82,8 @@ class DryingDecisionEngine:
                 )
 
         if ctx.overheat:
+            # Ueberhitzung hat Vorrang vor Komfort-/Effizienzregeln:
+            # Luefter an, bis die Hysterese in control_data wieder freigibt.
             step("overheat", True, "OVERHEAT")
             return Decision(
                 "on",
@@ -93,6 +97,8 @@ class DryingDecisionEngine:
             )
 
         if ctx.stock > 0 and ctx.remainingTimeStock <= ctx.stock:
+            # Stockaufbau ist eine feste Nachlauf-/Aufbauphase und wird vor
+            # Trocknungs- und Intervalllogik behandelt.
             step("stock_building", True, "STOCK_BUILDING")
             return Decision(
                 "on",
@@ -118,6 +124,8 @@ class DryingDecisionEngine:
         # otherwise remain idle.
         if ctx.drying_conditions_met:
             if self._drying_delay_active(ctx):
+                # Nach einem beendeten Trocknungslauf blockiert der Delay nur
+                # erneutes DRYING_ACTIVE. Intervall darf trotzdem laufen.
                 interval_decision = self._interval_decision(ctx, trace, step)
                 if interval_decision:
                     return interval_decision
@@ -156,6 +164,8 @@ class DryingDecisionEngine:
         # after a previously bad drying run.
         if ctx.drying_conditions_met:
             if self._drying_delay_active(ctx):
+                # Self-Learning nutzt denselben Restart-Delay wie Classic:
+                # erst Intervall pruefen, sonst im Idle mit Delaygrund bleiben.
                 interval_decision = self._interval_decision(ctx, trace, step)
                 if interval_decision:
                     return interval_decision
@@ -163,6 +173,8 @@ class DryingDecisionEngine:
                 step("drying_delay", True, "AUTO_IDLE")
                 return self._auto_idle(ctx, metrics, trace, "drying_delay")
 
+            # Nach einem schlechten Lauf muss die neue Ausgangslage messbar
+            # besser sein, damit der Controller nicht sofort wieder startet.
             improved, retry_details = state_manager.retry_conditions_improved(ctx)
             if not improved:
                 step("wait_better_retry_conditions", True, "AUTO_IDLE")
@@ -257,12 +269,17 @@ class DryingDecisionEngine:
         return (ctx.venti_drying_delay_remaining or 0) > 0
 
     def _interval_decision(self, ctx, trace, step):
+        # Intervall-Start zaehlt die echte AUS-Zeit seit letztem Hardware-OFF.
+        # Dadurch startet Auto nach manuellem AUS nicht sofort wieder.
         interval_start_due = (
             not ctx.is_fan_on
             and ctx.remainingTimeIntervalOn is not None
             and ctx.intervall_time is not None
             and ctx.remainingTimeIntervalOn >= ctx.intervall_time
         )
+        # Die laufende Intervallphase kommt aus dem Hardwarestatus: solange
+        # der Luefter wirklich EIN ist und die Dauer nicht abgelaufen ist,
+        # bleibt INTERVAL_ACTIVE aktiv.
         interval_running = (
             ctx.is_fan_on
             and ctx.fan_runtime_current is not None

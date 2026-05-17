@@ -8,6 +8,8 @@ class HeatingDecisionEngine:
     """
 
     def decide(self, ctx):
+        # Manuelle Befehle aus UI/Grafana haben Vorrang vor jeder Automatik.
+        # AUS darf trotzdem den Nachlauf ausloesen, wenn die Heizung aktiv war.
         if ctx.heizung_manual_command == "on":
             return Decision("on", "HEIZUNG_MANUAL_ON", self._active_details(ctx))
 
@@ -28,6 +30,7 @@ class HeatingDecisionEngine:
         if ctx.heizung_mode == "on":
             return Decision("on", "HEIZUNG_MANUAL_ON", self._active_details(ctx))
 
+        # Auto-Aktiv ist entweder eine feste Dauerphase oder SDEF-Bedarf.
         heizung_active = (
             ctx.heizung_mode == "auto"
             and ctx.heizung_enabled
@@ -37,6 +40,8 @@ class HeatingDecisionEngine:
         if heizung_active:
             return Decision("on", "HEIZUNG_ACTIVE", self._active_details(ctx))
 
+        # Nachlauf ist eine Luefter-Funktion nach Heizungsende:
+        # Heizung aus, Luefter bleibt ueber controller_Heizung gesperrt/ein.
         if self._nachlauf_active(ctx):
             return self._nachlauf_decision(ctx, ctx.heizung_mode)
 
@@ -62,6 +67,7 @@ class HeatingDecisionEngine:
                 },
             )
 
+        # SDEF-Delay blockiert erneutes Einschalten nach erreichtem Limit.
         if self._sdef_delay_active(ctx):
             return Decision(
                 "off",
@@ -77,6 +83,8 @@ class HeatingDecisionEngine:
                 },
             )
 
+        # Expliziter Limit-Zustand: fachlich hilfreich fuer Logs/Timeline,
+        # auch wenn das Kommando wie HEIZUNG_IDLE "off" ist.
         if self._sdef_limit_reached(ctx):
             return Decision(
                 "off",
@@ -102,6 +110,8 @@ class HeatingDecisionEngine:
         )
 
     def _compute_active(self, ctx):
+        # Diese Hilfsfunktion berechnet nur "soll Heizung aktiv sein?".
+        # Nachlauf, Disabled-Reason und Detailtexte kommen erst in decide().
         if ctx.heizung_manual_command == "on":
             return True
 
@@ -133,6 +143,10 @@ class HeatingDecisionEngine:
 
         hys = max(0, ctx.heizung_sdef_hys or 0)
 
+        # Hysterese liegt unterhalb des Limits:
+        # - >= limit: aus
+        # - <= limit - hys: ein
+        # - dazwischen: bisherigen SDEF-Zustand halten
         if ctx.sDefOut >= limit:
             return False
 

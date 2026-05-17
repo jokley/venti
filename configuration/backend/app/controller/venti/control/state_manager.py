@@ -9,8 +9,8 @@ AUTO_DELAY_SECONDS = 20 * 60
 class ControlStateManager:
 
     def __init__(self):
-        # Internal runtime memory. This mirrors the last persisted controller
-        # state so the controller can continue smoothly across loop cycles.
+        # Runtime-Spiegel des zuletzt persistierten venti_state. Der Controller
+        # nutzt ihn fuer Wechselerkennung, ohne jedes Mal Influx zu lesen.
         self.last_state = None
         self.last_command = None
         self.last_mode = None
@@ -18,17 +18,16 @@ class ControlStateManager:
         self.last_ts = None
 
         # Self-learning memory:
-        # - last inefficient stop timestamp
-        # - snapshot of the last bad drying situation
-        # - current adaptive efficiency threshold
+        # - Zeitpunkt/Signatur des letzten schlechten Trocknungslaufs
+        # - adaptive Schwelle, die ueber Zyklen hinweg weitergelernt wird
         self.last_inefficient_stop = None
         self.last_bad_drying_snapshot = None
         self.adaptive_min_efficiency_threshold = None
 
         # Heizung memory:
-        # - timestamp when heater went off → drives nachlauf calculation
-        # - last known active state → edge detection EIN→AUS
-        # - lock flag → blocks venti_control while heizung or nachlauf active
+        # - off_ts treibt Nachlauf
+        # - heizung_was_active erkennt EIN->AUS-Flanken
+        # - heizung_lock sperrt venti_control waehrend Heizung/Nachlauf
         self.heizung_off_ts = None
         self.heizung_was_active = False
         self.heizung_lock = False
@@ -47,6 +46,8 @@ class ControlStateManager:
     # 🔁 RESTORE
     # =========================
     def restore(self):
+        # Beim Prozessstart wird die letzte Influx-Timeline in den
+        # In-Memory-State zurueckgespiegelt. Danach laufen Vergleiche lokal.
         data = get_last_controller_state()
         heizung_data = get_last_heizung_controller_state()
 
@@ -77,6 +78,8 @@ class ControlStateManager:
             or (self.last_details or {}).get("min_efficiency_threshold")
         )
 
+        # Self-Learning muss auch nach einem Neustart wissen, ob der letzte
+        # Lauf schlecht war oder gerade auf bessere Bedingungen gewartet wird.
         if self.last_state == "INEFFICIENT_DRYING" and self.last_ts is not None:
             self.last_inefficient_stop = self.last_ts
             self.last_bad_drying_snapshot = self._extract_bad_drying_snapshot(
@@ -142,6 +145,8 @@ class ControlStateManager:
     # 💾 PERSIST
     # =========================
     def persist(self, state, command, mode, details, ctx):
+        # Influx bleibt die dauerhafte State-Timeline; diese Attribute sind der
+        # lokale Spiegel fuer die naechste Regelrunde.
         write_controller_state(
             state=state,
             command=command,
@@ -297,6 +302,8 @@ class ControlStateManager:
     # 🧠 SELF-LEARNING
     # =========================
     def remember_bad_drying(self, ctx, metrics, details=None):
+        # Snapshot der schlechten Lage. retry_conditions_improved() vergleicht
+        # spaeter dagegen, damit kein identischer Fehlstart wiederholt wird.
         details = details or {}
         self.last_bad_drying_snapshot = {
             "timestamp": ctx.now,
@@ -331,6 +338,9 @@ class ControlStateManager:
         if not snapshot:
             return True, None
 
+        # Verbesserungen duerfen entweder am Aussen-SDEF, am SDEF-Abstand oder
+        # am TS-Abstand sichtbar werden. Gleichzeitig darf keiner der Abstaende
+        # schlechter sein als beim letzten schlechten Lauf.
         current_sdef_diff = (
             ctx.sDefOut - ctx.sDefMin
             if ctx.sDefOut is not None and ctx.sDefMin is not None
@@ -425,6 +435,8 @@ class ControlStateManager:
         if not has_history:
             return threshold
 
+        # Gute Trocknung senkt die Mindestanforderung leicht, schlechte hebt sie
+        # leicht an. Das Clamping verhindert ein Weglaufen des Reglers.
         if efficiency > ctx.good_drying_level:
             threshold *= ctx.efficiency_learning_down
         else:
