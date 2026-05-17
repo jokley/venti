@@ -10,6 +10,23 @@ from app.notifications.notifier import send_notification
 from app.notifications.alerts.alert_message_builder import build_system_alert_message
 from app.utils.logger import logger
 
+INFO_DECISION_REASONS = {
+    "OVERHEAT",
+    "STOCK_BUILDING",
+    "DRYING_ACTIVE",
+    "INTERVAL_ACTIVE",
+    "INEFFICIENT_DRYING",
+    "MANUAL_MODE",
+    "VENTI_MANUAL_ON",
+    "VENTI_MANUAL_OFF",
+    "HEIZUNG_ACTIVE",
+    "HEIZUNG_MANUAL_ON",
+    "HEIZUNG_NACHLAUF",
+}
+
+_last_decision_log_signature = None
+
+
 def handle_transition_event(event: Event):
     """Handle state transitions"""
     try:
@@ -57,83 +74,97 @@ def handle_daily_summary(event: Event):
 
 def handle_decision_log(event: Event):
     """Handle decision logging for debugging (not user notifications)"""
+    global _last_decision_log_signature
+
     decision = event.data["decision"]
     ctx = event.data["ctx"]
     details = decision.details or {}
+    signature = (ctx.mode, decision.command, decision.reason)
+    state_changed = signature != _last_decision_log_signature
+    log_at_info = (
+        state_changed
+        and (
+            decision.reason in INFO_DECISION_REASONS
+            or decision.reason == "AUTO_IDLE"
+        )
+    )
+    log = logger.info if log_at_info else logger.debug
 
-    logger.info("****************************************")
-    logger.info(f"Mode: {ctx.mode}")
-    logger.info(f"Command: {decision.command}")
-    logger.info(f"Reason: {decision.reason}")
+    _last_decision_log_signature = signature
+
+    log("****************************************")
+    log(f"Mode: {ctx.mode}")
+    log(f"Command: {decision.command}")
+    log(f"Reason: {decision.reason}")
 
     if decision.reason == "OVERHEAT":
-        logger.info("Überhitzungsschutz aktiv!")
-        logger.info(f"Temperatur: {details.get('tempMax')} | Schwelle: {details.get('threshold')}")
-        logger.info(f"Differenz: {details.get('diff')}")
+        log("Überhitzungsschutz aktiv!")
+        log(f"Temperatur: {details.get('tempMax')} | Schwelle: {details.get('threshold')}")
+        log(f"Differenz: {details.get('diff')}")
 
     elif decision.reason == "STOCK_BUILDING":
-        logger.info("Stockaufbau")
-        logger.info(f"Restzeit aktuell: {details.get('remaining')}")
-        logger.info(f"Stock-Ziel: {details.get('stock')}")
-        logger.info(f"Restzeit bis Ende: {details.get('restzeit')}")
+        log("Stockaufbau")
+        log(f"Restzeit aktuell: {details.get('remaining')}")
+        log(f"Stock-Ziel: {details.get('stock')}")
+        log(f"Restzeit bis Ende: {details.get('restzeit')}")
 
     # --- DRYING_ACTIVE (Lüfter ein) ---
     elif decision.reason == "DRYING_ACTIVE":
-        logger.info("Lüfter ein")
-        logger.info(f"SDef min: {details.get('sDefMin')} | SDef out: {details.get('sDefOut')}")
-        logger.info(f"SDef diff: {details.get('sDefDiff')}")
-        logger.info(f"TS ist: {details.get('tsMin')} | TS soll: {details.get('tsSoll')}")
-        logger.info(f"TS diff: {details.get('tsDiff')}")
-        logger.info(f"Effizienz: {details.get('efficiency')} | Limit: {details.get('adaptive_threshold')}")
+        log("Lüfter ein")
+        log(f"SDef min: {details.get('sDefMin')} | SDef out: {details.get('sDefOut')}")
+        log(f"SDef diff: {details.get('sDefDiff')}")
+        log(f"TS ist: {details.get('tsMin')} | TS soll: {details.get('tsSoll')}")
+        log(f"TS diff: {details.get('tsDiff')}")
+        log(f"Effizienz: {details.get('efficiency')} | Limit: {details.get('adaptive_threshold')}")
 
     # --- INTERVAL_ACTIVE ---
     elif decision.reason == "INTERVAL_ACTIVE":
-        logger.info("Intervall Belüftung")
-        logger.info(f"Hum max: {details.get('humMax')} | Schwelle: {details.get('threshold')}")
-        logger.info(f"Intervall Zeit: {details.get('interval_time')}")
-        logger.info(f"Dauer aus: {details.get('remaining_off_time')}")
-        logger.info(f"Restzeit: {details.get('remaining')}")
+        log("Intervall Belüftung")
+        log(f"Hum max: {details.get('humMax')} | Schwelle: {details.get('threshold')}")
+        log(f"Intervall Zeit: {details.get('interval_time')}")
+        log(f"Dauer aus: {details.get('remaining_off_time')}")
+        log(f"Restzeit: {details.get('remaining')}")
 
     # --- INEFFICIENT_DRYING ---
     elif decision.reason == "INEFFICIENT_DRYING":
-        logger.info("Ineffiziente Trocknung erkannt")
-        logger.info(f"SDEF Change 2h: {details.get('sdef_change_2h')}")
-        logger.info(f"TS Change 2h: {details.get('ts_change_2h')}")
-        logger.info(f"Effizienz: {details.get('efficiency')} | Limit: {details.get('adaptive_threshold')}")
+        log("Ineffiziente Trocknung erkannt")
+        log(f"SDEF Change 2h: {details.get('sdef_change_2h')}")
+        log(f"TS Change 2h: {details.get('ts_change_2h')}")
+        log(f"Effizienz: {details.get('efficiency')} | Limit: {details.get('adaptive_threshold')}")
 
     # --- MANUAL STATES ---
     elif decision.reason in ("MANUAL_MODE", "VENTI_MANUAL_ON", "VENTI_MANUAL_OFF"):
-        logger.info("Automatik deaktiviert")
-        logger.info(f"State: {decision.reason}")
-        logger.info(f"Laufzeit Intervall: {details.get('runtime')}")
-        logger.info(f"TS diff: {details.get('tsDiff')}")
+        log("Automatik deaktiviert")
+        log(f"State: {decision.reason}")
+        log(f"Laufzeit Intervall: {details.get('runtime')}")
+        log(f"TS diff: {details.get('tsDiff')}")
 
     # --- AUTO_IDLE ---
     elif decision.reason == "AUTO_IDLE":
-        logger.info("Automatik im Leerlauf")
-        logger.info(f"Reason: {details.get('reason')}")
-        logger.info(f"Effizienz: {details.get('efficiency')} | Limit: {details.get('adaptive_threshold')}")
-        logger.info(f"Intervall Feuchte: {details.get('humMax')} / {details.get('intervall_on')}")
-        logger.info(f"Dauer aus: {details.get('remainingTimeIntervalOn')}")
-        logger.info(f"Intervall Zeit: {details.get('intervall_time')}")
-        logger.info(f"Lüfter Hardware EIN: {details.get('is_fan_on')}")
-        logger.info(f"Laufzeit aktuell: {details.get('fan_runtime_current')}")
+        log("Automatik im Leerlauf")
+        log(f"Reason: {details.get('reason')}")
+        logger.debug(f"Effizienz: {details.get('efficiency')} | Limit: {details.get('adaptive_threshold')}")
+        logger.debug(f"Intervall Feuchte: {details.get('humMax')} / {details.get('intervall_on')}")
+        logger.debug(f"Dauer aus: {details.get('remainingTimeIntervalOn')}")
+        logger.debug(f"Intervall Zeit: {details.get('intervall_time')}")
+        logger.debug(f"Lüfter Hardware EIN: {details.get('is_fan_on')}")
+        logger.debug(f"Laufzeit aktuell: {details.get('fan_runtime_current')}")
 
     # --- HEIZUNG ACTIVE ---
     elif decision.reason in ("HEIZUNG_ACTIVE", "HEIZUNG_MANUAL_ON"):
-        logger.info("Heizung aktiv")
-        logger.info(f"Modus: {details.get('heizung_mode')}")
-        logger.info(f"Restzeit: {details.get('remaining')}")
+        log("Heizung aktiv")
+        log(f"Modus: {details.get('heizung_mode')}")
+        log(f"Restzeit: {details.get('remaining')}")
 
     # --- HEIZUNG NACHLAUF ---
     elif decision.reason == "HEIZUNG_NACHLAUF":
-        logger.info("Heizung Nachlauf")
-        logger.info(f"Noch: {details.get('nachlauf_remaining')}")
+        log("Heizung Nachlauf")
+        log(f"Noch: {details.get('nachlauf_remaining')}")
 
     elif decision.reason in ("HEIZUNG_IDLE", "HEIZUNG_DISABLED", "HEIZUNG_MANUAL_OFF"):
-        logger.info("Heizung inaktiv")
-        logger.info(f"Modus: {details.get('heizung_mode')}")
-        logger.info(f"Grund: {details.get('reason')}")
+        log("Heizung inaktiv")
+        log(f"Modus: {details.get('heizung_mode')}")
+        log(f"Grund: {details.get('reason')}")
 
 def handle_mode_change(event: Event):
     """Handle mode changes (Manual -> Auto, etc)"""
