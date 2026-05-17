@@ -1,9 +1,6 @@
 from .event_bus import event_bus, EventType, Event
 from app.notifications.event_message_builder import (
     build_event_message,
-    fmt_duration,
-    fmt_percent,
-    fmt_float,
     pretty_reason
 )
 from app.notifications.notifier import send_notification
@@ -177,30 +174,7 @@ def handle_mode_change(event: Event):
         d = decision.details or {}
         
         if new_mode == "auto":
-            state = decision.reason
-            
-            if state == "STOCK_BUILDING":
-                msg = (
-                    f"🤖 Automatik ein\n"
-                    f"🌾 Stockaufbau gestartet\n"
-                    f"🌾 Ziel: {fmt_duration(d.get('stock'))}\n"
-                    f"⏳ Restzeit: {fmt_duration(d.get('restzeit'))}"
-                )
-            elif state == "INTERVAL_ACTIVE":
-                msg = (
-                    f"🤖 Automatik ein\n"
-                    f"⏱ Intervallbelüftung gestartet\n"
-                    f"💧 Feuchte: {fmt_percent(d.get('humMax'))}\n"
-                    f"📉 Limit: {fmt_percent(d.get('threshold'))}"
-                )
-            elif state == "DRYING_ACTIVE":
-                msg = (
-                    f"🤖 Automatik ein\n"
-                    f"💨 Trocknung gestartet\n"
-                    f"🌬 SDef: {fmt_float(d.get('sDefOut'))}"
-                )
-            else:
-                msg = f"🤖 Automatik ein\n➡️ {pretty_reason(state)}"
+            msg = f"🤖 Automatik ein\n➡️ {pretty_reason(decision.reason)}"
             
             send_notification(
                 title="MODE CHANGE",

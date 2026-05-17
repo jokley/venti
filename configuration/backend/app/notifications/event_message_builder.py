@@ -246,8 +246,10 @@ def build_event_message(event):
         msg += (
             f"💧 Feuchte: {fmt_percent(new_d.get('humMax'))}\n"
             f"📉 Limit: {fmt_percent(new_d.get('threshold'))}\n"
-            f"🕒 Pause: {fmt_duration(new_d.get('since_last_on'))}"
+            f"🕒 Pause: {fmt_duration(new_d.get('remaining_off_time'))}"
         )
+        if new_d.get("remaining") is not None:
+            msg += f"\n⏳ Restzeit: {fmt_duration(new_d.get('remaining'))}"
 
     # --- DRYING ---
     elif new == "DRYING_ACTIVE":
