@@ -1,0 +1,6 @@
+# Environment-Variablen
+venti.env
+
+# Python cache
+__pycache__/
+*.pyc
