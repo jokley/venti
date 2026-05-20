@@ -24,7 +24,7 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 2,
+  "id": 3,
   "links": [],
   "panels": [
     {
@@ -38,7 +38,7 @@
       },
       "gridPos": {
         "h": 6,
-        "w": 7,
+        "w": 12,
         "x": 0,
         "y": 0
       },
@@ -227,135 +227,6 @@
     },
     {
       "datasource": {
-        "type": "influxdb",
-        "uid": "P5697886F9CA74929"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "fixedColor": "green",
-            "mode": "fixed"
-          },
-          "displayName": ".",
-          "mappings": [
-            {
-              "options": {
-                "AUTO_IDLE": {
-                  "color": "blue",
-                  "index": 4,
-                  "text": "💤 Auto pause"
-                },
-                "DRYING_ACTIVE": {
-                  "color": "green",
-                  "index": 5,
-                  "text": "𖣘  Auto "
-                },
-                "INEFFICIENT_DRYING": {
-                  "color": "super-light-yellow",
-                  "index": 6,
-                  "text": "⚠️ Auto ineffizient"
-                },
-                "INTERVAL_ACTIVE": {
-                  "color": "blue",
-                  "index": 8,
-                  "text": "⏱️ Intervall"
-                },
-                "MANUAL_MODE": {
-                  "color": "blue",
-                  "index": 2,
-                  "text": "🛠️ Hand"
-                },
-                "OVERHEAT": {
-                  "color": "semi-dark-red",
-                  "index": 7,
-                  "text": "🚨 Heustock heiß"
-                },
-                "STOCK_BUILDING": {
-                  "color": "#69bfb9",
-                  "index": 3,
-                  "text": "🏗️ Stockaufbau"
-                },
-                "VENTI_MANUAL_OFF": {
-                  "color": "blue",
-                  "index": 1,
-                  "text": "✋ Hand aus"
-                },
-                "VENTI_MANUAL_ON": {
-                  "color": "blue",
-                  "index": 0,
-                  "text": "✋ Hand ein"
-                }
-              },
-              "type": "value"
-            }
-          ],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green"
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "state"
-            },
-            "properties": [
-              {
-                "id": "displayName"
-              }
-            ]
-          }
-        ]
-      },
-      "gridPos": {
-        "h": 3,
-        "w": 2,
-        "x": 7,
-        "y": 0
-      },
-      "id": 31,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "vertical",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "/^state$/",
-          "values": false
-        },
-        "showPercentChange": false,
-        "textMode": "value",
-        "wideLayout": true
-      },
-      "pluginVersion": "12.0.0",
-      "targets": [
-        {
-          "datasource": {
-            "type": "influxdb",
-            "uid": "P5697886F9CA74929"
-          },
-          "query": "heizung_state = from(bucket: \"jokley_bucket\")\r\n  |> range(start: -2d)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"heizung_state\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"state\")\r\n  |> last()\r\n  |> findRecord(fn: (key) => true, idx: 0)\r\n\r\nfrom(bucket: \"jokley_bucket\")\r\n  |> range(start: -2d)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"venti_state\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"state\")\r\n  |> last()\r\n  |> map(fn: (r) => ({\r\n      r with\r\n      _value:\r\n        if heizung_state._value == \"HEIZUNG_ACTIVE\"\r\n          or heizung_state._value == \"HEIZUNG_MANUAL_ON\"\r\n          or heizung_state._value == \"HEIZUNG_NACHLAUF\"\r\n          then \"🔒 Auto blockiert\"\r\n                else if r._value == \"DRYING_ACTIVE\"    then \"💨 Trocknung\"\r\n        else if r._value == \"STOCK_BUILDING\"   then \"🌾 Stockaufbau\"\r\n        else if r._value == \"INTERVAL_ACTIVE\"  then \"⏱ Intervall\"\r\n        else if r._value == \"OVERHEAT\"         then \"🌡 Überhitzung\"\r\n        else if r._value == \"INEFFICIENT_DRYING\" then \"⚠️ Ineffizient\"\r\n        else if r._value == \"VENTI_MANUAL_ON\"  then \"✋ Manuell EIN\"\r\n        else if r._value == \"VENTI_MANUAL_OFF\" then \"🛑 Manuell AUS\"\r\n        else                                        \"😴 Pause\"\r\n  }))\r\n\r\n",
-          "refId": "A"
-        }
-      ],
-      "title": "Lüfter",
-      "type": "stat"
-    },
-    {
-      "datasource": {
         "type": "datasource",
         "uid": "grafana"
       },
@@ -365,8 +236,8 @@
       },
       "gridPos": {
         "h": 6,
-        "w": 6,
-        "x": 9,
+        "w": 12,
+        "x": 12,
         "y": 0
       },
       "id": 44,
@@ -561,6 +432,249 @@
       "fieldConfig": {
         "defaults": {
           "color": {
+            "fixedColor": "green",
+            "mode": "fixed"
+          },
+          "displayName": ".",
+          "mappings": [
+            {
+              "options": {
+                "AUTO_IDLE": {
+                  "color": "blue",
+                  "index": 4,
+                  "text": "💤 Auto pause"
+                },
+                "DRYING_ACTIVE": {
+                  "color": "green",
+                  "index": 5,
+                  "text": "𖣘  Auto "
+                },
+                "INEFFICIENT_DRYING": {
+                  "color": "super-light-yellow",
+                  "index": 6,
+                  "text": "⚠️ Auto ineffizient"
+                },
+                "INTERVAL_ACTIVE": {
+                  "color": "blue",
+                  "index": 8,
+                  "text": "⏱️ Intervall"
+                },
+                "MANUAL_MODE": {
+                  "color": "blue",
+                  "index": 2,
+                  "text": "🛠️ Hand"
+                },
+                "OVERHEAT": {
+                  "color": "semi-dark-red",
+                  "index": 7,
+                  "text": "🚨 Heustock heiß"
+                },
+                "STOCK_BUILDING": {
+                  "color": "#69bfb9",
+                  "index": 3,
+                  "text": "🏗️ Stockaufbau"
+                },
+                "VENTI_MANUAL_OFF": {
+                  "color": "blue",
+                  "index": 1,
+                  "text": "✋ Hand aus"
+                },
+                "VENTI_MANUAL_ON": {
+                  "color": "blue",
+                  "index": 0,
+                  "text": "✋ Hand ein"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "state"
+            },
+            "properties": [
+              {
+                "id": "displayName"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 6,
+        "x": 0,
+        "y": 6
+      },
+      "id": 31,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "vertical",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/^state$/",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "value",
+        "wideLayout": true
+      },
+      "pluginVersion": "12.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "P5697886F9CA74929"
+          },
+          "query": "heizung_state = from(bucket: \"jokley_bucket\")\r\n  |> range(start: -2d)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"heizung_state\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"state\")\r\n  |> last()\r\n  |> findRecord(fn: (key) => true, idx: 0)\r\n\r\nfrom(bucket: \"jokley_bucket\")\r\n  |> range(start: -2d)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"venti_state\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"state\")\r\n  |> last()\r\n  |> map(fn: (r) => ({\r\n      r with\r\n      _value:\r\n        if heizung_state._value == \"HEIZUNG_ACTIVE\"\r\n          or heizung_state._value == \"HEIZUNG_MANUAL_ON\"\r\n          or heizung_state._value == \"HEIZUNG_NACHLAUF\"\r\n          then \"🔒 Auto blockiert\"\r\n                else if r._value == \"DRYING_ACTIVE\"    then \"💨 Trocknung\"\r\n        else if r._value == \"STOCK_BUILDING\"   then \"🌾 Stockaufbau\"\r\n        else if r._value == \"INTERVAL_ACTIVE\"  then \"⏱ Intervall\"\r\n        else if r._value == \"OVERHEAT\"         then \"🌡 Überhitzung\"\r\n        else if r._value == \"INEFFICIENT_DRYING\" then \"⚠️ Ineffizient\"\r\n        else if r._value == \"VENTI_MANUAL_ON\"  then \"✋ Manuell EIN\"\r\n        else if r._value == \"VENTI_MANUAL_OFF\" then \"🛑 Manuell AUS\"\r\n        else                                        \"😴 Pause\"\r\n  }))\r\n\r\n",
+          "refId": "A"
+        }
+      ],
+      "title": "Lüfter",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "P5697886F9CA74929"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "green",
+            "mode": "fixed"
+          },
+          "displayName": ".",
+          "mappings": [
+            {
+              "options": {
+                "HEIZUNG_ACTIVE": {
+                  "color": "orange",
+                  "index": 3,
+                  "text": "🔥 Heizen ein"
+                },
+                "HEIZUNG_IDLE": {
+                  "color": "blue",
+                  "index": 2,
+                  "text": "💤 Heizung aus"
+                },
+                "HEIZUNG_MANUAL_OFF": {
+                  "color": "light-green",
+                  "index": 1,
+                  "text": "✋ Hand aus"
+                },
+                "HEIZUNG_MANUAL_ON": {
+                  "color": "light-green",
+                  "index": 0,
+                  "text": "✋ Hand ein"
+                },
+                "HEIZUNG_NACHLAUF": {
+                  "color": "light-green",
+                  "index": 4,
+                  "text": "🌬️ Nachlauf"
+                },
+                "HEIZUNG_SDEF_LIMIT": {
+                  "color": "super-light-blue",
+                  "index": 5,
+                  "text": "🛡️ Limit"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "state"
+            },
+            "properties": [
+              {
+                "id": "displayName"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 6,
+        "x": 6,
+        "y": 6
+      },
+      "id": 46,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "vertical",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/^state$/",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "value",
+        "wideLayout": true
+      },
+      "pluginVersion": "12.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "P5697886F9CA74929"
+          },
+          "query": "from(bucket: \"jokley_bucket\")\r\n  |> range(start: -2d)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"heizung_state\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"state\")\r\n  |> last()\r\n  |> map(fn: (r) => ({\r\n      r with\r\n      _value:\r\n        if r._value == \"HEIZUNG_ACTIVE\"      then \"🔥 Heizung aktiv\"\r\n        else if r._value == \"HEIZUNG_MANUAL_ON\" then \"🔥 Heizung EIN\"\r\n        else if r._value == \"HEIZUNG_NACHLAUF\"  then \"🌡 Nachlauf\"\r\n        else if r._value == \"HEIZUNG_SDEF_LIMIT\" then \"📊 SDef Limit\"\r\n        else if r._value == \"HEIZUNG_DISABLED\"  then \"⬜ Deaktiviert\"\r\n        else if r._value == \"HEIZUNG_MANUAL_OFF\" then \"🛑 Manuell AUS\"\r\n        else                                         \"💤 Inaktiv\"\r\n  }))",
+          "refId": "A"
+        }
+      ],
+      "title": "Heizung",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "P5697886F9CA74929"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
             "mode": "continuous-BlPu"
           },
           "custom": {
@@ -569,8 +683,7 @@
               "type": "color-text",
               "wrapText": false
             },
-            "inspect": false,
-            "minWidth": 120
+            "inspect": false
           },
           "fieldMinMax": false,
           "mappings": [],
@@ -597,7 +710,7 @@
               {
                 "id": "color",
                 "value": {
-                  "fixedColor": "#2027dc",
+                  "fixedColor": "#565be9",
                   "mode": "fixed"
                 }
               },
@@ -678,7 +791,7 @@
                         "index": 0,
                         "text": "🔋 100%"
                       },
-                      "to": 4200
+                      "to": 4300
                     },
                     "type": "range"
                   },
@@ -803,10 +916,10 @@
         ]
       },
       "gridPos": {
-        "h": 6,
-        "w": 9,
-        "x": 15,
-        "y": 0
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 6
       },
       "id": 33,
       "options": {
@@ -928,50 +1041,16 @@
         "type": "influxdb",
         "uid": "P5697886F9CA74929"
       },
+      "description": "",
       "fieldConfig": {
         "defaults": {
           "color": {
-            "fixedColor": "green",
+            "fixedColor": "#09b8ff",
             "mode": "fixed"
           },
-          "displayName": ".",
-          "mappings": [
-            {
-              "options": {
-                "HEIZUNG_ACTIVE": {
-                  "color": "orange",
-                  "index": 3,
-                  "text": "🔥 Heizen ein"
-                },
-                "HEIZUNG_IDLE": {
-                  "color": "blue",
-                  "index": 2,
-                  "text": "💤 Heizung aus"
-                },
-                "HEIZUNG_MANUAL_OFF": {
-                  "color": "light-green",
-                  "index": 1,
-                  "text": "✋ Hand aus"
-                },
-                "HEIZUNG_MANUAL_ON": {
-                  "color": "light-green",
-                  "index": 0,
-                  "text": "✋ Hand ein"
-                },
-                "HEIZUNG_NACHLAUF": {
-                  "color": "light-green",
-                  "index": 4,
-                  "text": "🌬️ Nachlauf"
-                },
-                "HEIZUNG_SDEF_LIMIT": {
-                  "color": "super-light-blue",
-                  "index": 5,
-                  "text": "🛡️ Limit"
-                }
-              },
-              "type": "value"
-            }
-          ],
+          "decimals": 1,
+          "displayName": "${__field.name}",
+          "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -983,17 +1062,52 @@
                 "value": 80
               }
             ]
-          }
+          },
+          "unit": "ns"
         },
         "overrides": [
           {
             "matcher": {
               "id": "byName",
-              "options": "state"
+              "options": "🌾 Stockaufbau noch"
             },
             "properties": [
               {
-                "id": "displayName"
+                "id": "color",
+                "value": {
+                  "fixedColor": "#69bfb79c",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "ON"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#3fedc2",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "OFF"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#19d2ff",
+                  "mode": "fixed"
+                }
               }
             ]
           }
@@ -1001,26 +1115,26 @@
       },
       "gridPos": {
         "h": 3,
-        "w": 2,
-        "x": 7,
-        "y": 3
+        "w": 12,
+        "x": 0,
+        "y": 9
       },
-      "id": 46,
+      "id": 48,
       "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "vertical",
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
         "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
           ],
-          "fields": "/^state$/",
+          "fields": "",
           "values": false
         },
         "showPercentChange": false,
-        "textMode": "value",
+        "textMode": "value_and_name",
         "wideLayout": true
       },
       "pluginVersion": "12.0.0",
@@ -1030,11 +1144,12 @@
             "type": "influxdb",
             "uid": "P5697886F9CA74929"
           },
-          "query": "from(bucket: \"jokley_bucket\")\r\n  |> range(start: -2d)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"heizung_state\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"state\")\r\n  |> last()\r\n  |> map(fn: (r) => ({\r\n      r with\r\n      _value:\r\n        if r._value == \"HEIZUNG_ACTIVE\"      then \"🔥 Heizung aktiv\"\r\n        else if r._value == \"HEIZUNG_MANUAL_ON\" then \"🔥 Heizung EIN\"\r\n        else if r._value == \"HEIZUNG_NACHLAUF\"  then \"🌡 Nachlauf\"\r\n        else if r._value == \"HEIZUNG_SDEF_LIMIT\" then \"📊 SDef Limit\"\r\n        else if r._value == \"HEIZUNG_DISABLED\"  then \"⬜ Deaktiviert\"\r\n        else if r._value == \"HEIZUNG_MANUAL_OFF\" then \"🛑 Manuell AUS\"\r\n        else                                         \"💤 Inaktiv\"\r\n  }))",
-          "refId": "A"
+          "hide": false,
+          "query": "// =============================================================================\r\n// 🌀 VENTI STATUS QUERY\r\n// Relay RO1: sendet alle 10min ON oder OFF\r\n// fan_is_on = letztes ON-Heartbeat < 10min → Lüfter wirklich EIN\r\n// Zeitwert: aktive States → State-Timestamp, AUS-States → Relay-Timestamp\r\n// =============================================================================\r\n\r\nventi_mode = from(bucket: \"jokley_bucket\")\r\n  |> range(start: -2d)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"venti\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"mode\")\r\n  |> last()\r\n  |> findRecord(fn: (key) => true, idx: 0)\r\n\r\nstock = from(bucket: \"jokley_bucket\")\r\n  |> range(start: -2d)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"venti\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"stockaufbau\")\r\n  |> last()\r\n  |> findRecord(fn: (key) => true, idx: 0)\r\n\r\nlast_ro1_on = from(bucket: \"jokley_bucket\")\r\n  |> range(start: -2d)\r\n  |> filter(fn: (r) => r[\"device_name\"] == \"fan\")\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"device_frmpayload_data_RO1_status\")\r\n  |> filter(fn: (r) => r[\"_value\"] == \"ON\")\r\n  |> last()\r\n  |> findRecord(fn: (key) => true, idx: 0)\r\n\r\nfrom(bucket: \"jokley_bucket\")\r\n  |> range(start: -2d)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"venti_state\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"state\")\r\n  |> last()\r\n  |> map(fn: (r) => {\r\n      s = r._value\r\n\r\n      // Relay-basiert: letzter ON-Heartbeat < 10min → EIN\r\n      since_last_ro1_on = uint(v: now()) - uint(v: last_ro1_on._time)\r\n      fan_is_on         = since_last_ro1_on < uint(v: 600000000000)\r\n\r\n      // Zeitwerte\r\n      state_elapsed_ns = int(v: uint(v: now()) - uint(v: r._time))\r\n      off_since_ns     = int(v: since_last_ro1_on)\r\n\r\n      // Stockaufbau Restzeit\r\n      stock_ns        = int(v: stock._value) * 3600000000000\r\n      stock_elapsed   = int(v: uint(v: now()) - uint(v: stock._time))\r\n      stock_remaining = stock_ns - stock_elapsed\r\n\r\n      return {\r\n        r with\r\n\r\n        _field:\r\n          // Aktive States – Label aus State\r\n          if s == \"STOCK_BUILDING\"\r\n            then \"🌾 Stockaufbau noch\"\r\n          else if s == \"DRYING_ACTIVE\"\r\n            then \"💨 Trocknung seit\"\r\n          else if s == \"INTERVAL_ACTIVE\"\r\n            then \"⏱ Intervall seit\"\r\n          else if s == \"OVERHEAT\"\r\n            then \"🌡 Überhitzung seit\"\r\n          else if s == \"INEFFICIENT_DRYING\"\r\n            then \"⚠️ Ineffizient seit\"\r\n          // Manuelle States\r\n          else if s == \"VENTI_MANUAL_ON\"\r\n            then \"✋ Manuell EIN seit\"\r\n          else if s == \"VENTI_MANUAL_OFF\"\r\n            then \"🛑 Manuell AUS seit\"\r\n          // AUTO_IDLE + Fallback → Relay entscheidet Label\r\n          else if fan_is_on\r\n            then \"💨 Lüfter EIN seit\"\r\n          else\r\n            \"😴 Lüfter AUS seit\",\r\n\r\n        _value:\r\n          // Stockaufbau → Restzeit\r\n          if s == \"STOCK_BUILDING\"\r\n            then (if stock_remaining > 0 then stock_remaining else 0)\r\n          // Aktive States + Manuell EIN → State-Timestamp (Zeit seit State-Start)\r\n          else if s == \"DRYING_ACTIVE\"\r\n            or s == \"INTERVAL_ACTIVE\"\r\n            or s == \"OVERHEAT\"\r\n            or s == \"INEFFICIENT_DRYING\"\r\n            or s == \"VENTI_MANUAL_ON\"\r\n            then state_elapsed_ns\r\n          // AUS-States → Relay-Timestamp (wann wirklich zuletzt EIN)\r\n          else\r\n            off_since_ns\r\n      }\r\n  })\r\n  |> yield(name: \"venti_status\")\r\n\r\n\r\n// =============================================================================\r\n// 🔥 HEIZUNG STATUS QUERY\r\n// Relay RO2: sendet alle 10min ON oder OFF\r\n// heizung_is_on = letztes ON-Heartbeat < 10min → Heizung wirklich EIN\r\n// States: HEIZUNG_MANUAL_ON/OFF, HEIZUNG_ACTIVE, HEIZUNG_NACHLAUF,\r\n//         HEIZUNG_IDLE, HEIZUNG_DISABLED, HEIZUNG_SDEF_LIMIT\r\n// =============================================================================\r\n\r\nheizung_mode = from(bucket: \"jokley_bucket\")\r\n  |> range(start: -2d)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"heizung\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"mode\")\r\n  |> last()\r\n  |> findRecord(fn: (key) => true, idx: 0)\r\n\r\nnachlauf = from(bucket: \"jokley_bucket\")\r\n  |> range(start: -2d)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"heizung_param\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"heizung_nachlauf\")\r\n  |> last()\r\n  |> findRecord(fn: (key) => true, idx: 0)\r\n\r\nlast_ro2_on = from(bucket: \"jokley_bucket\")\r\n  |> range(start: -2d)\r\n  |> filter(fn: (r) => r[\"device_name\"] == \"fan\")\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"device_frmpayload_data_RO2_status\")\r\n  |> filter(fn: (r) => r[\"_value\"] == \"ON\")\r\n  |> last()\r\n  |> findRecord(fn: (key) => true, idx: 0)\r\n\r\nfrom(bucket: \"jokley_bucket\")\r\n  |> range(start: -2d)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"heizung\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"heizung_dauer\")\r\n  |> last()\r\n  |> map(fn: (r) => {\r\n      s = heizung_mode._value\r\n\r\n      // Relay-basiert: letzter ON-Heartbeat < 10min → EIN\r\n      since_last_ro2_on = uint(v: now()) - uint(v: last_ro2_on._time)\r\n      heizung_is_on     = since_last_ro2_on < uint(v: 600000000000)\r\n      off_since_ns      = int(v: since_last_ro2_on)\r\n\r\n      // Auto-Timer Restzeit\r\n      duration_ns    = int(v: r._value) * 360000000000\r\n      elapsed_ns     = int(v: uint(v: now()) - uint(v: r._time))\r\n      auto_remaining = duration_ns - elapsed_ns\r\n\r\n      // Nachlauf Restzeit (aus heizung_state Timestamp + nachlauf_param)\r\n      nachlauf_ns = int(v: nachlauf._value) * 60 * 1000000000\r\n\r\n      return {\r\n        r with\r\n\r\n        _field:\r\n          // Nachlauf → immer Restzeit anzeigen\r\n          if s == \"HEIZUNG_NACHLAUF\"\r\n            then \"🌡 Nachlauf noch\"\r\n          // Auto aktiv → Timer-Restzeit\r\n          else if heizung_is_on and s == \"auto\"\r\n            then \"🔥 Heizung Restzeit\"\r\n          // Manuell EIN\r\n          else if heizung_is_on and (s == \"on\" or s == \"HEIZUNG_MANUAL_ON\")\r\n            then \"🔥 Heizung läuft seit\"\r\n          // SDef Limit erreicht\r\n          else if s == \"HEIZUNG_SDEF_LIMIT\"\r\n            then \"📊 SDef Limit seit\"\r\n          // Disabled\r\n          else if s == \"HEIZUNG_DISABLED\"\r\n            then \"⬜ Heizung deaktiviert\"\r\n          // AUS → Relay-Timestamp\r\n          else\r\n            \"💤 Heizung aus seit\",\r\n\r\n        _value:\r\n          if s == \"HEIZUNG_NACHLAUF\"\r\n            then (if nachlauf_ns - off_since_ns > 0 then nachlauf_ns - off_since_ns else 0)\r\n          else if heizung_is_on and s == \"auto\"\r\n            then (if auto_remaining > 0 then auto_remaining else 0)\r\n          else if heizung_is_on\r\n            then int(v: since_last_ro2_on)\r\n          else\r\n            off_since_ns\r\n      }\r\n  })\r\n  |> yield(name: \"heizung_status\")\r\n",
+          "refId": "E"
         }
       ],
-      "title": "Heizung",
+      "title": "",
       "type": "stat"
     },
     {
@@ -1164,7 +1279,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Trocknemasse"
+              "options": "device_frmpayload_data_trockenmasse value outdoor01"
             },
             "properties": [
               {
@@ -1173,13 +1288,21 @@
                   "fixedColor": "#12c1bc",
                   "mode": "fixed"
                 }
+              },
+              {
+                "id": "displayName",
+                "value": "Trockenmasse_01"
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
               }
             ]
           },
           {
             "matcher": {
               "id": "byName",
-              "options": "Temperature"
+              "options": "device_frmpayload_data_temperature value outdoor01"
             },
             "properties": [
               {
@@ -1188,13 +1311,17 @@
                   "fixedColor": "#ac004c",
                   "mode": "fixed"
                 }
+              },
+              {
+                "id": "displayName",
+                "value": "Temperatur_01"
               }
             ]
           },
           {
             "matcher": {
               "id": "byName",
-              "options": "Humidity"
+              "options": "device_frmpayload_data_humidity value outdoor01"
             },
             "properties": [
               {
@@ -1203,16 +1330,20 @@
                   "fixedColor": "#0087ff",
                   "mode": "fixed"
                 }
+              },
+              {
+                "id": "displayName",
+                "value": "Humitiy_01"
               }
             ]
           }
         ]
       },
       "gridPos": {
-        "h": 8,
+        "h": 12,
         "w": 12,
         "x": 0,
-        "y": 6
+        "y": 12
       },
       "id": 2,
       "options": {
@@ -1481,14 +1612,75 @@
                 "value": "stepBefore"
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "device_frmpayload_data_humidity value {device_name=\"probe03\"}"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#0e3e86",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "displayName",
+                "value": "Humidity_03"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "device_frmpayload_data_temperature value {device_name=\"probe03\"}"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#c2174ced",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "displayName",
+                "value": "temperature_03"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "device_frmpayload_data_trockenmasse value {device_name=\"probe03\"}"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#27ae9b",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "displayName",
+                "value": "Trockenmasse_03"
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              }
+            ]
           }
         ]
       },
       "gridPos": {
-        "h": 8,
+        "h": 13,
         "w": 12,
         "x": 12,
-        "y": 6
+        "y": 15
       },
       "id": 5,
       "options": {
@@ -1517,122 +1709,6 @@
       ],
       "title": "Sonden Temperatur / Luftfeuchte / Trockenmasse",
       "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "influxdb",
-        "uid": "P5697886F9CA74929"
-      },
-      "description": "",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "fixedColor": "#09b8ff",
-            "mode": "fixed"
-          },
-          "decimals": 1,
-          "displayName": "${__field.name}",
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green"
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          },
-          "unit": "ns"
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "🌾 Stockaufbau noch"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "#69bfb79c",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "ON"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "#3fedc2",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "OFF"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "#19d2ff",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          }
-        ]
-      },
-      "gridPos": {
-        "h": 3,
-        "w": 12,
-        "x": 0,
-        "y": 14
-      },
-      "id": 48,
-      "options": {
-        "colorMode": "background",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "textMode": "value_and_name",
-        "wideLayout": true
-      },
-      "pluginVersion": "12.0.0",
-      "targets": [
-        {
-          "datasource": {
-            "type": "influxdb",
-            "uid": "P5697886F9CA74929"
-          },
-          "hide": false,
-          "query": "// =============================================================================\r\n// 🌀 VENTI STATUS QUERY\r\n// Relay RO1: sendet alle 10min ON oder OFF\r\n// fan_is_on = letztes ON-Heartbeat < 10min → Lüfter wirklich EIN\r\n// Zeitwert: aktive States → State-Timestamp, AUS-States → Relay-Timestamp\r\n// =============================================================================\r\n\r\nventi_mode = from(bucket: \"jokley_bucket\")\r\n  |> range(start: -2d)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"venti\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"mode\")\r\n  |> last()\r\n  |> findRecord(fn: (key) => true, idx: 0)\r\n\r\nstock = from(bucket: \"jokley_bucket\")\r\n  |> range(start: -2d)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"venti\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"stockaufbau\")\r\n  |> last()\r\n  |> findRecord(fn: (key) => true, idx: 0)\r\n\r\nlast_ro1_on = from(bucket: \"jokley_bucket\")\r\n  |> range(start: -2d)\r\n  |> filter(fn: (r) => r[\"device_name\"] == \"fan\")\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"device_frmpayload_data_RO1_status\")\r\n  |> filter(fn: (r) => r[\"_value\"] == \"ON\")\r\n  |> last()\r\n  |> findRecord(fn: (key) => true, idx: 0)\r\n\r\nfrom(bucket: \"jokley_bucket\")\r\n  |> range(start: -2d)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"venti_state\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"state\")\r\n  |> last()\r\n  |> map(fn: (r) => {\r\n      s = r._value\r\n\r\n      // Relay-basiert: letzter ON-Heartbeat < 10min → EIN\r\n      since_last_ro1_on = uint(v: now()) - uint(v: last_ro1_on._time)\r\n      fan_is_on         = since_last_ro1_on < uint(v: 600000000000)\r\n\r\n      // Zeitwerte\r\n      state_elapsed_ns = int(v: uint(v: now()) - uint(v: r._time))\r\n      off_since_ns     = int(v: since_last_ro1_on)\r\n\r\n      // Stockaufbau Restzeit\r\n      stock_ns        = int(v: stock._value) * 3600000000000\r\n      stock_elapsed   = int(v: uint(v: now()) - uint(v: stock._time))\r\n      stock_remaining = stock_ns - stock_elapsed\r\n\r\n      return {\r\n        r with\r\n\r\n        _field:\r\n          // Aktive States – Label aus State\r\n          if s == \"STOCK_BUILDING\"\r\n            then \"🌾 Stockaufbau noch\"\r\n          else if s == \"DRYING_ACTIVE\"\r\n            then \"💨 Trocknung seit\"\r\n          else if s == \"INTERVAL_ACTIVE\"\r\n            then \"⏱ Intervall seit\"\r\n          else if s == \"OVERHEAT\"\r\n            then \"🌡 Überhitzung seit\"\r\n          else if s == \"INEFFICIENT_DRYING\"\r\n            then \"⚠️ Ineffizient seit\"\r\n          // Manuelle States\r\n          else if s == \"VENTI_MANUAL_ON\"\r\n            then \"✋ Manuell EIN seit\"\r\n          else if s == \"VENTI_MANUAL_OFF\"\r\n            then \"🛑 Manuell AUS seit\"\r\n          // AUTO_IDLE + Fallback → Relay entscheidet Label\r\n          else if fan_is_on\r\n            then \"💨 Lüfter EIN seit\"\r\n          else\r\n            \"😴 Lüfter AUS seit\",\r\n\r\n        _value:\r\n          // Stockaufbau → Restzeit\r\n          if s == \"STOCK_BUILDING\"\r\n            then (if stock_remaining > 0 then stock_remaining else 0)\r\n          // Aktive States + Manuell EIN → State-Timestamp (Zeit seit State-Start)\r\n          else if s == \"DRYING_ACTIVE\"\r\n            or s == \"INTERVAL_ACTIVE\"\r\n            or s == \"OVERHEAT\"\r\n            or s == \"INEFFICIENT_DRYING\"\r\n            or s == \"VENTI_MANUAL_ON\"\r\n            then state_elapsed_ns\r\n          // AUS-States → Relay-Timestamp (wann wirklich zuletzt EIN)\r\n          else\r\n            off_since_ns\r\n      }\r\n  })\r\n  |> yield(name: \"venti_status\")\r\n\r\n\r\n// =============================================================================\r\n// 🔥 HEIZUNG STATUS QUERY\r\n// Relay RO2: sendet alle 10min ON oder OFF\r\n// heizung_is_on = letztes ON-Heartbeat < 10min → Heizung wirklich EIN\r\n// States: HEIZUNG_MANUAL_ON/OFF, HEIZUNG_ACTIVE, HEIZUNG_NACHLAUF,\r\n//         HEIZUNG_IDLE, HEIZUNG_DISABLED, HEIZUNG_SDEF_LIMIT\r\n// =============================================================================\r\n\r\nheizung_mode = from(bucket: \"jokley_bucket\")\r\n  |> range(start: -2d)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"heizung\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"mode\")\r\n  |> last()\r\n  |> findRecord(fn: (key) => true, idx: 0)\r\n\r\nnachlauf = from(bucket: \"jokley_bucket\")\r\n  |> range(start: -2d)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"heizung_param\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"heizung_nachlauf\")\r\n  |> last()\r\n  |> findRecord(fn: (key) => true, idx: 0)\r\n\r\nlast_ro2_on = from(bucket: \"jokley_bucket\")\r\n  |> range(start: -2d)\r\n  |> filter(fn: (r) => r[\"device_name\"] == \"fan\")\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"device_frmpayload_data_RO2_status\")\r\n  |> filter(fn: (r) => r[\"_value\"] == \"ON\")\r\n  |> last()\r\n  |> findRecord(fn: (key) => true, idx: 0)\r\n\r\nfrom(bucket: \"jokley_bucket\")\r\n  |> range(start: -2d)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"heizung\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"heizung_dauer\")\r\n  |> last()\r\n  |> map(fn: (r) => {\r\n      s = heizung_mode._value\r\n\r\n      // Relay-basiert: letzter ON-Heartbeat < 10min → EIN\r\n      since_last_ro2_on = uint(v: now()) - uint(v: last_ro2_on._time)\r\n      heizung_is_on     = since_last_ro2_on < uint(v: 600000000000)\r\n      off_since_ns      = int(v: since_last_ro2_on)\r\n\r\n      // Auto-Timer Restzeit\r\n      duration_ns    = int(v: r._value) * 360000000000\r\n      elapsed_ns     = int(v: uint(v: now()) - uint(v: r._time))\r\n      auto_remaining = duration_ns - elapsed_ns\r\n\r\n      // Nachlauf Restzeit (aus heizung_state Timestamp + nachlauf_param)\r\n      nachlauf_ns = int(v: nachlauf._value) * 60 * 1000000000\r\n\r\n      return {\r\n        r with\r\n\r\n        _field:\r\n          // Nachlauf → immer Restzeit anzeigen\r\n          if s == \"HEIZUNG_NACHLAUF\"\r\n            then \"🌡 Nachlauf noch\"\r\n          // Auto aktiv → Timer-Restzeit\r\n          else if heizung_is_on and s == \"auto\"\r\n            then \"🔥 Heizung Restzeit\"\r\n          // Manuell EIN\r\n          else if heizung_is_on and (s == \"on\" or s == \"HEIZUNG_MANUAL_ON\")\r\n            then \"🔥 Heizung läuft seit\"\r\n          // SDef Limit erreicht\r\n          else if s == \"HEIZUNG_SDEF_LIMIT\"\r\n            then \"📊 SDef Limit seit\"\r\n          // Disabled\r\n          else if s == \"HEIZUNG_DISABLED\"\r\n            then \"⬜ Heizung deaktiviert\"\r\n          // AUS → Relay-Timestamp\r\n          else\r\n            \"💤 Heizung aus seit\",\r\n\r\n        _value:\r\n          if s == \"HEIZUNG_NACHLAUF\"\r\n            then (if nachlauf_ns - off_since_ns > 0 then nachlauf_ns - off_since_ns else 0)\r\n          else if heizung_is_on and s == \"auto\"\r\n            then (if auto_remaining > 0 then auto_remaining else 0)\r\n          else if heizung_is_on\r\n            then int(v: since_last_ro2_on)\r\n          else\r\n            off_since_ns\r\n      }\r\n  })\r\n  |> yield(name: \"heizung_status\")\r\n",
-          "refId": "E"
-        }
-      ],
-      "title": "Lüfter",
-      "type": "stat"
     },
     {
       "datasource": {
@@ -1686,10 +1762,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 7,
+        "h": 8,
         "w": 12,
-        "x": 12,
-        "y": 14
+        "x": 0,
+        "y": 24
       },
       "id": 18,
       "options": {
@@ -1742,8 +1818,8 @@
       "gridPos": {
         "h": 4,
         "w": 12,
-        "x": 0,
-        "y": 17
+        "x": 12,
+        "y": 28
       },
       "id": 38,
       "options": {
@@ -1874,7 +1950,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 21
+        "y": 32
       },
       "id": 17,
       "panels": [],
@@ -1892,9 +1968,9 @@
       },
       "gridPos": {
         "h": 12,
-        "w": 18,
+        "w": 24,
         "x": 0,
-        "y": 22
+        "y": 33
       },
       "id": 42,
       "options": {
@@ -2130,230 +2206,6 @@
     },
     {
       "datasource": {
-        "type": "influxdb",
-        "uid": "P5697886F9CA74929"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "fixedColor": "#29b49e",
-            "mode": "fixed"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green"
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "device_frmpayload_data_Hum_SHT value {application_name=\"jokley\", dev_eui=\"a8404137e186804e\", device_name=\"outdoor\", f_port=\"2\"}"
-            },
-            "properties": [
-              {
-                "id": "displayName",
-                "value": "Humidity"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "device_frmpayload_data_TempC_SHT value {application_name=\"jokley\", dev_eui=\"a8404137e186804e\", device_name=\"outdoor\", f_port=\"2\"}"
-            },
-            "properties": [
-              {
-                "id": "displayName",
-                "value": "Temperature"
-              }
-            ]
-          }
-        ]
-      },
-      "gridPos": {
-        "h": 12,
-        "w": 2,
-        "x": 18,
-        "y": 22
-      },
-      "id": 13,
-      "options": {
-        "colorMode": "background",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "horizontal",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "textMode": "value_and_name",
-        "wideLayout": true
-      },
-      "pluginVersion": "12.0.0",
-      "targets": [
-        {
-          "datasource": {
-            "type": "influxdb",
-            "uid": "P5697886F9CA74929"
-          },
-          "query": "from(bucket: \"jokley_bucket\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) =>\r\n    (r[\"device_name\"] =~ /^outdoor/) and\r\n    (\r\n      r[\"_measurement\"] == \"device_frmpayload_data_temperature\" or\r\n      r[\"_measurement\"] == \"device_frmpayload_data_humidity\" or\r\n      r[\"_measurement\"] == \"device_frmpayload_data_trockenmasse\" or\r\n      r[\"_measurement\"] == \"device_frmpayload_data_sdef\"\r\n    ) and\r\n    r[\"_value\"] <= 100 and r[\"_value\"] >= -100\r\n  )\r\n  |> last()\r\n  |> map(fn: (r) => ({\r\n    _time: r._time,\r\n    _value: r._value,\r\n    _field:\r\n      if r._measurement == \"device_frmpayload_data_temperature\" then \"Temperature (°C)\"\r\n      else if r._measurement == \"device_frmpayload_data_humidity\" then \"Humidity (%)\"\r\n      else if r._measurement == \"device_frmpayload_data_trockenmasse\" then \"Trockenmasse (%)\"\r\n      else if r._measurement == \"device_frmpayload_data_sdef\" then \"SDEF\"\r\n      else r._measurement\r\n  }))\r\n  |> group(columns: [\"_field\"])  // only group by field name to make it appear in Grafana correctly\r\n  |> max()\r\n",
-          "refId": "A"
-        }
-      ],
-      "title": "Outdoor Values",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "influxdb",
-        "uid": "P5697886F9CA74929"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "fixedColor": "#5f9bc3e6",
-            "mode": "fixed"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green"
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 12,
-        "w": 2,
-        "x": 20,
-        "y": 22
-      },
-      "id": 10,
-      "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "horizontal",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": true
-        },
-        "showPercentChange": false,
-        "text": {},
-        "textMode": "value_and_name",
-        "wideLayout": true
-      },
-      "pluginVersion": "12.0.0",
-      "targets": [
-        {
-          "datasource": {
-            "type": "influxdb",
-            "uid": "P5697886F9CA74929"
-          },
-          "hide": false,
-          "query": "from(bucket: \"jokley_bucket\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) =>\r\n    (r[\"device_name\"] =~ /^probe/) and\r\n    (\r\n      r[\"_measurement\"] == \"device_frmpayload_data_temperature\" or\r\n      r[\"_measurement\"] == \"device_frmpayload_data_humidity\" or\r\n      r[\"_measurement\"] == \"device_frmpayload_data_trockenmasse\" or\r\n      r[\"_measurement\"] == \"device_frmpayload_data_sdef\"\r\n    ) and\r\n    r[\"_value\"] <= 100 and r[\"_value\"] >= -100\r\n  )\r\n  |> last()\r\n  |> map(fn: (r) => ({\r\n    _time: r._time,\r\n    _value: r._value,\r\n    _field:\r\n      if r._measurement == \"device_frmpayload_data_temperature\" then \"Temperature (°C)\"\r\n      else if r._measurement == \"device_frmpayload_data_humidity\" then \"Humidity (%)\"\r\n      else if r._measurement == \"device_frmpayload_data_trockenmasse\" then \"Trockenmasse (%)\"\r\n      else if r._measurement == \"device_frmpayload_data_sdef\" then \"SDEF\"\r\n      else r._measurement\r\n  }))\r\n  |> group(columns: [\"_field\"])  // only group by field name to make it appear in Grafana correctly\r\n  |> min()\r\n",
-          "refId": "A"
-        }
-      ],
-      "title": "Probe min  Values",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "influxdb",
-        "uid": "P5697886F9CA74929"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "fixedColor": "#d5cddbe6",
-            "mode": "fixed"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green"
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 12,
-        "w": 2,
-        "x": 22,
-        "y": 22
-      },
-      "id": 24,
-      "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "horizontal",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": true
-        },
-        "showPercentChange": false,
-        "text": {},
-        "textMode": "value_and_name",
-        "wideLayout": true
-      },
-      "pluginVersion": "12.0.0",
-      "targets": [
-        {
-          "datasource": {
-            "type": "influxdb",
-            "uid": "P5697886F9CA74929"
-          },
-          "hide": false,
-          "query": "from(bucket: \"jokley_bucket\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) =>\r\n    (r[\"device_name\"] =~ /^probe/) and\r\n    (\r\n      r[\"_measurement\"] == \"device_frmpayload_data_temperature\" or\r\n      r[\"_measurement\"] == \"device_frmpayload_data_humidity\" or\r\n      r[\"_measurement\"] == \"device_frmpayload_data_trockenmasse\" or\r\n      r[\"_measurement\"] == \"device_frmpayload_data_sdef\"\r\n    ) and\r\n    r[\"_value\"] <= 100 and r[\"_value\"] >= -100\r\n  )\r\n  |> last()\r\n  |> map(fn: (r) => ({\r\n    _time: r._time,\r\n    _value: r._value,\r\n    _field:\r\n      if r._measurement == \"device_frmpayload_data_temperature\" then \"Temperature (°C)\"\r\n      else if r._measurement == \"device_frmpayload_data_humidity\" then \"Humidity (%)\"\r\n      else if r._measurement == \"device_frmpayload_data_trockenmasse\" then \"Trockenmasse (%)\"\r\n      else if r._measurement == \"device_frmpayload_data_sdef\" then \"SDEF\"\r\n      else r._measurement\r\n  }))\r\n  |> group(columns: [\"_field\"])  // only group by field name to make it appear in Grafana correctly\r\n  |> max()\r\n",
-          "refId": "A"
-        }
-      ],
-      "title": "Probe max Values",
-      "type": "stat"
-    },
-    {
-      "datasource": {
         "type": "datasource",
         "uid": "grafana"
       },
@@ -2362,10 +2214,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 6,
-        "w": 18,
+        "h": 7,
+        "w": 17,
         "x": 0,
-        "y": 34
+        "y": 45
       },
       "id": 43,
       "options": {
@@ -2500,12 +2352,147 @@
       "type": "volkovlabs-form-panel"
     },
     {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "P5697886F9CA74929"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "#29b49e",
+            "mode": "fixed"
+          },
+          "custom": {
+            "align": "center",
+            "cellOptions": {
+              "type": "color-background"
+            },
+            "filterable": false,
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Outdoor"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#29b49e",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Sonde Min"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#5f9bc3e6",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Sonde Max"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#d5cddbe6",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Messwert"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "transparent",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "custom.align",
+                "value": "auto"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 7,
+        "x": 17,
+        "y": 45
+      },
+      "id": 49,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": []
+      },
+      "pluginVersion": "12.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "P5697886F9CA74929"
+          },
+          "hide": false,
+          "query": "outdoor_raw = from(bucket: \"jokley_bucket\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) =>\r\n      r[\"device_name\"] =~ /^outdoor/\r\n      and (\r\n        r[\"_measurement\"] == \"device_frmpayload_data_temperature\"\r\n        or r[\"_measurement\"] == \"device_frmpayload_data_humidity\"\r\n        or r[\"_measurement\"] == \"device_frmpayload_data_trockenmasse\"\r\n        or r[\"_measurement\"] == \"device_frmpayload_data_sdef\"\r\n      )\r\n      and r[\"_value\"] <= 100\r\n      and r[\"_value\"] >= -100\r\n  )\r\n  |> last()\r\n\r\nbest_outdoor = outdoor_raw\r\n  |> pivot(\r\n      rowKey: [\"device_name\"],\r\n      columnKey: [\"_measurement\"],\r\n      valueColumn: \"_value\"\r\n  )\r\n  |> sort(columns: [\"device_frmpayload_data_sdef\"], desc: true)\r\n  |> limit(n: 1)\r\n  |> findRecord(fn: (key) => true, idx: 0)\r\n\r\noutdoor = outdoor_raw\r\n  |> filter(fn: (r) => r[\"device_name\"] == best_outdoor.device_name)\r\n  |> map(fn: (r) => ({\r\n      _time: r._time,\r\n      _value: r._value,\r\n      _field:\r\n        if r[\"_measurement\"] == \"device_frmpayload_data_temperature\" then \"Temperature (°C)\"\r\n        else if r[\"_measurement\"] == \"device_frmpayload_data_humidity\" then \"Humidity (%)\"\r\n        else if r[\"_measurement\"] == \"device_frmpayload_data_trockenmasse\" then \"Trockenmasse (%)\"\r\n        else \"SDEF\",\r\n      source: \"Outdoor\"\r\n  }))\r\n  |> group(columns: [\"_field\"])\r\n  |> max()\r\n\r\nprobe_min = from(bucket: \"jokley_bucket\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) =>\r\n      r[\"device_name\"] =~ /^probe/\r\n      and (\r\n        r[\"_measurement\"] == \"device_frmpayload_data_temperature\"\r\n        or r[\"_measurement\"] == \"device_frmpayload_data_humidity\"\r\n        or r[\"_measurement\"] == \"device_frmpayload_data_trockenmasse\"\r\n        or r[\"_measurement\"] == \"device_frmpayload_data_sdef\"\r\n      )\r\n      and r[\"_value\"] <= 100\r\n      and r[\"_value\"] >= -100\r\n  )\r\n  |> last()\r\n  |> map(fn: (r) => ({\r\n      _time: r._time,\r\n      _value: r._value,\r\n      _field:\r\n        if r[\"_measurement\"] == \"device_frmpayload_data_temperature\" then \"Temperature (°C)\"\r\n        else if r[\"_measurement\"] == \"device_frmpayload_data_humidity\" then \"Humidity (%)\"\r\n        else if r[\"_measurement\"] == \"device_frmpayload_data_trockenmasse\" then \"Trockenmasse (%)\"\r\n        else \"SDEF\",\r\n      source: \"Sonde Min\"\r\n  }))\r\n  |> group(columns: [\"_field\"])\r\n  |> min()\r\n\r\nprobe_max = from(bucket: \"jokley_bucket\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) =>\r\n      r[\"device_name\"] =~ /^probe/\r\n      and (\r\n        r[\"_measurement\"] == \"device_frmpayload_data_temperature\"\r\n        or r[\"_measurement\"] == \"device_frmpayload_data_humidity\"\r\n        or r[\"_measurement\"] == \"device_frmpayload_data_trockenmasse\"\r\n        or r[\"_measurement\"] == \"device_frmpayload_data_sdef\"\r\n      )\r\n      and r[\"_value\"] <= 100\r\n      and r[\"_value\"] >= -100\r\n  )\r\n  |> last()\r\n  |> map(fn: (r) => ({\r\n      _time: r._time,\r\n      _value: r._value,\r\n      _field:\r\n        if r[\"_measurement\"] == \"device_frmpayload_data_temperature\" then \"Temperature (°C)\"\r\n        else if r[\"_measurement\"] == \"device_frmpayload_data_humidity\" then \"Humidity (%)\"\r\n        else if r[\"_measurement\"] == \"device_frmpayload_data_trockenmasse\" then \"Trockenmasse (%)\"\r\n        else \"SDEF\",\r\n      source: \"Sonde Max\"\r\n  }))\r\n  |> group(columns: [\"_field\"])\r\n  |> max()\r\n\r\nunion(tables: [outdoor, probe_min, probe_max])\r\n  |> group()\r\n  |> pivot(\r\n      rowKey: [\"_field\"],\r\n      columnKey: [\"source\"],\r\n      valueColumn: \"_value\"\r\n  )\r\n  |> keep(columns: [\"_field\", \"Outdoor\", \"Sonde Min\", \"Sonde Max\"])\r\n  |> rename(columns: {_field: \"Messwert\"})\r\n  |> yield(name: \"tabelle\")",
+          "refId": "A"
+        }
+      ],
+      "title": "Outdoor Values",
+      "type": "table"
+    },
+    {
       "collapsed": true,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 40
+        "y": 52
       },
       "id": 40,
       "panels": [
@@ -2518,7 +2505,7 @@
             "h": 11,
             "w": 11,
             "x": 0,
-            "y": 41
+            "y": 66
           },
           "id": 29,
           "options": {
@@ -2544,7 +2531,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 41
+        "y": 53
       },
       "id": 41,
       "panels": [
@@ -2561,7 +2548,7 @@
             "h": 10,
             "w": 24,
             "x": 0,
-            "y": 42
+            "y": 67
           },
           "id": 36,
           "options": {
@@ -2765,7 +2752,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 42
+        "y": 54
       },
       "id": 39,
       "panels": [
@@ -2790,7 +2777,7 @@
             "h": 16,
             "w": 24,
             "x": 0,
-            "y": 64
+            "y": 89
           },
           "id": 30,
           "options": {
@@ -2831,7 +2818,7 @@
             "h": 19,
             "w": 24,
             "x": 0,
-            "y": 80
+            "y": 105
           },
           "id": 45,
           "options": {
