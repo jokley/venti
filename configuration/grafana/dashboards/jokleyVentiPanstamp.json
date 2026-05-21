@@ -24,7 +24,7 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 2,
+  "id": 1,
   "links": [],
   "panels": [
     {
@@ -38,7 +38,7 @@
       },
       "gridPos": {
         "h": 6,
-        "w": 11,
+        "w": 12,
         "x": 0,
         "y": 0
       },
@@ -318,8 +318,8 @@
       },
       "gridPos": {
         "h": 3,
-        "w": 2,
-        "x": 11,
+        "w": 4,
+        "x": 12,
         "y": 0
       },
       "id": 44,
@@ -474,56 +474,56 @@
                 "value": [
                   {
                     "options": {
-                      "from": 4100,
+                      "from": 3000,
                       "result": {
                         "index": 0,
                         "text": "🔋 100%"
                       },
-                      "to": 4200
+                      "to": 3800
                     },
                     "type": "range"
                   },
                   {
                     "options": {
-                      "from": 4000,
+                      "from": 2800,
                       "result": {
                         "index": 1,
                         "text": "🔋 75%"
                       },
-                      "to": 4100
+                      "to": 3000
                     },
                     "type": "range"
                   },
                   {
                     "options": {
-                      "from": 3850,
+                      "from": 2600,
                       "result": {
                         "index": 2,
                         "text": "🔋 50%"
                       },
-                      "to": 4000
+                      "to": 2800
                     },
                     "type": "range"
                   },
                   {
                     "options": {
-                      "from": 3700,
+                      "from": 2400,
                       "result": {
                         "index": 3,
                         "text": "🔋 25%"
                       },
-                      "to": 3850
+                      "to": 2600
                     },
                     "type": "range"
                   },
                   {
                     "options": {
-                      "from": 3200,
+                      "from": 2200,
                       "result": {
                         "index": 4,
                         "text": "🪫 5%"
                       },
-                      "to": 3700
+                      "to": 2400
                     },
                     "type": "range"
                   }
@@ -605,8 +605,8 @@
       },
       "gridPos": {
         "h": 6,
-        "w": 11,
-        "x": 13,
+        "w": 8,
+        "x": 16,
         "y": 0
       },
       "id": 33,
@@ -729,30 +729,16 @@
         "type": "influxdb",
         "uid": "P5697886F9CA74929"
       },
+      "description": "",
       "fieldConfig": {
         "defaults": {
           "color": {
-            "fixedColor": "green",
+            "fixedColor": "#09b8ff",
             "mode": "fixed"
           },
-          "displayName": ".",
-          "mappings": [
-            {
-              "options": {
-                "0": {
-                  "color": "#19d2ff",
-                  "index": 1,
-                  "text": " 𖣘"
-                },
-                "1": {
-                  "color": "#3fedc2",
-                  "index": 0,
-                  "text": " 𖣘"
-                }
-              },
-              "type": "value"
-            }
-          ],
+          "decimals": 1,
+          "displayName": "${__field.name}",
+          "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -764,18 +750,52 @@
                 "value": 80
               }
             ]
-          }
+          },
+          "unit": "ns"
         },
         "overrides": [
           {
             "matcher": {
               "id": "byName",
-              "options": "device_frmpayload_data_RO1_status _value fan"
+              "options": "🌾 Stockaufbau noch"
             },
             "properties": [
               {
-                "id": "mappings",
-                "value": []
+                "id": "color",
+                "value": {
+                  "fixedColor": "#69bfb79c",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "ON"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#3fedc2",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "OFF"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#19d2ff",
+                  "mode": "fixed"
+                }
               }
             ]
           }
@@ -783,15 +803,15 @@
       },
       "gridPos": {
         "h": 3,
-        "w": 2,
-        "x": 11,
+        "w": 4,
+        "x": 12,
         "y": 3
       },
-      "id": 26,
+      "id": 45,
       "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "center",
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "auto",
         "orientation": "auto",
         "percentChangeColorMode": "standard",
         "reduceOptions": {
@@ -802,7 +822,7 @@
           "values": false
         },
         "showPercentChange": false,
-        "textMode": "auto",
+        "textMode": "value_and_name",
         "wideLayout": true
       },
       "pluginVersion": "12.0.0",
@@ -812,11 +832,12 @@
             "type": "influxdb",
             "uid": "P5697886F9CA74929"
           },
-          "query": "from(bucket: \"jokley_bucket\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"device_name\"] == \"fan\")\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"device_frmpayload_data_RO1_status\")\r\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)\r\n  |> map(fn: (r) => ({\r\n      r with\r\n      _value: if r._value == \"ON\" then 1 else 0\r\n  }))\r\n  |> yield(name: \"last\")",
-          "refId": "A"
+          "hide": false,
+          "query": "// =============================================================================\r\n// 🌀 VENTI STATUS QUERY\r\n// Relay RO1: sendet alle 10min ON oder OFF\r\n// fan_is_on = letztes ON-Heartbeat < 10min → Lüfter wirklich EIN\r\n// Zeitwert: aktive States → State-Timestamp, AUS-States → Relay-Timestamp\r\n// =============================================================================\r\n\r\nventi_mode = from(bucket: \"jokley_bucket\")\r\n  |> range(start: -2d)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"venti\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"mode\")\r\n  |> last()\r\n  |> findRecord(fn: (key) => true, idx: 0)\r\n\r\nstock = from(bucket: \"jokley_bucket\")\r\n  |> range(start: -2d)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"venti\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"stockaufbau\")\r\n  |> last()\r\n  |> findRecord(fn: (key) => true, idx: 0)\r\n\r\nlast_ro1_on = from(bucket: \"jokley_bucket\")\r\n  |> range(start: -2d)\r\n  |> filter(fn: (r) => r[\"device_name\"] == \"fan\")\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"device_frmpayload_data_RO1_status\")\r\n  |> filter(fn: (r) => r[\"_value\"] == \"ON\")\r\n  |> last()\r\n  |> findRecord(fn: (key) => true, idx: 0)\r\n\r\nfrom(bucket: \"jokley_bucket\")\r\n  |> range(start: -2d)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"venti_state\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"state\")\r\n  |> last()\r\n  |> map(fn: (r) => {\r\n      s = r._value\r\n\r\n      // Relay-basiert: letzter ON-Heartbeat < 10min → EIN\r\n      since_last_ro1_on = uint(v: now()) - uint(v: last_ro1_on._time)\r\n      fan_is_on         = since_last_ro1_on < uint(v: 600000000000)\r\n\r\n      // Zeitwerte\r\n      state_elapsed_ns = int(v: uint(v: now()) - uint(v: r._time))\r\n      off_since_ns     = int(v: since_last_ro1_on)\r\n\r\n      // Stockaufbau Restzeit\r\n      stock_ns        = int(v: stock._value) * 3600000000000\r\n      stock_elapsed   = int(v: uint(v: now()) - uint(v: stock._time))\r\n      stock_remaining = stock_ns - stock_elapsed\r\n\r\n      return {\r\n        r with\r\n\r\n        _field:\r\n          // Aktive States – Label aus State\r\n          if s == \"STOCK_BUILDING\"\r\n            then \"🌾 Stockaufbau noch\"\r\n          else if s == \"DRYING_ACTIVE\"\r\n            then \"💨 Trocknung seit\"\r\n          else if s == \"INTERVAL_ACTIVE\"\r\n            then \"⏱ Intervall seit\"\r\n          else if s == \"OVERHEAT\"\r\n            then \"🌡 Überhitzung seit\"\r\n          else if s == \"INEFFICIENT_DRYING\"\r\n            then \"⚠️ Ineffizient seit\"\r\n          // Manuelle States\r\n          else if s == \"VENTI_MANUAL_ON\"\r\n            then \"✋ Manuell EIN seit\"\r\n          else if s == \"VENTI_MANUAL_OFF\"\r\n            then \"🛑 Manuell AUS seit\"\r\n          // AUTO_IDLE + Fallback → Relay entscheidet Label\r\n          else if fan_is_on\r\n            then \"💨 Lüfter EIN seit\"\r\n          else\r\n            \"😴 Lüfter AUS seit\",\r\n\r\n        _value:\r\n          // Stockaufbau → Restzeit\r\n          if s == \"STOCK_BUILDING\"\r\n            then (if stock_remaining > 0 then stock_remaining else 0)\r\n          // Aktive States + Manuell EIN → State-Timestamp (Zeit seit State-Start)\r\n          else if s == \"DRYING_ACTIVE\"\r\n            or s == \"INTERVAL_ACTIVE\"\r\n            or s == \"OVERHEAT\"\r\n            or s == \"INEFFICIENT_DRYING\"\r\n            or s == \"VENTI_MANUAL_ON\"\r\n            then state_elapsed_ns\r\n          // AUS-States → Relay-Timestamp (wann wirklich zuletzt EIN)\r\n          else\r\n            off_since_ns\r\n      }\r\n  })\r\n  |> yield(name: \"venti_status\")\r\n\r\n\r\n// =============================================================================\r\n// 🔥 HEIZUNG STATUS QUERY\r\n// Relay RO2: sendet alle 10min ON oder OFF\r\n// heizung_is_on = letztes ON-Heartbeat < 10min → Heizung wirklich EIN\r\n// States: HEIZUNG_MANUAL_ON/OFF, HEIZUNG_ACTIVE, HEIZUNG_NACHLAUF,\r\n//         HEIZUNG_IDLE, HEIZUNG_DISABLED, HEIZUNG_SDEF_LIMIT\r\n// =============================================================================\r\n\r\nheizung_mode = from(bucket: \"jokley_bucket\")\r\n  |> range(start: -2d)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"heizung\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"mode\")\r\n  |> last()\r\n  |> findRecord(fn: (key) => true, idx: 0)\r\n\r\nnachlauf = from(bucket: \"jokley_bucket\")\r\n  |> range(start: -2d)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"heizung_param\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"heizung_nachlauf\")\r\n  |> last()\r\n  |> findRecord(fn: (key) => true, idx: 0)\r\n\r\nlast_ro2_on = from(bucket: \"jokley_bucket\")\r\n  |> range(start: -2d)\r\n  |> filter(fn: (r) => r[\"device_name\"] == \"fan\")\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"device_frmpayload_data_RO2_status\")\r\n  |> filter(fn: (r) => r[\"_value\"] == \"ON\")\r\n  |> last()\r\n  |> findRecord(fn: (key) => true, idx: 0)\r\n\r\nfrom(bucket: \"jokley_bucket\")\r\n  |> range(start: -2d)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"heizung\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"heizung_dauer\")\r\n  |> last()\r\n  |> map(fn: (r) => {\r\n      s = heizung_mode._value\r\n\r\n      // Relay-basiert: letzter ON-Heartbeat < 10min → EIN\r\n      since_last_ro2_on = uint(v: now()) - uint(v: last_ro2_on._time)\r\n      heizung_is_on     = since_last_ro2_on < uint(v: 600000000000)\r\n      off_since_ns      = int(v: since_last_ro2_on)\r\n\r\n      // Auto-Timer Restzeit\r\n      duration_ns    = int(v: r._value) * 360000000000\r\n      elapsed_ns     = int(v: uint(v: now()) - uint(v: r._time))\r\n      auto_remaining = duration_ns - elapsed_ns\r\n\r\n      // Nachlauf Restzeit (aus heizung_state Timestamp + nachlauf_param)\r\n      nachlauf_ns = int(v: nachlauf._value) * 60 * 1000000000\r\n\r\n      return {\r\n        r with\r\n\r\n        _field:\r\n          // Nachlauf → immer Restzeit anzeigen\r\n          if s == \"HEIZUNG_NACHLAUF\"\r\n            then \"🌡 Nachlauf noch\"\r\n          // Auto aktiv → Timer-Restzeit\r\n          else if heizung_is_on and s == \"auto\"\r\n            then \"🔥 Heizung Restzeit\"\r\n          // Manuell EIN\r\n          else if heizung_is_on and (s == \"on\" or s == \"HEIZUNG_MANUAL_ON\")\r\n            then \"🔥 Heizung läuft seit\"\r\n          // SDef Limit erreicht\r\n          else if s == \"HEIZUNG_SDEF_LIMIT\"\r\n            then \"📊 SDef Limit seit\"\r\n          // Disabled\r\n          else if s == \"HEIZUNG_DISABLED\"\r\n            then \"⬜ Heizung deaktiviert\"\r\n          // AUS → Relay-Timestamp\r\n          else\r\n            \"💤 Heizung aus seit\",\r\n\r\n        _value:\r\n          if s == \"HEIZUNG_NACHLAUF\"\r\n            then (if nachlauf_ns - off_since_ns > 0 then nachlauf_ns - off_since_ns else 0)\r\n          else if heizung_is_on and s == \"auto\"\r\n            then (if auto_remaining > 0 then auto_remaining else 0)\r\n          else if heizung_is_on\r\n            then int(v: since_last_ro2_on)\r\n          else\r\n            off_since_ns\r\n      }\r\n  })\r\n  |> yield(name: \"heizung_status\")\r\n",
+          "refId": "E"
         }
       ],
-      "title": "Lüfter Status",
+      "title": "",
       "type": "stat"
     },
     {
@@ -1271,235 +1292,6 @@
     },
     {
       "datasource": {
-        "type": "influxdb",
-        "uid": "P5697886F9CA74929"
-      },
-      "description": "",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "fixedColor": "#09b8ff",
-            "mode": "fixed"
-          },
-          "decimals": 1,
-          "displayName": "${__field.name}",
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green"
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          },
-          "unit": "ns"
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Stockaufbau"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "#69bfb79c",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "ON"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "#3fedc2",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "OFF"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "#19d2ff",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          }
-        ]
-      },
-      "gridPos": {
-        "h": 3,
-        "w": 12,
-        "x": 0,
-        "y": 14
-      },
-      "id": 15,
-      "options": {
-        "colorMode": "background",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "textMode": "value_and_name",
-        "wideLayout": true
-      },
-      "pluginVersion": "12.0.0",
-      "targets": [
-        {
-          "datasource": {
-            "type": "influxdb",
-            "uid": "P5697886F9CA74929"
-          },
-          "query": "from(bucket: \"jokley_bucket\")\r\n  |> range(start: -2d)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"venti\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"stockaufbau\")\r\n  |> last()\r\n  |> map(fn: (r) => ({\r\n    _time: r._time,\r\n    _field: \"Stockaufbau\",\r\n    _value:\r\n      if (uint(v: r._value) * uint(v: 3600000000000)) - (uint(v: now()) - uint(v: r._time)) >= 0 and\r\n         (uint(v: r._value) * uint(v: 3600000000000)) - (uint(v: now()) - uint(v: r._time)) <= 1844674388946713400\r\n      then (uint(v: r._value) * uint(v: 3600000000000)) - (uint(v: now()) - uint(v: r._time))\r\n      else uint(v: 0)\r\n  }))\r\n  |> yield(name: \"last\")",
-          "refId": "A"
-        },
-        {
-          "datasource": {
-            "type": "influxdb",
-            "uid": "P5697886F9CA74929"
-          },
-          "hide": false,
-          "query": "from(bucket: \"jokley_bucket\")\r\n  |> range(start: -2d)\r\n  |> filter(fn: (r) => r[\"device_name\"] == \"fan\")\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"device_frmpayload_data_RO1_status\")\r\n  |> filter(fn: (r) => r[\"_value\"] == \"OFF\")\r\n  |> last()\r\n  |> map(fn: (r) => ({\r\n    _time: r._time,\r\n    _field: \"ON\",\r\n    _value: if uint(v: now()) - uint(v: r._time) >= uint(v: 600000000000) then uint(v: now()) - uint(v: r._time) else uint(v: 0)\r\n  }))\r\n  |> yield(name: \"last\")",
-          "refId": "B"
-        },
-        {
-          "datasource": {
-            "type": "influxdb",
-            "uid": "P5697886F9CA74929"
-          },
-          "hide": false,
-          "query": "from(bucket: \"jokley_bucket\")\r\n  |> range(start: -2d)\r\n  |> filter(fn: (r) => r[\"device_name\"] == \"fan\")\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"device_frmpayload_data_RO1_status\")\r\n  |> filter(fn: (r) => r[\"_value\"] == \"ON\")\r\n  |> last()\r\n  |> map(fn: (r) => ({\r\n    _time: r._time,\r\n    _field: \"OFF\",\r\n    _value: if uint(v: now()) - uint(v: r._time) >= uint(v: 600000000000) then uint(v: now()) - uint(v: r._time) else uint(v: 0)\r\n  }))\r\n  |> yield(name: \"last\")",
-          "refId": "C"
-        }
-      ],
-      "title": "Lüfter",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "influxdb",
-        "uid": "P5697886F9CA74929"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "fixedColor": "#19d2ff",
-            "mode": "fixed"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "fillOpacity": 68,
-            "gradientMode": "opacity",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "lineWidth": 1,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "decimals": 1,
-          "displayName": "Lüfter",
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green"
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          },
-          "unit": "h"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 7,
-        "w": 12,
-        "x": 12,
-        "y": 14
-      },
-      "id": 18,
-      "options": {
-        "barRadius": 0.05,
-        "barWidth": 0.87,
-        "fullHighlight": false,
-        "groupWidth": 0.7,
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": false
-        },
-        "orientation": "auto",
-        "showValue": "never",
-        "stacking": "none",
-        "text": {},
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "multi",
-          "sort": "none"
-        },
-        "xField": "Time",
-        "xTickLabelRotation": 0,
-        "xTickLabelSpacing": 100
-      },
-      "pluginVersion": "12.0.0",
-      "targets": [
-        {
-          "datasource": {
-            "type": "influxdb",
-            "uid": "P5697886F9CA74929"
-          },
-          "query": "option v = {\r\n  timeRangeStart: v.timeRangeStart,\r\n  timeRangeStop: v.timeRangeStop\r\n}\r\n\r\ntimeRangeSeconds =\r\n    int(v: uint(v: v.timeRangeStop) - uint(v: v.timeRangeStart)) / 1000000000\r\n\r\nwindowSize =\r\n    if timeRangeSeconds < 3 * 24 * 3600 then 1h\r\n    else if timeRangeSeconds < 35 * 24 * 3600 then 1d\r\n    else 1mo\r\n\r\nfrom(bucket: \"jokley_bucket\")\r\n\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n\r\n  |> filter(fn: (r) =>\r\n      r[\"device_name\"] == \"fan\" and\r\n      r[\"_measurement\"] == \"device_frmpayload_data_RO1_status\"\r\n  )\r\n\r\n  |> map(fn: (r) => ({\r\n      r with\r\n      _value: if r._value == \"ON\" then 1.0 else 0.0\r\n  }))\r\n\r\n  |> aggregateWindow(\r\n      every: windowSize,\r\n      fn: mean,\r\n      createEmpty: true\r\n  )\r\n\r\n  |> map(fn: (r) => ({\r\n      _time: r._time,\r\n\r\n      _value:\r\n        r._value *\r\n        float(v: int(v: windowSize) / 1000000000) /\r\n        3600.0\r\n  }))\r\n\r\n  |> fill(value: 0.0)\r\n\r\n  |> yield(name: \"Fan runtime (h)\")",
-          "refId": "A"
-        }
-      ],
-      "title": "Betriebsstunden",
-      "type": "barchart"
-    },
-    {
-      "datasource": {
         "type": "datasource",
         "uid": "grafana"
       },
@@ -1511,7 +1303,7 @@
         "h": 4,
         "w": 12,
         "x": 0,
-        "y": 17
+        "y": 14
       },
       "id": 38,
       "options": {
@@ -1624,6 +1416,102 @@
       ],
       "title": "System Befehle",
       "type": "volkovlabs-form-panel"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "P5697886F9CA74929"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "#19d2ff",
+            "mode": "fixed"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "fillOpacity": 68,
+            "gradientMode": "opacity",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineWidth": 1,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "decimals": 1,
+          "displayName": "Lüfter",
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "h"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 14
+      },
+      "id": 18,
+      "options": {
+        "barRadius": 0.05,
+        "barWidth": 0.87,
+        "fullHighlight": false,
+        "groupWidth": 0.7,
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "orientation": "auto",
+        "showValue": "never",
+        "stacking": "none",
+        "text": {},
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "multi",
+          "sort": "none"
+        },
+        "xField": "Time",
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 100
+      },
+      "pluginVersion": "12.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "P5697886F9CA74929"
+          },
+          "query": "option v = {\r\n  timeRangeStart: v.timeRangeStart,\r\n  timeRangeStop: v.timeRangeStop\r\n}\r\n\r\ntimeRangeSeconds =\r\n    int(v: uint(v: v.timeRangeStop) - uint(v: v.timeRangeStart)) / 1000000000\r\n\r\nwindowSize =\r\n    if timeRangeSeconds < 3 * 24 * 3600 then 1h\r\n    else if timeRangeSeconds < 35 * 24 * 3600 then 1d\r\n    else 1mo\r\n\r\nfrom(bucket: \"jokley_bucket\")\r\n\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n\r\n  |> filter(fn: (r) =>\r\n      r[\"device_name\"] == \"fan\" and\r\n      r[\"_measurement\"] == \"device_frmpayload_data_RO1_status\"\r\n  )\r\n\r\n  |> map(fn: (r) => ({\r\n      r with\r\n      _value: if r._value == \"ON\" then 1.0 else 0.0\r\n  }))\r\n\r\n  |> aggregateWindow(\r\n      every: windowSize,\r\n      fn: mean,\r\n      createEmpty: true\r\n  )\r\n\r\n  |> map(fn: (r) => ({\r\n      _time: r._time,\r\n\r\n      _value:\r\n        r._value *\r\n        float(v: int(v: windowSize) / 1000000000) /\r\n        3600.0\r\n  }))\r\n\r\n  |> fill(value: 0.0)\r\n\r\n  |> yield(name: \"Fan runtime (h)\")",
+          "refId": "A"
+        }
+      ],
+      "title": "Betriebsstunden",
+      "type": "barchart"
     },
     {
       "collapsed": false,
@@ -2171,7 +2059,7 @@
             "h": 10,
             "w": 24,
             "x": 0,
-            "y": 36
+            "y": 47
           },
           "id": 36,
           "options": {
@@ -2400,7 +2288,7 @@
             "h": 9,
             "w": 24,
             "x": 0,
-            "y": 45
+            "y": 56
           },
           "id": 30,
           "options": {
@@ -2441,7 +2329,7 @@
             "h": 19,
             "w": 24,
             "x": 0,
-            "y": 54
+            "y": 65
           },
           "id": 43,
           "options": {
@@ -2796,5 +2684,5 @@
   "timezone": "",
   "title": "jokleyVentiPanstamp",
   "uid": "47a24cfa-bd5f-415d-96cf-fae2441ecb48",
-  "version": 2
+  "version": 3
 }
