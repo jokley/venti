@@ -362,12 +362,17 @@ def get_outdoor_values():
       )
       |> filter(fn: (r) => r._value <= 150 and r._value >= -150)
       |> last()
-      |> pivot(rowKey: ["device_name"], columnKey: ["_measurement"], valueColumn: "_value")
-
+      |> pivot(
+          rowKey: ["device_name", "dev_eui"],
+          columnKey: ["_measurement"],
+          valueColumn: "_value"
+      )
+    
     best = outdoor
+      |> group()
       |> sort(columns: ["device_frmpayload_data_sdef"], desc: true)
       |> limit(n: 1)
-
+    
     best
     '''
 
