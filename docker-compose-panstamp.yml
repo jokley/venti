@@ -128,6 +128,8 @@ networks:
   example-network:
     name: example-network
     driver: bridge
+    driver_opts:
+      com.docker.network.driver.mtu: 1400  # <--- Das hier hinzufügen
     ipam:
       driver: default
       config: 
