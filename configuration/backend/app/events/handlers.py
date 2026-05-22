@@ -140,6 +140,12 @@ def handle_decision_log(event: Event):
     elif decision.reason == "AUTO_IDLE":
         log("Automatik im Leerlauf")
         log(f"Reason: {details.get('reason')}")
+        log(
+            f"sDefOut: {details.get('sDefOut')} | "
+            f"EIN ab sdef_on: {details.get('sdef_ein_schwelle')} | "
+            f"EIN ab MinThreshold: {details.get('sdefMinThreshold_ein')}"
+        )
+        log(f"tsDiff: {details.get('tsDiff')}")
         logger.debug(f"Effizienz: {details.get('efficiency')} | Limit: {details.get('adaptive_threshold')}")
         logger.debug(f"Intervall Feuchte: {details.get('humMax')} / {details.get('intervall_on')}")
         logger.debug(f"Dauer aus: {details.get('remainingTimeIntervalOn')}")
