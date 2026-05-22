@@ -260,11 +260,20 @@ class DryingDecisionEngine:
             "is_fan_on": ctx.is_fan_on,
             "fan_runtime_current": ctx.fan_runtime_current,
             "trace": trace,
+            # Hysterese Debug
+            "sdef_on": ctx.sdef_on,
+            "sdef_hys_half": ctx.sdef_hys_half,
+            "sdef_ein_schwelle": (
+                round(ctx.sdef_on + ctx.sdef_hys_half, 2)
+                if ctx.sdef_on is not None and ctx.sdef_hys_half is not None else None
+            ),
+            "sdefMinThreshold_ein": (
+                round(ctx.sdefMinThreshold + ctx.sdef_hys_half, 2)
+                if ctx.sdefMinThreshold is not None and ctx.sdef_hys_half is not None else None
+            ),
         }
-
         if reason == "drying_delay":
             details["delay_remaining"] = ctx.venti_drying_delay_remaining
-
         return Decision("off", "AUTO_IDLE", details)
 
     def _drying_delay_active(self, ctx):
