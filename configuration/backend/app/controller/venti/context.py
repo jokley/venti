@@ -98,13 +98,38 @@ class VentiContext:
             and self.uschutz_on is not None
             and self.tempMax >= self.uschutz_on
         )
-        self.drying_conditions_met = (
+ 
+        # Hysterese-Logik:
+        # Lüfter AUS → EIN erst wenn SDef die OBERE Schwelle erreicht
+        # Lüfter EIN → weiterlaufen bis SDef unter UNTERE Schwelle fällt
+        # Damit wird Flattern in der Totzone verhindert.
+        #
+        # tsSoll >= tsMin + ts_hys_half:
+        #   Ziel noch nicht erreicht – gilt unabhängig vom Lüfter-Zustand
+        #   weil ts_hys_half verhindert dass bei knapp erreichtem Ziel
+        #   sofort wieder gestartet wird.
+ 
+        _base_ok = (
             self.sDefOut is not None
             and self.sdefMinThreshold is not None
             and self.sdef_on is not None
             and self.tsSoll is not None
             and self.tsMin is not None
-            and self.sDefOut >= self.sdefMinThreshold + self.sdef_hys_half
-            and self.sDefOut >= self.sdef_on + self.sdef_hys_half
             and self.tsSoll >= self.tsMin + self.ts_hys_half
         )
+ 
+        if _base_ok:
+            if self.is_fan_on:
+                # Lüfter läuft → untere Schwelle reicht zum Weiterlaufen
+                self.drying_conditions_met = (
+                    self.sDefOut >= self.sdefMinThreshold - self.sdef_hys_half
+                    and self.sDefOut >= self.sdef_on - self.sdef_hys_half
+                )
+            else:
+                # Lüfter aus → obere Schwelle nötig zum Starten
+                self.drying_conditions_met = (
+                    self.sDefOut >= self.sdefMinThreshold + self.sdef_hys_half
+                    and self.sDefOut >= self.sdef_on + self.sdef_hys_half
+                )
+        else:
+            self.drying_conditions_met = False
