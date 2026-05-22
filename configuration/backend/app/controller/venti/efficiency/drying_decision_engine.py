@@ -122,6 +122,8 @@ class DryingDecisionEngine:
         # Classic mode stays close to the old parameter-based behavior:
         # if drying conditions are good, run; otherwise try interval mode;
         # otherwise remain idle.
+        # sDefOut Hysterese ist in ctx.drying_conditions_met abgedeckt –
+        # EIN bei oberer Schwelle, Weiterlaufen bis untere Schwelle.
         if ctx.drying_conditions_met:
             if self._drying_delay_active(ctx):
                 # Nach einem beendeten Trocknungslauf blockiert der Delay nur
@@ -129,32 +131,32 @@ class DryingDecisionEngine:
                 interval_decision = self._interval_decision(ctx, trace, step)
                 if interval_decision:
                     return interval_decision
-
                 step("drying_delay", True, "AUTO_IDLE")
                 return self._auto_idle(ctx, metrics, trace, "drying_delay")
-
+    
             step("drying_active", True, "DRYING_ACTIVE")
             return Decision(
                 "on",
                 "DRYING_ACTIVE",
                 self._drying_details(ctx, metrics, trace, "legacy_drying"),
             )
-
+    
         interval_decision = self._interval_decision(ctx, trace, step)
         if interval_decision:
             return interval_decision
-
+    
+        # Ziel erreicht – tsSoll unter tsMin - ts_hys_half
+        # sDefOut Checks entfallen hier da in drying_conditions_met mit
+        # korrekter Hysterese abgedeckt.
         if (
             ctx.remainingTimeStock > ctx.stock
-            and (
-                ctx.sDefOut < ctx.sdefMinThreshold - ctx.sdef_hys_half
-                or ctx.sDefOut < ctx.sdef_on - ctx.sdef_hys_half
-                or ctx.tsSoll < ctx.tsMin - ctx.ts_hys_half
-            )
+            and ctx.tsSoll is not None
+            and ctx.tsMin is not None
+            and ctx.tsSoll < ctx.tsMin - ctx.ts_hys_half
         ):
             step("drying_not_possible", True, "AUTO_IDLE")
-            return self._auto_idle(ctx, metrics, trace, "drying_conditions_not_met")
-
+            return self._auto_idle(ctx, metrics, trace, "ts_target_reached")
+    
         step("auto_idle_default", True, "AUTO_IDLE")
         return self._auto_idle(ctx, metrics, trace, "drying_conditions_not_met")
 
