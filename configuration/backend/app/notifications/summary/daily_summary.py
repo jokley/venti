@@ -62,6 +62,31 @@ def format_devices_block(title, data, unit="", convert_seconds_to_minutes=False)
     return "\n".join(lines)
 
 
+def format_sensor_status_block(sensor_age):
+    max_age_seconds = 30 * 60
+
+    if not sensor_age:
+        return "⏱ Sensoren: prüfen"
+
+    stale_devices = []
+
+    for device, value in sensor_age.items():
+        if value is None:
+            stale_devices.append(device)
+            continue
+
+        try:
+            if int(value) > max_age_seconds:
+                stale_devices.append(device)
+        except:
+            stale_devices.append(device)
+
+    if stale_devices:
+        return "⏱ Sensoren: prüfen ({})".format(", ".join(stale_devices))
+
+    return "⏱ Sensoren: OK"
+
+
 def build_daily_summary(ctx):
 
     # =========================
@@ -80,7 +105,7 @@ def build_daily_summary(ctx):
     # =========================
     battery_block = format_devices_block("🔋 Batterie", ctx.battery, "%")
     rssi_block = format_devices_block("📶 RSSI", ctx.rssi, " dBm")
-    age_block = format_devices_block( "⏱ Sensor Alter",ctx.sensor_age," min",convert_seconds_to_minutes=True)
+    sensor_status_block = format_sensor_status_block(ctx.sensor_age)
 
     # =========================
     # 🧾 MAIN SUMMARY
@@ -100,7 +125,7 @@ def build_daily_summary(ctx):
 
         f"{rssi_block}\n\n"
 
-        f"{age_block}\n"
+        f"{sensor_status_block}\n"
     )
 
     return msg
