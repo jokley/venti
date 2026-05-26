@@ -5,12 +5,55 @@ from app.controller.venti.controller import evaluate
 from app.services.control_data import build_control_data
 from app.notifications.notifier import send_notification
 from app.notifications.summary.daily_summary import build_daily_summary
+from app.db.influx_client import get_influxdb_client
+from app.services.influx_service import get_sensor_age
   
 from ..utils.logger import logger
 import threading
 import os
 
 system_bp = Blueprint('system', __name__)
+
+
+def _influx_ok() -> bool:
+    """Lightweight Influx availability check used by watchdog."""
+    client = get_influxdb_client()
+    try:
+        # Keep query intentionally cheap; we only need a connectivity signal.
+        client.query_api().query(query='buckets() |> limit(n: 1)')
+        return True
+    except Exception:
+        return False
+    finally:
+        client.close()
+
+
+def _is_panstamp_mode() -> bool:
+    value = os.getenv("PANSTAMP", "false").strip().lower()
+    return value in {"1", "true", "yes", "on"}
+
+
+def _panstamp_stream_ok() -> bool:
+    """
+    For PANSTAMP=true: stream is considered unhealthy only when all monitored
+    sensors are stale (older than PANSTAMP_MAX_SENSOR_AGE_SEC) or no ages exist.
+    For LoRa mode this check is ignored (always true).
+    """
+    if not _is_panstamp_mode():
+        return True
+
+    max_age = int(os.getenv("PANSTAMP_MAX_SENSOR_AGE_SEC", "300"))
+
+    try:
+        ages = get_sensor_age()
+    except Exception:
+        return False
+
+    if not ages:
+        return False
+
+    # Healthy when at least one sensor is still recent.
+    return any(int(age) <= max_age for age in ages.values() if age is not None)
 
 @system_bp.route('/ventiSystem', methods=['POST'])
 def venti_system():
@@ -103,3 +146,19 @@ def force_daily_summary():
     return jsonify({
         "status": "forced_sent"
     })
+
+
+@system_bp.route("/healthz", methods=["GET"])
+def healthz():
+    """Basic backend liveness endpoint for container watchdogs."""
+    return jsonify({"status": "ok"}), 200
+
+
+@system_bp.route("/watchdog/status", methods=["GET"])
+def watchdog_status():
+    """Status endpoint consumed by the watchdog service."""
+    return jsonify({
+        "influx_ok": _influx_ok(),
+        "panstamp_mode": _is_panstamp_mode(),
+        "panstamp_stream_ok": _panstamp_stream_ok(),
+    }), 200
