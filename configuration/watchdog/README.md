@@ -21,3 +21,10 @@ Dieser Dienst überwacht Backend/Influx und startet Container kontrolliert neu.
 - Cooldown pro Container
 - Max-Restarts pro Stunde
 - Retry-Logik beim Backend
+
+## Crash-Diagnose bei Backend-Ausfällen
+- Bei fehlgeschlagenem Backend-Healthcheck protokolliert der Watchdog zusätzlich:
+  - HTTP-Fehlergrund (Statuscode/Exception)
+  - Container-State (`status`, `exit_code`, `oom_killed`, Zeitstempel, Docker-Error)
+  - die letzten Backend-Logs (`tail=30`)
+- Dadurch lässt sich besser unterscheiden, ob es ein echter Crash, OOM oder ein Hänger ist.
