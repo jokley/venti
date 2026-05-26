@@ -36,12 +36,15 @@ last_restart_ts = {}
 restart_events = []
 
 
-def http_ok(url: str, timeout: float = 4.0) -> bool:
+def http_ok(url: str, timeout: float = 4.0) -> tuple[bool, str]:
     try:
         response = requests.get(url, timeout=timeout)
-        return 200 <= response.status_code < 300
-    except Exception:
-        return False
+        ok = 200 <= response.status_code < 300
+        if ok:
+            return True, f"http {response.status_code}"
+        return False, f"http {response.status_code}"
+    except Exception as exc:
+        return False, f"request_error: {exc}"
 
 
 def get_watchdog_status() -> dict | None:
@@ -89,12 +92,48 @@ def alert(message: str) -> None:
     log(f"ALERT: {message}")
 
 
+def describe_container_state(client: docker.DockerClient, service: str) -> str:
+    try:
+        container = client.containers.get(service)
+        container.reload()
+        state = container.attrs.get("State", {})
+        status = state.get("Status", "unknown")
+        exit_code = state.get("ExitCode")
+        oom_killed = state.get("OOMKilled")
+        error = state.get("Error", "")
+        started_at = state.get("StartedAt", "")
+        finished_at = state.get("FinishedAt", "")
+        return (
+            f"container_state status={status} exit_code={exit_code} "
+            f"oom_killed={oom_killed} started_at={started_at} "
+            f"finished_at={finished_at} error={error}"
+        )
+    except Exception as exc:
+        return f"container_state_error: {exc}"
+
+
+def describe_container_logs(client: docker.DockerClient, service: str, tail: int = 20) -> str:
+    try:
+        container = client.containers.get(service)
+        raw = container.logs(tail=tail).decode("utf-8", errors="replace").strip()
+        if not raw:
+            return "container_logs: <empty>"
+        one_line = raw.replace("\n", " | ")
+        return f"container_logs_tail={tail}: {one_line}"
+    except Exception as exc:
+        return f"container_logs_error: {exc}"
+
+
 def main() -> None:
     client = docker.from_env()
     log("watchdog started")
 
     while True:
-        if not http_ok(BACKEND_HEALTH_URL):
+        backend_ok, backend_reason = http_ok(BACKEND_HEALTH_URL)
+        if not backend_ok:
+            log(f"Backend health failed ({backend_reason})")
+            log(describe_container_state(client, BACKEND_SERVICE))
+            log(describe_container_logs(client, BACKEND_SERVICE, tail=30))
             ok, why = safe_restart(client, BACKEND_SERVICE, "backend health down")
             if not ok and why == "budget_exceeded":
                 alert("restart budget exceeded while backend is down")
@@ -103,9 +142,11 @@ def main() -> None:
 
             backend_up = False
             for _ in range(BACKEND_MAX_RETRIES):
-                if http_ok(BACKEND_HEALTH_URL):
+                retry_ok, retry_reason = http_ok(BACKEND_HEALTH_URL)
+                if retry_ok:
                     backend_up = True
                     break
+                log(f"Backend health retry failed ({retry_reason})")
                 time.sleep(10)
 
             if not backend_up:
@@ -115,7 +156,9 @@ def main() -> None:
 
         status = get_watchdog_status()
         if status is None:
-            if not http_ok(INFLUX_HEALTH_URL):
+            influx_ok, influx_reason = http_ok(INFLUX_HEALTH_URL)
+            if not influx_ok:
+                log(f"Influx fallback health failed ({influx_reason})")
                 ok, why = safe_restart(client, INFLUX_SERVICE, "influx health down (fallback)")
                 if not ok and why == "budget_exceeded":
                     alert("restart budget exceeded for influx fallback")
