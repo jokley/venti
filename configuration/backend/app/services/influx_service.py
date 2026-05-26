@@ -399,7 +399,7 @@ def get_min_max_values():
     query = '''
         tmin = from(bucket: "jokley_bucket")
             |> range(start: -1h)
-            |> filter(fn: (r) => r["device_name"] == "probe01" or r["device_name"] == "probe02")
+            |> filter(fn: (r) => r["device_name"] =~ /^probe/)
             |> filter(fn: (r) =>  r["_measurement"] == "device_frmpayload_data_temperature" or r["_measurement"] == "device_frmpayload_data_humidity"  or r["_measurement"] == "device_frmpayload_data_trockenmasse" or r["_measurement"] == "device_frmpayload_data_sdef" )
             |> filter(fn: (r) => r._value <= 150 and r._value >= -150)
             |> last()
@@ -408,7 +408,7 @@ def get_min_max_values():
 
         tmax = from(bucket: "jokley_bucket")
             |> range(start: -1h)
-            |> filter(fn: (r) => r["device_name"] == "probe01" or r["device_name"] == "probe02")
+            |> filter(fn: (r) => r["device_name"] =~ /^probe/)
             |> filter(fn: (r) =>  r["_measurement"] == "device_frmpayload_data_temperature" or r["_measurement"] == "device_frmpayload_data_humidity"  or r["_measurement"] == "device_frmpayload_data_trockenmasse" or r["_measurement"] == "device_frmpayload_data_sdef" )
             |> filter(fn: (r) => r._value <= 150 and r._value >= -150)
             |> last()
@@ -475,7 +475,7 @@ def get_battery_data():
     from(bucket: "jokley_bucket")
     |> range(start: -1h)
     |> filter(fn: (r) => r["_measurement"] == "device_frmpayload_data_battery")
-    |> filter(fn: (r) => r["device_name"] == "outdoor00" or r["device_name"] == "fan" or r["device_name"] == "probe01" or r["device_name"] == "probe02")
+    |> filter(fn: (r) => r["device_name"] =~ /^outdoor/ or r["device_name"] == "fan" or r["device_name"] =~ /^probe/)
     |> last()
     '''
 
@@ -497,7 +497,7 @@ def get_rssi_data():
     from(bucket: "jokley_bucket")
       |> range(start: -2h)
       |> filter(fn: (r) => r["_field"] == "rssi")
-      |> filter(fn: (r) => r["device_name"] == "outdoor00" or r["device_name"] == "fan" or r["device_name"] == "probe01" or r["device_name"] == "probe02")
+      |> filter(fn: (r) => r["device_name"] =~ /^outdoor/ or r["device_name"] == "fan" or r["device_name"] =~ /^probe/)
       |> last()
     '''
 
@@ -518,9 +518,8 @@ def get_sensor_age():
     from(bucket: "jokley_bucket")
             |> range(start: -6h)
             |> filter(fn: (r) =>
-                r["device_name"] == "outdoor00" or
-                r["device_name"] == "probe01" or
-                r["device_name"] == "probe02"
+                r["device_name"] =~ /^outdoor/ or
+                r["device_name"] =~ /^probe/
             )
             |> filter(fn: (r) =>
                 r["_measurement"] == "device_frmpayload_data_temperature"
@@ -715,19 +714,19 @@ def get_measurement_change_over_hours(measurement, device_filter, hours, use_min
         client.close()
 
 def get_temperature_change_over_hours(hours):
-    device_filter = 'r["device_name"] == "probe01" or r["device_name"] == "probe02"'
+    device_filter = 'r["device_name"] =~ /^probe/'
     return get_measurement_change_over_hours("device_frmpayload_data_temperature", device_filter, hours, use_min=True)
 
 def get_sdef_change_over_hours(hours):
-    device_filter = 'r["device_name"] == "probe01" or r["device_name"] == "probe02"'
+    device_filter = 'r["device_name"] =~ /^probe/'
     return get_measurement_change_over_hours("device_frmpayload_data_sdef", device_filter, hours, use_min=True)
 
 def get_ts_change_over_hours(hours):
-    device_filter = 'r["device_name"] == "probe01" or r["device_name"] == "probe02"'
+    device_filter = 'r["device_name"] =~ /^probe/'
     return get_measurement_change_over_hours("device_frmpayload_data_trockenmasse", device_filter, hours, use_min=True)
 
 def get_outdoor_temperature_change_over_hours(hours):
-    device_filter = 'r["device_name"] == "outdoor00"'
+    device_filter = 'r["device_name"] =~ /^outdoor/'
     return get_measurement_change_over_hours("device_frmpayload_data_temperature", device_filter, hours, use_min=False)
 
 
@@ -763,7 +762,7 @@ def get_measurement_value_hours_ago(measurement, device_filter, hours, use_min=T
 
 
 def get_2h_values(hours=2):
-    device_filter = 'r["device_name"] == "probe01" or r["device_name"] == "probe02"'
+    device_filter = 'r["device_name"] =~ /^probe/'
     return {
         "sDef_2h_ago": get_measurement_value_hours_ago(
             "device_frmpayload_data_sdef",
