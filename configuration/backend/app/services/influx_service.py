@@ -397,38 +397,66 @@ def get_outdoor_values():
 def get_min_max_values():
     client = get_influxdb_client()
     query = '''
-        tmin = from(bucket: "jokley_bucket")
+        from(bucket: "jokley_bucket")
             |> range(start: -1h)
             |> filter(fn: (r) => r["device_name"] =~ /^probe/)
-            |> filter(fn: (r) =>  r["_measurement"] == "device_frmpayload_data_temperature" or r["_measurement"] == "device_frmpayload_data_humidity"  or r["_measurement"] == "device_frmpayload_data_trockenmasse" or r["_measurement"] == "device_frmpayload_data_sdef" )
+            |> filter(fn: (r) =>
+                r["_measurement"] == "device_frmpayload_data_temperature" or
+                r["_measurement"] == "device_frmpayload_data_humidity" or
+                r["_measurement"] == "device_frmpayload_data_trockenmasse" or
+                r["_measurement"] == "device_frmpayload_data_sdef"
+            )
             |> filter(fn: (r) => r._value <= 150 and r._value >= -150)
+            |> group(columns: ["device_name", "_measurement"])
             |> last()
-            |> group(columns: ["_measurement"])
-            |> min()
-
-        tmax = from(bucket: "jokley_bucket")
-            |> range(start: -1h)
-            |> filter(fn: (r) => r["device_name"] =~ /^probe/)
-            |> filter(fn: (r) =>  r["_measurement"] == "device_frmpayload_data_temperature" or r["_measurement"] == "device_frmpayload_data_humidity"  or r["_measurement"] == "device_frmpayload_data_trockenmasse" or r["_measurement"] == "device_frmpayload_data_sdef" )
-            |> filter(fn: (r) => r._value <= 150 and r._value >= -150)
-            |> last()
-            |> group(columns: ["_measurement"])
-            |> max()
-
-        union(tables: [tmin, tmax])
-            |> sort(columns: ["_measurement", "_value"])
     '''
     result = client.query_api().query(query=query)
 
-    records = []
-    for table in result:
-        for r in table.records:
-            records.append(r.get_value())
+    values_by_measurement = {
+        "device_frmpayload_data_humidity": [],
+        "device_frmpayload_data_sdef": [],
+        "device_frmpayload_data_temperature": [],
+        "device_frmpayload_data_trockenmasse": [],
+    }
 
-    names = ['humidityMin','humidityMax','sDefMin','sDefMax','temperatureMin','temperatureMax','trockenMasseMin','trockenMasseMax']
-    values = [dict(zip(names, records))]
-    client.close()
-    return values
+    try:
+        for table in result:
+            for r in table.records:
+                measurement = r.values.get("_measurement")
+                value = r.get_value()
+
+                if measurement in values_by_measurement and value is not None:
+                    values_by_measurement[measurement].append(float(value))
+
+        values = {
+            "humidityMin": None,
+            "humidityMax": None,
+            "sDefMin": None,
+            "sDefMax": None,
+            "temperatureMin": None,
+            "temperatureMax": None,
+            "trockenMasseMin": None,
+            "trockenMasseMax": None,
+        }
+
+        mapping = {
+            "device_frmpayload_data_humidity": ("humidityMin", "humidityMax"),
+            "device_frmpayload_data_sdef": ("sDefMin", "sDefMax"),
+            "device_frmpayload_data_temperature": ("temperatureMin", "temperatureMax"),
+            "device_frmpayload_data_trockenmasse": ("trockenMasseMin", "trockenMasseMax"),
+        }
+
+        for measurement, measurement_values in values_by_measurement.items():
+            min_key, max_key = mapping[measurement]
+
+            if measurement_values:
+                values[min_key] = min(measurement_values)
+                values[max_key] = max(measurement_values)
+
+        return [values]
+
+    finally:
+        client.close()
 
 def get_venti_lastTimeOn():
     client = get_influxdb_client()
