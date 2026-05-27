@@ -24,7 +24,7 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 8,
+  "id": 4,
   "links": [],
   "panels": [
     {
@@ -38,7 +38,7 @@
       },
       "gridPos": {
         "h": 6,
-        "w": 10,
+        "w": 12,
         "x": 0,
         "y": 0
       },
@@ -317,9 +317,9 @@
         ]
       },
       "gridPos": {
-        "h": 2,
-        "w": 3,
-        "x": 10,
+        "h": 3,
+        "w": 4,
+        "x": 12,
         "y": 0
       },
       "id": 31,
@@ -351,57 +351,8 @@
           "refId": "A"
         }
       ],
-      "title": "Lüfter",
+      "title": "Auto Status",
       "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "influxdb",
-        "uid": "P5697886F9CA74929"
-      },
-      "fieldConfig": {
-        "defaults": {},
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "value {application_name=\"jokley\", dev_eui=\"a840418c51868361\", device_name=\"fan\", f_port=\"2\"}"
-            },
-            "properties": []
-          }
-        ]
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 12,
-        "x": 12,
-        "y": 3
-      },
-      "id": 30,
-      "options": {
-        "dedupStrategy": "none",
-        "enableInfiniteScrolling": false,
-        "enableLogDetails": false,
-        "prettifyLogMessage": false,
-        "showCommonLabels": false,
-        "showLabels": false,
-        "showTime": false,
-        "sortOrder": "Descending",
-        "wrapLogMessage": false
-      },
-      "pluginVersion": "12.0.0",
-      "targets": [
-        {
-          "datasource": {
-            "type": "influxdb",
-            "uid": "P5697886F9CA74929"
-          },
-          "query": "    from(bucket: \"jokley_bucket\")\r\n      |> range(start: -30d)\r\n      |> filter(fn: (r) => r[\"_measurement\"] == \"venti_state\")",
-          "refId": "A"
-        }
-      ],
-      "title": "Lüfter Status",
-      "type": "logs"
     },
     {
       "datasource": {
@@ -411,8 +362,7 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "fixedColor": "#19d2ff",
-            "mode": "fixed"
+            "mode": "continuous-BlPu"
           },
           "custom": {
             "align": "center",
@@ -457,9 +407,7 @@
                 "value": "percent"
               }
             ]
-          }
-        },
-        "overrides": [
+          },
           {
             "matcher": {
               "id": "byName",
@@ -626,10 +574,6 @@
                 "value": {
                   "type": "data-links"
                 }
-              },
-              {
-                "id": "custom.axisPlacement",
-                "value": "right"
               }
             ]
           },
@@ -661,8 +605,8 @@
       },
       "gridPos": {
         "h": 6,
-        "w": 11,
-        "x": 13,
+        "w": 8,
+        "x": 16,
         "y": 0
       },
       "id": 33,
@@ -858,10 +802,10 @@
         ]
       },
       "gridPos": {
-        "h": 4,
-        "w": 3,
-        "x": 10,
-        "y": 2
+        "h": 3,
+        "w": 4,
+        "x": 12,
+        "y": 3
       },
       "id": 47,
       "options": {
@@ -893,7 +837,7 @@
           "refId": "E"
         }
       ],
-      "title": "Lüfter",
+      "title": "",
       "type": "stat"
     },
     {
@@ -904,8 +848,7 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "fixedColor": "#19d2ff",
-            "mode": "fixed"
+            "mode": "continuous-BlPu"
           },
           "custom": {
             "axisBorderShow": false,
@@ -923,88 +866,26 @@
               "tooltip": false,
               "viz": false
             },
-            "lineWidth": 1,
+            "insertNulls": false,
+            "lineInterpolation": "smooth",
+            "lineStyle": {
+              "fill": "solid"
+            },
+            "lineWidth": 2,
+            "pointSize": 5,
             "scaleDistribution": {
               "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
             },
             "thresholdsStyle": {
               "mode": "off"
             }
           },
-          "decimals": 1,
-          "displayName": "Lüfter",
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green"
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          },
-          "unit": "h"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 7,
-        "w": 12,
-        "x": 12,
-        "y": 14
-      },
-      "id": 18,
-      "options": {
-        "barRadius": 0.05,
-        "barWidth": 0.84,
-        "fullHighlight": false,
-        "groupWidth": 0.7,
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "orientation": "auto",
-        "showValue": "auto",
-        "stacking": "none",
-        "text": {},
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "multi",
-          "sort": "none"
-        },
-        "xTickLabelRotation": 0,
-        "xTickLabelSpacing": 200
-      },
-      "pluginVersion": "12.0.0",
-      "targets": [
-        {
-          "datasource": {
-            "type": "influxdb",
-            "uid": "P5697886F9CA74929"
-          },
-          "query": "option v = {timeRangeStart: v.timeRangeStart, timeRangeStop: v.timeRangeStop}\r\n\r\ntimeRangeSeconds = int(v: uint(v: v.timeRangeStop) - uint(v: v.timeRangeStart)) / 1000000000\r\n\r\nwindowSize =\r\n    if timeRangeSeconds < 3 * 24 * 3600 then 1h\r\n    else if timeRangeSeconds < 30 * 24 * 3600 then 1d\r\n    else 30d\r\n\r\nfrom(bucket: \"jokley_bucket\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) =>\r\n      r[\"device_name\"] == \"fan\" and\r\n      r[\"_measurement\"] == \"device_frmpayload_data_RO1_status\"\r\n  )\r\n  |> elapsed(unit: 1s)\r\n  |> map(fn: (r) => ({ r with elapsedFloat: float(v: r.elapsed)/3600.0 }))\r\n  |> filter(fn: (r) => r[\"_value\"] == \"ON\")\r\n  |> aggregateWindow(every: windowSize, fn: sum, column: \"elapsedFloat\")\r\n  |> yield(name: \"sum\")\r\n",
-          "refId": "A"
-        }
-      ],
-      "title": "Betriebsstunden",
-      "type": "barchart"
-    },
-    {
-      "datasource": {
-        "type": "influxdb",
-        "uid": "P5697886F9CA74929"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "continuous-BlPu"
-          },
-          "fieldMinMax": false,
           "mappings": [],
           "max": 100,
           "min": 0,
@@ -2992,6 +2873,6 @@
   "timepicker": {},
   "timezone": "",
   "title": "jokleyVenti",
-  "uid": "93b61d4d-a7eb-4bef-90c5-b01d27cda1c8",
-  "version": 2
+  "uid": "5b4f0d4f-fbcf-4389-9a04-ea700ef4c307",
+  "version": 1
 }
