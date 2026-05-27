@@ -73,7 +73,8 @@ def evaluate(ctx):
         ctx.mode == "auto"
         and decision.command == "off"
         and ctx.remainingTimeStock > ctx.stock
-        and ctx.remainingTimeInterval >= 7200
+        and not ctx.is_fan_on                       # Lüfter muss AUS sein
+        and ctx.remainingTimeIntervalOn >= 7200     # AUS seit >= 2h (now - lastOff)
         and ctx.tsSoll is not None
         and ctx.tsMin is not None
         and (ctx.tsSoll - ctx.tsMin) <= 0.5
