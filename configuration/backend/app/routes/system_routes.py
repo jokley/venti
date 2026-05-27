@@ -55,6 +55,66 @@ def _panstamp_stream_ok() -> bool:
     # Healthy when at least one sensor is still recent.
     return any(int(age) <= max_age for age in ages.values() if age is not None)
 
+
+def _panstamp_status_details() -> dict:
+    """
+    Detailed PANSTAMP diagnostics for watchdog logging / restart reasons.
+    """
+    details = {
+        "panstamp_mode": _is_panstamp_mode(),
+        "panstamp_stream_ok": True,
+        "panstamp_reason": "panstamp_mode_disabled",
+        "panstamp_threshold_sec": int(os.getenv("PANSTAMP_MAX_SENSOR_AGE_SEC", "300")),
+        "panstamp_sensor_count": 0,
+        "panstamp_fresh_sensor_count": 0,
+        "panstamp_oldest_age_sec": None,
+        "panstamp_youngest_age_sec": None,
+        "panstamp_sensor_ages": {},
+    }
+
+    if not details["panstamp_mode"]:
+        return details
+
+    max_age = details["panstamp_threshold_sec"]
+
+    try:
+        ages = get_sensor_age()
+    except Exception:
+        details["panstamp_stream_ok"] = False
+        details["panstamp_reason"] = "sensor_age_fetch_failed"
+        return details
+
+    if not ages:
+        details["panstamp_stream_ok"] = False
+        details["panstamp_reason"] = "no_sensor_age_data"
+        return details
+
+    numeric_ages = {k: int(v) for k, v in ages.items() if v is not None}
+    details["panstamp_sensor_ages"] = numeric_ages
+    details["panstamp_sensor_count"] = len(numeric_ages)
+
+    if not numeric_ages:
+        details["panstamp_stream_ok"] = False
+        details["panstamp_reason"] = "no_numeric_sensor_ages"
+        return details
+
+    youngest = min(numeric_ages.values())
+    oldest = max(numeric_ages.values())
+    fresh_count = sum(1 for age in numeric_ages.values() if age <= max_age)
+
+    details["panstamp_youngest_age_sec"] = youngest
+    details["panstamp_oldest_age_sec"] = oldest
+    details["panstamp_fresh_sensor_count"] = fresh_count
+
+    if fresh_count > 0:
+        details["panstamp_stream_ok"] = True
+        details["panstamp_reason"] = "ok"
+    else:
+        details["panstamp_stream_ok"] = False
+        details["panstamp_reason"] = "all_sensors_stale"
+
+    return details
+
 @system_bp.route('/ventiSystem', methods=['POST'])
 def venti_system():
     data = request.get_json()
@@ -157,8 +217,16 @@ def healthz():
 @system_bp.route("/watchdog/status", methods=["GET"])
 def watchdog_status():
     """Status endpoint consumed by the watchdog service."""
+    details = _panstamp_status_details()
     return jsonify({
         "influx_ok": _influx_ok(),
-        "panstamp_mode": _is_panstamp_mode(),
-        "panstamp_stream_ok": _panstamp_stream_ok(),
+        "panstamp_mode": details["panstamp_mode"],
+        "panstamp_stream_ok": details["panstamp_stream_ok"],
+        "panstamp_reason": details["panstamp_reason"],
+        "panstamp_threshold_sec": details["panstamp_threshold_sec"],
+        "panstamp_sensor_count": details["panstamp_sensor_count"],
+        "panstamp_fresh_sensor_count": details["panstamp_fresh_sensor_count"],
+        "panstamp_oldest_age_sec": details["panstamp_oldest_age_sec"],
+        "panstamp_youngest_age_sec": details["panstamp_youngest_age_sec"],
+        "panstamp_sensor_ages": details["panstamp_sensor_ages"],
     }), 200

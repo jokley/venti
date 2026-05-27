@@ -171,7 +171,29 @@ def main() -> None:
                 alert("restart budget exceeded for influx")
 
         elif not status.get("panstamp_stream_ok", True):
-            ok, why = safe_restart(client, PANSTAMP_SERVICE, "panstamp stream not ok")
+            panstamp_reason = status.get("panstamp_reason", "unknown")
+            panstamp_threshold = status.get("panstamp_threshold_sec")
+            panstamp_sensor_count = status.get("panstamp_sensor_count")
+            panstamp_fresh_count = status.get("panstamp_fresh_sensor_count")
+            panstamp_oldest = status.get("panstamp_oldest_age_sec")
+            panstamp_youngest = status.get("panstamp_youngest_age_sec")
+            log(
+                "Panstamp stream check failed "
+                f"(reason={panstamp_reason}, "
+                f"threshold_sec={panstamp_threshold}, "
+                f"sensor_count={panstamp_sensor_count}, "
+                f"fresh_sensor_count={panstamp_fresh_count}, "
+                f"youngest_age_sec={panstamp_youngest}, "
+                f"oldest_age_sec={panstamp_oldest})"
+            )
+            log(describe_container_state(client, PANSTAMP_SERVICE))
+            log(describe_container_logs(client, PANSTAMP_SERVICE, tail=30))
+            restart_reason = (
+                "panstamp stream not ok "
+                f"(reason={panstamp_reason}, oldest_age_sec={panstamp_oldest}, "
+                f"threshold_sec={panstamp_threshold}, sensors={panstamp_sensor_count})"
+            )
+            ok, why = safe_restart(client, PANSTAMP_SERVICE, restart_reason)
             if not ok and why == "budget_exceeded":
                 alert("restart budget exceeded for panstamp")
 
