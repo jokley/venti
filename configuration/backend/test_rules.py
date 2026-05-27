@@ -6,6 +6,7 @@ Run with: python test_rules.py
 
 import sys
 import os
+import types
 
 # Add the backend app to the path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'app'))
@@ -25,6 +26,21 @@ decision_module = load_module("decision", os.path.join(os.path.dirname(__file__)
 
 VentiContext = context_module.VentiContext
 Decision = decision_module.Decision
+
+from controller.venti.heating_decision_engine import HeatingDecisionEngine
+from controller.venti.interval_scheduler import get_interval_scheduler_delay
+
+
+def load_drying_decision_engine():
+    fake_state_manager_module = types.ModuleType("controller.venti.control.state_manager")
+    fake_state_manager_module.state_manager = types.SimpleNamespace(
+        retry_conditions_improved=lambda ctx: (True, None),
+        last_bad_drying_snapshot=None,
+    )
+    sys.modules["controller.venti.control.state_manager"] = fake_state_manager_module
+
+    from controller.venti.efficiency.drying_decision_engine import DryingDecisionEngine
+    return DryingDecisionEngine
 
 # For testing rules, we'll recreate the logic inline to avoid import issues
 def overheating(ctx):
@@ -302,7 +318,7 @@ def test_interval_active():
     ctx = VentiContext({
         "mode": "auto", "humMax": 80.0, "intervall_on": 70.0,
         "temp_change_2h": 1.0,
-        "remainingTimeInterval": 4000, "intervall_time": 3600,
+        "remainingTimeInterval": 1000, "intervall_time": 3600,
         "remainingTimeIntervalOn": 200, "intervall_duration": 300,
         "remainingTimeIntervalDiff": -2400
     })
@@ -535,6 +551,511 @@ def test_rule_engine_evaluation():
 
     print("✓ Rule engine evaluation tests passed")
 
+def heizung_ctx(overrides=None):
+    data = {
+        "heizung_enabled": True,
+        "heizung_mode": "auto",
+        "heizung_dauer": 3600,
+        "remainingTimeHeizung": 7200,
+        "heizung_nachlauf": 0,
+        "heizung_off_since": 999999,
+        "heizung_sdef_limit": 10.0,
+        "heizung_sdef_hys": 1.0,
+        "heizung_sdef_was_active": False,
+        "sDefOut": 10.0,
+    }
+    if overrides:
+        data.update(overrides)
+    return VentiContext(data)
+
+def test_heating_sdef_engine():
+    """Test heating auto SDEF decision logic."""
+    print("Testing heating SDEF engine...")
+    engine = HeatingDecisionEngine()
+
+    ctx = heizung_ctx({
+        "remainingTimeHeizung": 60,
+        "sDefOut": 15.0,
+    })
+    result = engine.decide(ctx)
+    assert result.command == "on", "Duration phase should keep heating on"
+    assert result.reason == "HEIZUNG_ACTIVE", "Duration phase should be active"
+    print("✓ Heating SDEF: Duration has priority")
+
+    ctx = heizung_ctx({
+        "heizung_sdef_limit": 0,
+        "sDefOut": 5.0,
+    })
+    result = engine.decide(ctx)
+    assert result.command == "off", "Limit 0 should disable SDEF control after duration"
+    assert result.reason == "HEIZUNG_IDLE", "Limit 0 should fall back to idle after duration"
+    print("✓ Heating SDEF: Limit 0 disables SDEF")
+
+    ctx = heizung_ctx({
+        "heizung_dauer": 0,
+        "remainingTimeHeizung": 0,
+        "heizung_sdef_limit": 0,
+        "sDefOut": 5.0,
+    })
+    result = engine.decide(ctx)
+    assert result.command == "off", "Duration 0 should not start duration heating"
+    assert result.reason == "HEIZUNG_IDLE", "Duration 0 and SDEF 0 should stay idle"
+    print("✓ Heating SDEF: Duration 0 does not start heating")
+
+    ctx = heizung_ctx({
+        "sDefOut": 10.0,
+        "heizung_sdef_was_active": True,
+    })
+    result = engine.decide(ctx)
+    assert result.command == "off", "SDEF at limit should turn heating off"
+    assert result.reason == "HEIZUNG_SDEF_LIMIT", "Should expose SDEF limit reason"
+    print("✓ Heating SDEF: Limit exceeded turns off")
+
+    ctx = heizung_ctx({
+        "sDefOut": 8.8,
+    })
+    result = engine.decide(ctx)
+    assert result.command == "on", "Below limit minus hysteresis should turn heating on"
+    assert result.reason == "HEIZUNG_ACTIVE", "Below hysteresis should be active"
+    print("✓ Heating SDEF: Below hysteresis turns on")
+
+    ctx = heizung_ctx({
+        "sDefOut": 9.5,
+        "heizung_sdef_was_active": True,
+    })
+    result = engine.decide(ctx)
+    assert result.command == "on", "Inside hysteresis should keep previous on state"
+    print("✓ Heating SDEF: Hysteresis keeps previous on state")
+
+    ctx = heizung_ctx({
+        "sDefOut": 9.5,
+        "heizung_sdef_was_active": False,
+    })
+    result = engine.decide(ctx)
+    assert result.command == "off", "Inside hysteresis should keep previous off state"
+    print("✓ Heating SDEF: Hysteresis keeps previous off state")
+
+    ctx = heizung_ctx({
+        "heizung_mode": "on",
+        "sDefOut": 20.0,
+    })
+    result = engine.decide(ctx)
+    assert result.command == "on", "Manual on should ignore SDEF"
+    assert result.reason == "HEIZUNG_MANUAL_ON", "Manual on should expose manual state"
+    print("✓ Heating SDEF: Manual on ignores SDEF")
+
+def test_heating_sdef_delay():
+    """Test heating SDEF delay decision logic."""
+    print("Testing heating SDEF delay...")
+    engine = HeatingDecisionEngine()
+
+    ctx = heizung_ctx({
+        "sDefOut": 8.8,
+        "heizung_sdef_delay_remaining": 600,
+    })
+    result = engine.decide(ctx)
+    assert result.command == "off", "Delay should keep SDEF restart off"
+    assert result.reason == "HEIZUNG_SDEF_LIMIT", "Should remain in SDEF limit state"
+    assert result.details["reason"] == "sdef_delay", "Should expose delay reason"
+    assert result.details["delay_remaining"] == 600, "Should include remaining delay"
+    print("✓ Heating SDEF delay: Blocks only SDEF restart")
+
+    ctx = heizung_ctx({
+        "remainingTimeHeizung": 60,
+        "sDefOut": 8.8,
+        "heizung_sdef_delay_remaining": 600,
+    })
+    result = engine.decide(ctx)
+    assert result.command == "on", "Initial duration should ignore delay"
+    assert result.reason == "HEIZUNG_ACTIVE", "Initial duration should stay active"
+    print("✓ Heating SDEF delay: Initial duration has priority")
+
+    ctx = heizung_ctx({
+        "heizung_mode": "on",
+        "heizung_enabled": False,
+        "sDefOut": 8.8,
+        "heizung_sdef_delay_remaining": 600,
+    })
+    result = engine.decide(ctx)
+    assert result.command == "on", "Manual on should ignore delay and enabled flag"
+    assert result.reason == "HEIZUNG_MANUAL_ON", "Manual on should expose manual state"
+    print("✓ Heating SDEF delay: Manual on ignores delay")
+
+    ctx = heizung_ctx({
+        "sDefOut": 8.8,
+        "heizung_sdef_delay_remaining": 0,
+    })
+    result = engine.decide(ctx)
+    assert result.command == "on", "Expired delay should allow SDEF restart"
+    assert result.reason == "HEIZUNG_ACTIVE", "Below hysteresis should restart after delay"
+    print("✓ Heating SDEF delay: Restart allowed after expiry")
+
+def test_heating_manual_nachlauf_sync():
+    """Test manual heater off can drive fan cooldown without heizung_auto off."""
+    print("Testing heating manual nachlauf sync...")
+    engine = HeatingDecisionEngine()
+
+    ctx = heizung_ctx({
+        "heizung_manual_command": "off",
+        "heizung_nachlauf": 1200,
+        "heizung_off_since": 30,
+    })
+    result = engine.decide(ctx)
+    assert result.command == "off", "Manual off should keep heater relay off"
+    assert result.reason == "HEIZUNG_NACHLAUF", "Manual off should start fan cooldown"
+    assert result.details["nachlauf_remaining"] == 1170, "Cooldown remaining should be calculated"
+    print("✓ Heating manual off: Nachlauf stays active")
+
+    ctx = heizung_ctx({
+        "heizung_manual_command": "off",
+        "heizung_nachlauf": 0,
+        "heizung_off_since": 0,
+    })
+    result = engine.decide(ctx)
+    assert result.command == "off", "Manual off should keep heater off"
+    assert result.reason == "HEIZUNG_MANUAL_OFF", "No nachlauf should expose manual off"
+    print("✓ Heating manual off: No nachlauf falls back to idle")
+
+    ctx = heizung_ctx({
+        "heizung_mode": "off",
+        "heizung_nachlauf": 1200,
+        "heizung_off_since": 30,
+    })
+    result = engine.decide(ctx)
+    assert result.command == "off", "Form mode off should keep heater relay off"
+    assert result.reason == "HEIZUNG_NACHLAUF", "Nachlauf should not be hidden by manual off mode"
+    assert result.details["nachlauf_remaining"] == 1170, "Cooldown remaining should be calculated"
+    print("✓ Heating manual off mode: Nachlauf stays visible")
+
+    ctx = heizung_ctx({
+        "heizung_manual_command": "on",
+        "heizung_enabled": False,
+        "sDefOut": 20.0,
+    })
+    result = engine.decide(ctx)
+    assert result.command == "on", "Manual on should directly force heater on"
+    assert result.reason == "HEIZUNG_MANUAL_ON", "Manual on should expose manual state"
+    print("✓ Heating manual on: Direct override is active")
+
+def test_heating_manual_state_manager_sync():
+    """Test manual off helper starts cooldown only from an active heater."""
+    print("Testing heating manual state manager sync...")
+
+    class FakeStateManager:
+        heizung_manual_command = None
+        heizung_was_active = False
+        heizung_off_ts = None
+        heizung_lock = False
+        last_heizung_forced_venti_command = None
+
+        def release_heizung_lock(self):
+            self.heizung_lock = False
+            self.heizung_off_ts = None
+            self.last_heizung_forced_venti_command = None
+
+    manager = FakeStateManager()
+    fake_app = types.ModuleType("app")
+    fake_app.__path__ = []
+    fake_services = types.ModuleType("app.services")
+    fake_utils = types.ModuleType("app.utils")
+    fake_influx = types.ModuleType("app.services.influx_service")
+    fake_influx.get_last_controller_state = lambda: None
+    fake_influx.get_last_heizung_controller_state = lambda: None
+    fake_venti_service = types.ModuleType("app.services.venti_service")
+    fake_venti_service.write_controller_state = lambda **kwargs: None
+    fake_venti_service.write_heizung_controller_state = lambda **kwargs: None
+    fake_logger_module = types.ModuleType("app.utils.logger")
+    fake_logger_module.logger = types.SimpleNamespace(
+        info=lambda *args, **kwargs: None,
+        debug=lambda *args, **kwargs: None,
+    )
+    sys.modules["app"] = fake_app
+    sys.modules["app.services"] = fake_services
+    sys.modules["app.services.influx_service"] = fake_influx
+    sys.modules["app.services.venti_service"] = fake_venti_service
+    sys.modules["app.utils"] = fake_utils
+    sys.modules["app.utils.logger"] = fake_logger_module
+
+    sync_method = load_module(
+        "state_manager_for_manual_sync",
+        os.path.join(
+            os.path.dirname(__file__),
+            "app",
+            "controller",
+            "venti",
+            "control",
+            "state_manager.py",
+        ),
+    ).ControlStateManager.start_heizung_manual_nachlauf
+
+    sync_method(manager, now=1000, nachlauf_seconds=1200, was_active=True)
+    assert manager.heizung_manual_command == "off", "Manual off override should be stored"
+    assert manager.heizung_off_ts == 1000, "Active heater should start cooldown timestamp"
+    assert manager.heizung_lock is True, "Cooldown should hold heater lock"
+    print("✓ Manual state sync: Active heater starts nachlauf")
+
+    manager = FakeStateManager()
+    sync_method(manager, now=1000, nachlauf_seconds=1200, was_active=False)
+    assert manager.heizung_manual_command == "off", "Manual off override should be stored"
+    assert manager.heizung_off_ts is None, "Idle heater should not start fresh cooldown"
+    assert manager.heizung_lock is False, "Idle heater should not hold lock"
+    print("✓ Manual state sync: Idle heater does not start nachlauf")
+
+def test_venti_manual_states():
+    """Test fan manual modes expose explicit on/off states."""
+    print("Testing venti manual states...")
+    DryingDecisionEngine = load_drying_decision_engine()
+    engine = DryingDecisionEngine()
+    metrics = {
+        "efficiency": 0.5,
+        "sdef_gain": 0.0,
+        "ts_gain": 0.0,
+        "window_hours": 2,
+        "has_history": False,
+    }
+
+    ctx = VentiContext({
+        "mode": "on",
+        "remainingTimeInterval": 120,
+        "tsSoll": 20.0,
+        "tsMin": 18.0,
+    })
+    result = engine.decide(ctx, metrics)
+    assert result.command == "on", "Manual fan on should command on"
+    assert result.reason == "VENTI_MANUAL_ON", "Manual fan on should expose explicit state"
+    print("✓ Venti manual on: explicit state")
+
+    ctx = VentiContext({
+        "mode": "off",
+        "remainingTimeInterval": 120,
+        "tsSoll": 20.0,
+        "tsMin": 18.0,
+    })
+    result = engine.decide(ctx, metrics)
+    assert result.command == "off", "Manual fan off should command off"
+    assert result.reason == "VENTI_MANUAL_OFF", "Manual fan off should expose explicit state"
+    print("✓ Venti manual off: explicit state")
+
+def test_venti_drying_delay_engine():
+    """Test fan drying delay blocks drying starts only."""
+    print("Testing venti drying delay...")
+    DryingDecisionEngine = load_drying_decision_engine()
+    engine = DryingDecisionEngine()
+    metrics = {
+        "efficiency": 0.5,
+        "sdef_gain": 0.0,
+        "ts_gain": 0.0,
+        "window_hours": 2,
+        "has_history": False,
+    }
+
+    ctx = VentiContext({
+        "mode": "auto",
+        "tempMax": 25.0,
+        "uschutz_on": 35.0,
+        "stock": 0,
+        "remainingTimeStock": 7200,
+        "sDefOut": 15.0,
+        "sDefMin": 9.0,
+        "sdefMinThreshold": 10.0,
+        "sdef_hys_half": 0.5,
+        "sdef_on": 12.0,
+        "tsSoll": 20.0,
+        "tsMin": 15.0,
+        "ts_hys_half": 0.5,
+        "humMax": 50.0,
+        "intervall_on": 70.0,
+        "venti_drying_delay_remaining": 600,
+    })
+    result = engine.decide(ctx, metrics)
+    assert result.command == "off", "Delay should block drying start"
+    assert result.reason == "AUTO_IDLE", "Delay should return auto idle"
+    assert result.details["reason"] == "drying_delay", "Should expose delay reason"
+    print("✓ Venti drying delay: Blocks drying start")
+
+    ctx = VentiContext({
+        "mode": "auto",
+        "tempMax": 25.0,
+        "uschutz_on": 35.0,
+        "stock": 0,
+        "remainingTimeStock": 7200,
+        "sDefOut": 15.0,
+        "sDefMin": 9.0,
+        "sdefMinThreshold": 10.0,
+        "sdef_hys_half": 0.5,
+        "sdef_on": 12.0,
+        "tsSoll": 20.0,
+        "tsMin": 15.0,
+        "ts_hys_half": 0.5,
+        "humMax": 80.0,
+        "intervall_on": 70.0,
+        "remainingTimeInterval": 7200,
+        "remainingTimeIntervalOn": 7200,
+        "remainingTimeIntervalDiff": 0,
+        "intervall_time": 3600,
+        "intervall_duration": 300,
+        "is_fan_on": False,
+        "fan_runtime_current": 0,
+        "venti_drying_delay_remaining": 600,
+    })
+    result = engine.decide(ctx, metrics)
+    assert result.command == "on", "Interval should bypass drying delay"
+    assert result.reason == "INTERVAL_ACTIVE", "Interval should keep priority"
+    assert result.details["remaining_off_time"] == 7200, "Should expose time since last off"
+    assert result.details["runtime"] == 0, "Should expose current interval runtime"
+    assert result.details["remaining"] == 300, "Should expose remaining interval duration"
+    assert result.details["interval_duration"] == 300, "Should expose configured interval duration"
+    print("✓ Venti drying delay: Interval bypasses delay")
+
+    ctx = VentiContext({
+        "mode": "auto",
+        "tempMax": 25.0,
+        "uschutz_on": 35.0,
+        "stock": 0,
+        "remainingTimeStock": 7200,
+        "sDefOut": 5.0,
+        "sDefMin": 9.0,
+        "sdefMinThreshold": 10.0,
+        "sdef_hys_half": 0.5,
+        "sdef_on": 12.0,
+        "tsSoll": 14.0,
+        "tsMin": 15.0,
+        "ts_hys_half": 0.5,
+        "humMax": 80.0,
+        "intervall_on": 70.0,
+        "remainingTimeInterval": 7200,
+        "remainingTimeIntervalOn": 10,
+        "remainingTimeIntervalDiff": -7190,
+        "intervall_time": 3600,
+        "intervall_duration": 300,
+        "is_fan_on": False,
+        "fan_runtime_current": 0,
+    })
+    result = engine.decide(ctx, metrics)
+    assert result.command == "off", "Recent manual off should reset interval wait"
+    assert result.reason == "AUTO_IDLE", "Interval should not restart immediately after off"
+    assert result.details["humMax"] == 80.0, "Should expose interval humidity for diagnostics"
+    assert result.details["intervall_on"] == 70.0, "Should expose interval humidity threshold"
+    assert result.details["remainingTimeInterval"] == 7200, "Should expose time since last on"
+    assert result.details["remainingTimeIntervalOn"] == 10, "Should expose time since last off"
+    assert result.details["remainingTimeIntervalDiff"] == -7190, "Should expose last on/off ordering"
+    assert result.details["intervall_time"] == 3600, "Should expose configured interval wait"
+    assert result.details["intervall_duration"] == 300, "Should expose configured interval duration"
+    assert result.details["is_fan_on"] is False, "Should expose fan hardware state"
+    assert result.details["fan_runtime_current"] == 0, "Should expose current fan runtime"
+    print("✓ Venti interval: Recent off blocks immediate restart")
+
+    ctx = VentiContext({
+        "mode": "auto",
+        "tempMax": 25.0,
+        "uschutz_on": 35.0,
+        "stock": 0,
+        "remainingTimeStock": 7200,
+        "sDefOut": 5.0,
+        "sDefMin": 9.0,
+        "sdefMinThreshold": 10.0,
+        "sdef_hys_half": 0.5,
+        "sdef_on": 12.0,
+        "tsSoll": 14.0,
+        "tsMin": 15.0,
+        "ts_hys_half": 0.5,
+        "humMax": 80.0,
+        "intervall_on": 70.0,
+        "remainingTimeInterval": 120,
+        "remainingTimeIntervalOn": 7200,
+        "remainingTimeIntervalDiff": 7200,
+        "intervall_time": 3600,
+        "intervall_duration": 300,
+        "is_fan_on": True,
+        "fan_runtime_current": 120,
+    })
+    result = engine.decide(ctx, metrics)
+    assert result.command == "on", "Running interval should stay on until duration expires"
+    assert result.reason == "INTERVAL_ACTIVE", "Interval should remain active while runtime is within duration"
+    assert result.details["runtime"] == 120, "Should expose hardware runtime"
+    assert result.details["remaining"] == 180, "Should expose remaining runtime"
+    print("✓ Venti interval: Hardware on stays active during duration")
+
+    ctx = VentiContext({
+        "mode": "auto",
+        "tempMax": 25.0,
+        "uschutz_on": 35.0,
+        "stock": 0,
+        "remainingTimeStock": 7200,
+        "sDefOut": 5.0,
+        "sDefMin": 9.0,
+        "sdefMinThreshold": 10.0,
+        "sdef_hys_half": 0.5,
+        "sdef_on": 12.0,
+        "tsSoll": 14.0,
+        "tsMin": 15.0,
+        "ts_hys_half": 0.5,
+        "humMax": 80.0,
+        "intervall_on": 70.0,
+        "remainingTimeInterval": 400,
+        "remainingTimeIntervalOn": 7200,
+        "remainingTimeIntervalDiff": 7200,
+        "intervall_time": 3600,
+        "intervall_duration": 300,
+        "is_fan_on": True,
+        "fan_runtime_current": 400,
+    })
+    result = engine.decide(ctx, metrics)
+    assert result.command == "off", "Expired interval should fall back to off"
+    assert result.reason == "AUTO_IDLE", "Interval should end after duration"
+    print("✓ Venti interval: Hardware on ends after duration")
+
+    ctx = VentiContext({
+        "mode": "auto",
+        "tempMax": 36.0,
+        "uschutz_on": 35.0,
+        "stock": 0,
+        "remainingTimeStock": 7200,
+        "venti_drying_delay_remaining": 600,
+    })
+    result = engine.decide(ctx, metrics)
+    assert result.command == "on", "Overheat should bypass delay"
+    assert result.reason == "OVERHEAT", "Overheat should keep priority"
+    print("✓ Venti drying delay: Overheat bypasses delay")
+
+    ctx = VentiContext({
+        "mode": "auto",
+        "tempMax": 25.0,
+        "uschutz_on": 35.0,
+        "stock": 3600,
+        "remainingTimeStock": 1200,
+        "venti_drying_delay_remaining": 600,
+    })
+    result = engine.decide(ctx, metrics)
+    assert result.command == "on", "Stock building should bypass delay"
+    assert result.reason == "STOCK_BUILDING", "Stock building should keep priority"
+    print("✓ Venti drying delay: Stock building bypasses delay")
+
+
+def test_interval_scheduler_delay():
+    """Test interval end scheduler delay calculation."""
+    print("Testing interval scheduler delay...")
+
+    decision = Decision("on", "INTERVAL_ACTIVE", {"remaining": 2})
+    result = get_interval_scheduler_delay(decision)
+    assert result == 7, "Remaining 2s should schedule next check after 7s"
+    print("✓ Interval scheduler: Remaining 2s -> 7s")
+
+    decision = Decision("on", "INTERVAL_ACTIVE", {"remaining": 236})
+    result = get_interval_scheduler_delay(decision)
+    assert result == 241, "Remaining 236s should schedule next check after 241s"
+    print("✓ Interval scheduler: Remaining 236s -> 241s")
+
+    decision = Decision("on", "INTERVAL_ACTIVE", {"remaining": 300})
+    result = get_interval_scheduler_delay(decision)
+    assert result is None, "Remaining above base interval should not reschedule"
+    print("✓ Interval scheduler: Remaining 300s -> no special schedule")
+
+    decision = Decision("off", "AUTO_IDLE", {"remaining": 2})
+    result = get_interval_scheduler_delay(decision)
+    assert result is None, "AUTO_IDLE should not reschedule interval end"
+    print("✓ Interval scheduler: AUTO_IDLE -> no special schedule")
+
 def run_all_tests():
     """Run all rule tests"""
     print("🧪 Running comprehensive Venti controller rule tests...\n")
@@ -564,6 +1085,27 @@ def run_all_tests():
     print()
 
     test_rule_engine_evaluation()
+    print()
+
+    test_heating_sdef_engine()
+    print()
+
+    test_heating_sdef_delay()
+    print()
+
+    test_heating_manual_nachlauf_sync()
+    print()
+
+    test_heating_manual_state_manager_sync()
+    print()
+
+    test_venti_manual_states()
+    print()
+
+    test_venti_drying_delay_engine()
+    print()
+
+    test_interval_scheduler_delay()
     print()
 
     print("🎉 All rule tests passed! ✅")
