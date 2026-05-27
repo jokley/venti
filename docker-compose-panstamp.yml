@@ -98,6 +98,32 @@ services:
       example-network:
         ipv4_address: 172.16.238.21
       
+
+  watchdog:
+    build:
+      context: ./configuration/watchdog
+    restart: unless-stopped
+    depends_on:
+      - backend
+      - influxdb
+    environment:
+      BACKEND_HEALTH_URL: http://backend:5000/healthz
+      WATCHDOG_STATUS_URL: http://backend:5000/watchdog/status
+      INFLUX_HEALTH_URL: http://influxdb:8086/health
+      BACKEND_SERVICE: flask-backend
+      INFLUX_SERVICE: influxdb
+      PANSTAMP_SERVICE: panstamp-i2c
+      CHECK_INTERVAL_SEC: 30
+      BACKEND_RECOVERY_WAIT_SEC: 30
+      COOLDOWN_SEC: 120
+      MAX_RESTARTS_PER_HOUR: 4
+      BACKEND_MAX_RETRIES: 3
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      example-network:
+        ipv4_address: 172.16.238.22
+
 networks:
   example-network:
     name: example-network
