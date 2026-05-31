@@ -145,14 +145,14 @@ class DryingDecisionEngine:
         if interval_decision:
             return interval_decision
     
-        # Ziel erreicht – tsSoll unter tsMin - ts_hys_half
+        # Ziel erreicht – tsMin hat tsSoll + ts_hys_half überschritten
         # sDefOut Checks entfallen hier da in drying_conditions_met mit
         # korrekter Hysterese abgedeckt.
         if (
             ctx.remainingTimeStock > ctx.stock
             and ctx.tsSoll is not None
             and ctx.tsMin is not None
-            and ctx.tsSoll < ctx.tsMin - ctx.ts_hys_half
+            and ctx.tsMin > ctx.tsSoll + ctx.ts_hys_half
         ):
             step("drying_not_possible", True, "AUTO_IDLE")
             return self._auto_idle(ctx, metrics, trace, "ts_target_reached")
