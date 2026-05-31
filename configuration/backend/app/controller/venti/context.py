@@ -99,37 +99,51 @@ class VentiContext:
             and self.tempMax >= self.uschutz_on
         )
  
-        # Hysterese-Logik:
-        # Lüfter AUS → EIN erst wenn SDef die OBERE Schwelle erreicht
-        # Lüfter EIN → weiterlaufen bis SDef unter UNTERE Schwelle fällt
-        # Damit wird Flattern in der Totzone verhindert.
+
+        # =========================
+        # 🌡 DRYING CONDITIONS – vollständige Hysterese
         #
-        # tsSoll >= tsMin + ts_hys_half:
-        #   Ziel noch nicht erreicht – gilt unabhängig vom Lüfter-Zustand
-        #   weil ts_hys_half verhindert dass bei knapp erreichtem Ziel
-        #   sofort wieder gestartet wird.
- 
+        # SDef-Hysterese (Außenluft vs. Innensonde):
+        #   Lüfter AUS → EIN: sDefOut muss OBERE Schwelle erreichen
+        #   Lüfter EIN → AUS: sDefOut darf bis UNTERE Schwelle sinken
+        #
+        # TS-Hysterese (Trockenmasse):
+        #   Lüfter AUS → EIN: tsMin muss UNTER untere Schwelle sein
+        #   Lüfter EIN → AUS: tsMin darf bis ÜBER obere Schwelle steigen
+        #
+        # Beispiel tsSoll=87, ts_hys=2.0 (ts_hys_half=1.0):
+        #   EIN wenn tsMin <= 86   (noch 1% unter Ziel)
+        #   AUS wenn tsMin > 88    (1% über Ziel erreicht)
+        #   Totzone: 86 – 88
+        # =========================
         _base_ok = (
             self.sDefOut is not None
             and self.sdefMinThreshold is not None
             and self.sdef_on is not None
             and self.tsSoll is not None
             and self.tsMin is not None
-            and self.tsSoll >= self.tsMin + self.ts_hys_half
+            and self.sdef_hys_half is not None
+            and self.ts_hys_half is not None
         )
  
         if _base_ok:
             if self.is_fan_on:
-                # Lüfter läuft → untere Schwelle reicht zum Weiterlaufen
-                self.drying_conditions_met = (
+                # Lüfter läuft → Weiterlaufen bis untere SDef-Schwelle
+                # und bis obere TS-Schwelle (Ziel überschritten)
+                sdef_ok = (
                     self.sDefOut >= self.sdefMinThreshold - self.sdef_hys_half
                     and self.sDefOut >= self.sdef_on - self.sdef_hys_half
                 )
+                ts_ok = self.tsMin <= self.tsSoll + self.ts_hys_half
             else:
-                # Lüfter aus → obere Schwelle nötig zum Starten
-                self.drying_conditions_met = (
+                # Lüfter aus → Starten erst bei oberer SDef-Schwelle
+                # und nur wenn TS noch unter unterer Schwelle
+                sdef_ok = (
                     self.sDefOut >= self.sdefMinThreshold + self.sdef_hys_half
                     and self.sDefOut >= self.sdef_on + self.sdef_hys_half
                 )
+                ts_ok = self.tsMin <= self.tsSoll - self.ts_hys_half
+ 
+            self.drying_conditions_met = sdef_ok and ts_ok
         else:
             self.drying_conditions_met = False
