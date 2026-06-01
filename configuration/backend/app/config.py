@@ -13,6 +13,7 @@ class Config:
     INFLUX_TOKEN = os.getenv('DOCKER_INFLUXDB_INIT_ADMIN_TOKEN')
     INFLUX_ORG = os.getenv('DOCKER_INFLUXDB_INIT_ORG')
     INFLUX_BUCKET = os.getenv('INFLUX_BUCKET', 'jokley_bucket')
+    INFLUX_TIMEOUT_MS = int(os.getenv('INFLUX_TIMEOUT_MS', 5000))
 
     PANSTAMP = os.getenv("PANSTAMP", "false").lower() == "true"
     APPLICATION_ID = os.getenv("APPLICATION_ID")

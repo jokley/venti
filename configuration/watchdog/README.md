@@ -44,3 +44,12 @@ Dieser Dienst überwacht Backend/Influx und startet Container kontrolliert neu.
 - Zusätzlich werden beim PANSTAMP-Fehlerfall auch Container-State und letzte
   PANSTAMP-Containerlogs (`tail=30`) ausgegeben, um Containerfehler von
   reinen Sensorausfällen besser zu trennen.
+
+## Alert-Drosselung
+- Wiederholte identische Alerts werden standardmäßig nur alle 15 Minuten geloggt
+  (`ALERT_COOLDOWN_SEC=900`). Der normale Diagnose-Loop läuft weiter.
+
+## Backend-Recheck vor Neustart
+- Nach einem fehlgeschlagenen Backend-Healthcheck wartet der Watchdog standardmäßig
+  2 Sekunden (`BACKEND_FAILURE_RECHECK_SEC=2`) und prüft erneut. Ein einzelner
+  kurzzeitiger Timeout führt dadurch nicht sofort zu einem Backend-Neustart.
