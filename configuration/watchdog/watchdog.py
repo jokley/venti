@@ -20,9 +20,11 @@ def log(msg: str) -> None:
 
 CHECK_INTERVAL_SEC = int(os.getenv("CHECK_INTERVAL_SEC", "30"))
 BACKEND_RECOVERY_WAIT_SEC = int(os.getenv("BACKEND_RECOVERY_WAIT_SEC", "30"))
+BACKEND_FAILURE_RECHECK_SEC = int(os.getenv("BACKEND_FAILURE_RECHECK_SEC", "2"))
 COOLDOWN_SEC = int(os.getenv("COOLDOWN_SEC", "120"))
 MAX_RESTARTS_PER_HOUR = int(os.getenv("MAX_RESTARTS_PER_HOUR", "4"))
 BACKEND_MAX_RETRIES = int(os.getenv("BACKEND_MAX_RETRIES", "3"))
+ALERT_COOLDOWN_SEC = int(os.getenv("ALERT_COOLDOWN_SEC", "900"))
 
 BACKEND_HEALTH_URL = os.getenv("BACKEND_HEALTH_URL", "http://backend:5000/healthz")
 WATCHDOG_STATUS_URL = os.getenv("WATCHDOG_STATUS_URL", "http://backend:5000/watchdog/status")
@@ -34,6 +36,7 @@ BACKEND_SERVICE = os.getenv("BACKEND_SERVICE", "flask-backend")
 
 last_restart_ts = {}
 restart_events = []
+last_alert_ts = {}
 
 
 def http_ok(url: str, timeout: float = 4.0) -> tuple[bool, str]:
@@ -89,6 +92,10 @@ def safe_restart(client: docker.DockerClient, service: str, reason: str) -> tupl
 
 
 def alert(message: str) -> None:
+    previous_ts = last_alert_ts.get(message, 0)
+    if now_ts() - previous_ts < ALERT_COOLDOWN_SEC:
+        return
+    last_alert_ts[message] = now_ts()
     log(f"ALERT: {message}")
 
 
@@ -131,7 +138,15 @@ def main() -> None:
     while True:
         backend_ok, backend_reason = http_ok(BACKEND_HEALTH_URL)
         if not backend_ok:
-            log(f"Backend health failed ({backend_reason})")
+            log(f"Backend health failed ({backend_reason}); rechecking before restart")
+            time.sleep(BACKEND_FAILURE_RECHECK_SEC)
+            backend_ok, backend_reason = http_ok(BACKEND_HEALTH_URL)
+            if backend_ok:
+                log("Backend health recovered before restart")
+                time.sleep(CHECK_INTERVAL_SEC)
+                continue
+
+            log(f"Backend health recheck failed ({backend_reason})")
             log(describe_container_state(client, BACKEND_SERVICE))
             log(describe_container_logs(client, BACKEND_SERVICE, tail=30))
             ok, why = safe_restart(client, BACKEND_SERVICE, "backend health down")

@@ -84,9 +84,11 @@ services:
     env_file:
       - venti.env
     privileged: true  # Required for I2C and USB device access
-    devices:
-      - "/dev/ttyUSB0:/dev/ttyUSB0"     # USB serial for Panstamp
-      - "/dev/i2c-1:/dev/i2c-1"         # I2C relay control
+    volumes:
+      # Use host /dev so a USB reset can recreate ttyUSB0 inside the container.
+      - "/dev:/dev"
+      # Required for the PANSTAMP process to unbind/bind a stuck FTDI USB device.
+      - "/sys/bus/usb:/sys/bus/usb"
     tty: true
     stdin_open: true
     # mem_limit: 100m         # Limit memory usage to 100MB
@@ -115,9 +117,11 @@ services:
       PANSTAMP_SERVICE: panstamp-i2c
       CHECK_INTERVAL_SEC: 30
       BACKEND_RECOVERY_WAIT_SEC: 30
+      BACKEND_FAILURE_RECHECK_SEC: 2
       COOLDOWN_SEC: 120
       MAX_RESTARTS_PER_HOUR: 4
       BACKEND_MAX_RETRIES: 3
+      ALERT_COOLDOWN_SEC: 900
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     networks:

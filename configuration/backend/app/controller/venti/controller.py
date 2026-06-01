@@ -145,7 +145,13 @@ def restore_controller_runtime_state():
     ):
         return
 
-    restored = state_manager.restore()
+    try:
+        restored = state_manager.restore()
+    except Exception:
+        # Influx may still be starting or temporarily unavailable. Keep the
+        # backend alive so /healthz can answer and retry restoring next cycle.
+        logger.exception("Unable to restore controller state from InfluxDB; continuing without persisted state.")
+        return
 
     if not restored:
         return

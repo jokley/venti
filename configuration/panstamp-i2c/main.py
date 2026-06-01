@@ -37,91 +37,96 @@ for env_var, name in env_mapping.items():
         NODE_NAME_MAP[int(node_id)] = name
 
 
-USB_ID = "0403:6015"  # FTDI Panstick device
+USB_VENDOR_ID = "0403"
+USB_PRODUCT_ID = "6015"  # FTDI Panstick device
+USB_SYS_BASE = "/sys/bus/usb/devices"
+USB_DRIVER_BASE = "/sys/bus/usb/drivers/usb"
+USB_RESET_RETRY_INTERVAL = 3
 
-def get_usb_sys_path(usb_id):
+
+def _read_sysfs_value(path):
+    with open(path, encoding="utf-8") as value_file:
+        return value_file.read().strip().lower()
+
+
+def get_usb_sys_path(vendor_id, product_id):
+    """Return the sysfs USB device path (for example ``1-1.1``) for Panstick."""
     try:
-        output = subprocess.check_output(["lsusb"]).decode()
-        for line in output.splitlines():
-            if usb_id in line:
-                parts = line.split()
-                bus = parts[1]
-                device = parts[3].rstrip(":")
-                sys_base = "/sys/bus/usb/devices/"
-                # Find the sysfs device matching busnum/devnum
-                for entry in os.listdir(sys_base):
-                    dev_path = os.path.join(sys_base, entry)
-                    try:
-                        with open(os.path.join(dev_path, "busnum")) as f_bus, \
-                             open(os.path.join(dev_path, "devnum")) as f_dev:
-                            if f_bus.read().strip() == str(int(bus)) and f_dev.read().strip() == str(int(device)):
-                                return entry
-                    except FileNotFoundError:
-                        continue
-    except Exception as e:
-        logger.error(f"Error finding USB sys path: {e}")
+        for entry in os.listdir(USB_SYS_BASE):
+            dev_path = os.path.join(USB_SYS_BASE, entry)
+            try:
+                vendor = _read_sysfs_value(os.path.join(dev_path, "idVendor"))
+                product = _read_sysfs_value(os.path.join(dev_path, "idProduct"))
+            except (FileNotFoundError, NotADirectoryError):
+                continue
+
+            if vendor == vendor_id.lower() and product == product_id.lower():
+                return entry
+    except Exception:
+        logger.exception("Error finding USB sysfs path.")
     return None
 
-def usb_unbind_bind():
-    try:
-        usb_path = get_usb_sys_path(USB_ID)
-        if usb_path is None:
-            logger.error("Unable to find matching USB device path.")
-            return
 
-        logger.warning(f"Unbinding USB device {usb_path}")
-        subprocess.run(
-            ["tee", "/sys/bus/usb/drivers/usb/unbind"],
-            input=f"{usb_path}\n",
-            text=True,
-            check=True
-        )
+def _write_sysfs(path, value):
+    with open(path, "w", encoding="utf-8") as sysfs_file:
+        sysfs_file.write(f"{value}\n")
+
+
+def usb_unbind_bind():
+    """Try to recover the FTDI adapter by re-binding the host USB device."""
+    usb_path = get_usb_sys_path(USB_VENDOR_ID, USB_PRODUCT_ID)
+    if usb_path is None:
+        logger.error("Unable to find matching USB device path for %s:%s.", USB_VENDOR_ID, USB_PRODUCT_ID)
+        return False
+
+    try:
+        logger.warning("Unbinding USB device %s", usb_path)
+        _write_sysfs(os.path.join(USB_DRIVER_BASE, "unbind"), usb_path)
         time.sleep(3)
-        logger.warning(f"Rebinding USB device {usb_path}")
-        subprocess.run(
-            ["tee", "/sys/bus/usb/drivers/usb/bind"],
-            input=f"{usb_path}\n",
-            text=True,
-            check=True
-        )
+        logger.warning("Rebinding USB device %s", usb_path)
+        _write_sysfs(os.path.join(USB_DRIVER_BASE, "bind"), usb_path)
         time.sleep(3)
-    except Exception as e:
-        logger.error(f"USB unbind/bind failed: {e}")
+        logger.info("USB unbind/bind completed for %s", usb_path)
+        return True
+    except Exception:
+        logger.exception("USB unbind/bind failed for %s.", usb_path)
+        return False
 
 
 def read_serial(serial_port, baudrate, data_queue, reconnect_wait=5, max_retries=None):
     """
     Continuously read lines from serial and enqueue them; robust to errors.
-    Resets USB device after repeated failures.
+    Resets the USB device after repeated failures.
     """
     retries = 0
     while True:
         try:
             with serial.Serial(serial_port, baudrate, timeout=1) as ser:
-                logger.info(f"Opened serial port {serial_port}")
-                retries = 0  # Reset retry count on successful open
+                logger.info("Opened serial port %s", serial_port)
                 while True:
                     try:
-                        line = ser.readline().decode(errors='ignore').strip()
+                        line = ser.readline().decode(errors="ignore").strip()
                         if line:
+                            # Reset only after actual serial traffic, not merely an open.
+                            retries = 0
                             data_queue.put(line, timeout=1)
                     except Full:
                         logger.warning("⚠️ Serial data queue full, dropping incoming line.")
                         time.sleep(0.1)
-        except serial.SerialException as e:
-            logger.error(f"Serial port error: {e}")
+        except (serial.SerialException, OSError) as exc:
             retries += 1
+            logger.error("Serial port error (retry %s): %s", retries, exc)
             if max_retries and retries >= max_retries:
-                logger.error(f"Max retries ({max_retries}) reached, giving up.")
+                logger.error("Max retries (%s) reached, giving up.", max_retries)
                 break
-            if retries % 3 == 0:
+            if retries % USB_RESET_RETRY_INTERVAL == 0:
                 usb_unbind_bind()
-            logger.info(f"Attempting to reconnect in {reconnect_wait} seconds...")
+            logger.info("Attempting to reconnect in %s seconds...", reconnect_wait)
             time.sleep(reconnect_wait)
         except KeyboardInterrupt:
             logger.info("Serial reader interrupted by user.")
             break
-        except Exception as e:
+        except Exception:
             logger.exception("Unexpected error in serial reader thread.")
             time.sleep(reconnect_wait)
 
