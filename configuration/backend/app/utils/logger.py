@@ -7,7 +7,10 @@ import sys
 
 def create_logger(name='venti'):
     logger = logging.getLogger(name)
-    logger.setLevel(logging.DEBUG)  # capture all levels
+    logger.setLevel(logging.DEBUG)  # capture all levels, handlers decide output
+
+    log_level_name = os.getenv("LOG_LEVEL", "INFO").upper()
+    log_level = getattr(logging, log_level_name, logging.INFO)
 
     # Avoid adding multiple handlers if called multiple times
     if not logger.handlers:
@@ -16,18 +19,19 @@ def create_logger(name='venti'):
         log_file = os.path.join(os.path.dirname(__file__), '../debug.log')
         rfh = RotatingFileHandler(
             filename=log_file,
-            maxBytes=1*1024*1024,
-            backupCount=1,
+            maxBytes=5*1024*1024,
+            backupCount=3,
             encoding='utf-8'
         )
         formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
-        logging.Formatter.converter = lambda *args: datetime.now(pytz.timezone("Europe/Berlin")).timetuple()
+        logging.Formatter.converter = lambda *args: datetime.now(pytz.timezone("Europe/Vienna")).timetuple()
+        rfh.setLevel(log_level)
         rfh.setFormatter(formatter)
         logger.addHandler(rfh)
 
         # ---- Console handler ----
         ch = logging.StreamHandler(sys.stdout)
-        ch.setLevel(logging.DEBUG)
+        ch.setLevel(log_level)
         ch.setFormatter(formatter)
         logger.addHandler(ch)
 

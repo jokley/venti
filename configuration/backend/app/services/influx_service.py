@@ -12,6 +12,7 @@ VENTI_PARAM_DEFAULTS = {
     "intervall_on": 95.0,
     "intervall_time": 12.0,
     "intervall_duration": 12.0,
+    "notifications_enabled": True,
     "self_learning_enabled": False,
     "efficiency_window_hours": 2.0,
     "base_min_efficiency_threshold": 0.25,
@@ -39,31 +40,187 @@ VENTI_PARAM_SCALES = {
     "ts_weight": 100,
 }
 
-VENTI_PARAM_BOOL_FIELDS = {"self_learning_enabled"}
+VENTI_PARAM_BOOL_FIELDS = {"self_learning_enabled", "notifications_enabled"}
+
+# =============================================================================
+# 🔥 HEIZUNG – influx_service.py Ergänzungen
+# =============================================================================
+# Diese Funktionen und Konstanten in influx_service.py einfügen,
+# analog zu den bestehenden venti_* Funktionen.
+# =============================================================================
+
+from collections import namedtuple
+
+
+# -----------------------------------------------------------------------------
+# 📐 DEFAULTS & SCALES
+# -----------------------------------------------------------------------------
+
+HEIZUNG_PARAM_DEFAULTS = {
+    "heizung_enabled": False,
+    "heizung_nachlauf": 20,         # Minuten, ganzzahlig, keine Skalierung
+    "heizung_sdef_hys": 1.0,
+    # Zukunft auto_time:
+    # "heizung_time_from": "06:00",
+    # "heizung_time_to":   "18:00",
+}
+
+HEIZUNG_PARAM_BOOL_FIELDS = {
+    "heizung_enabled",
+}
+
+# Nur Felder die einen Scale brauchen – nachlauf ist nicht dabei
+HEIZUNG_PARAM_SCALES = {
+    "heizung_nachlauf": 10,
+    "heizung_sdef_hys": 10,
+}
+
+
+# -----------------------------------------------------------------------------
+# 📦 get_heizung_control_values()
+# Liest letzten Eintrag aus Measurement "heizung"
+# Gibt zurück: startTime, mode, heizung_dauer (in Stunden, float),
+#              heizung_sdef_limit (float)
+# -----------------------------------------------------------------------------
+
+def get_heizung_control_values():
+    client = get_influxdb_client()
+    query = '''
+        from(bucket: "jokley_bucket")
+            |> range(start: -1y)
+            |> filter(fn: (r) => r["_measurement"] == "heizung")
+            |> last()
+    '''
+    result = client.query_api().query(query=query)
+
+    startTime = None
+    mode = None
+    heizung_dauer = 0.0
+    heizung_sdef_limit = 0.0
+
+    for table in result:
+        for r in table.records:
+            field = r.get_field()
+            value = r.get_value()
+            if field == "mode":
+                startTime = r.get_time()
+                mode = value
+            elif field == "heizung_dauer":
+                heizung_dauer = float(value) / 10.0
+            elif field == "heizung_sdef_limit":
+                heizung_sdef_limit = float(value) / 10.0
+
+    client.close()
+
+    if mode is None:
+        mode = "off"
+
+    Heizung = namedtuple(
+        "Heizung",
+        ["startTime", "mode", "heizung_dauer", "heizung_sdef_limit"]
+    )
+    return Heizung(startTime, mode, heizung_dauer, heizung_sdef_limit)
+
+
+# -----------------------------------------------------------------------------
+# 📦 get_heizung_param_values()
+# Rohdaten aus Measurement "heizung_param"
+# -----------------------------------------------------------------------------
+
+def get_heizung_param_values():
+    client = get_influxdb_client()
+    query = '''
+        from(bucket: "jokley_bucket")
+            |> range(start: 1970-01-01T00:00:00Z)
+            |> filter(fn: (r) => r["_measurement"] == "heizung_param")
+            |> last()
+    '''
+    result = client.query_api().query(query=query)
+
+    values = {}
+    for table in result:
+        for r in table.records:
+            values[r.get_field()] = (r.get_time(), r.get_value())
+
+    client.close()
+    return [values]
+
+
+# -----------------------------------------------------------------------------
+# 📦 get_heizung_param_actual_values()
+# Aufbereitetes Dict – fehlende Felder nutzen DEFAULTS.
+#
+# nachlauf wird direkt als int gelesen, keine Division.
+# Nur Felder in HEIZUNG_PARAM_SCALES werden skaliert (aktuell keine).
+# -----------------------------------------------------------------------------
+
+def get_heizung_param_actual_values():
+    raw = get_heizung_param_values()[0]
+    params = dict(HEIZUNG_PARAM_DEFAULTS)
+
+    for key, record in raw.items():
+        if key not in params:
+            continue
+
+        value = record[1]
+
+        if key in HEIZUNG_PARAM_BOOL_FIELDS:
+            params[key] = bool(value)
+            continue
+
+        scale = HEIZUNG_PARAM_SCALES.get(key, 1)  # default scale 1 = kein Umbau
+        if scale == 1:
+            params[key] = int(value)
+        else:
+            params[key] = float(value) / scale
+
+    return params
 
 
 def _hours_to_flux_duration(hours):
     seconds = max(0, int(round(float(hours) * 3600)))
     return f"{seconds}s"
 
+from collections import namedtuple
+
 def get_venti_control_values():
     client = get_influxdb_client()
-    query = ''' from(bucket: "jokley_bucket")
-                    |> range(start: -1y)
-                    |> filter(fn: (r) => r["_measurement"] == "venti")
-		            |> last()
-                '''
+
+    query = '''
+        from(bucket: "jokley_bucket")
+            |> range(start: -1y)
+            |> filter(fn: (r) => r["_measurement"] == "venti")
+            |> last()
+    '''
+
     result = client.query_api().query(query=query)
 
-    records = []
+    startTime = None
+    mode = None
+    stockaufbau = None
+    trockenmasse = None
+
     for table in result:
         for r in table.records:
-            records.append((r.get_time(), r.get_value()))
-    
-    names = ['mode', 'stockaufbau', 'trockenMasseSoll']
-    values = [dict(zip(names, records))]
+
+            field = r.get_field()
+            value = r.get_value()
+
+            if field == "mode":
+                startTime = r.get_time()
+                mode = value
+
+            elif field == "stockaufbau":
+                stockaufbau = value
+
+            elif field == "trockenmasse":
+                trockenmasse = float(value) / 10.0   # ✅ ONLY HERE
+
     client.close()
-    return values
+
+    Venti = namedtuple("Venti", ["startTime", "mode", "stockaufbau", "trockenmasse"])
+
+    return Venti(startTime, mode, stockaufbau, trockenmasse)
 
 
 def get_last_controller_state():
@@ -72,6 +229,50 @@ def get_last_controller_state():
     from(bucket: "jokley_bucket")
       |> range(start: -30d)
       |> filter(fn: (r) => r["_measurement"] == "venti_state")
+      |> last()
+    '''
+
+    try:
+        result = client.query_api().query(query=query)
+
+        state_data = {
+            "started_at": None,
+            "state": None,
+            "command": None,
+            "mode": None,
+            "details": None,
+        }
+
+        for table in result:
+            for record in table.records:
+                field_name = record.get_field()
+                field_value = record.get_value()
+
+                if state_data["started_at"] is None:
+                    state_data["started_at"] = record.get_time().timestamp()
+
+                if field_name == "details_json" and field_value:
+                    try:
+                        state_data["details"] = json.loads(field_value)
+                    except Exception:
+                        state_data["details"] = {"raw": field_value}
+                elif field_name in ("state", "command", "mode"):
+                    state_data[field_name] = field_value
+
+        if state_data["state"] is None:
+            return None
+
+        return state_data
+    finally:
+        client.close()
+
+
+def get_last_heizung_controller_state():
+    client = get_influxdb_client()
+    query = '''
+    from(bucket: "jokley_bucket")
+      |> range(start: -30d)
+      |> filter(fn: (r) => r["_measurement"] == "heizung_state")
       |> last()
     '''
 
@@ -227,28 +428,41 @@ def get_min_max_values():
 def get_venti_lastTimeOn():
     client = get_influxdb_client()
     query = '''
-        on = from(bucket: "jokley_bucket")
+        from(bucket: "jokley_bucket")
             |> range(start: -1y)
             |> filter(fn: (r) => r["device_name"] == "fan")
             |> filter(fn: (r) => r["_measurement"] == "device_frmpayload_data_RO1_status")
-            |> filter(fn: (r) => r["_value"] == "ON")
-            |> last()
-
-        off = from(bucket: "jokley_bucket")
-            |> range(start: -1y)
-            |> filter(fn: (r) => r["device_name"] == "fan")
-            |> filter(fn: (r) => r["_measurement"] == "device_frmpayload_data_RO1_status")
-            |> filter(fn: (r) => r["_value"] == "OFF")
-            |> last()
-
-        union(tables: [on, off])
-            |> sort(columns: ["_measurement", "_value"])
+            |> filter(fn: (r) => r["_value"] == "ON" or r["_value"] == "OFF")
+            |> keep(columns: ["_time", "_value"])
+            |> sort(columns: ["_time"])
     '''
     result = client.query_api().query(query=query)
-    times = [r.get_time() for table in result for r in table.records]
-    names = ['lastTimeOff','lastTimeOn']
+
+    times = {
+        "lastTimeOff": None,
+        "lastTimeOn": None,
+    }
+    records = []
+
+    for table in result:
+        for r in table.records:
+            records.append((r.get_time(), str(r.get_value()).upper()))
+
+    previous_status = None
+
+    for record_time, status in sorted(records, key=lambda item: item[0]):
+
+        if status == "ON":
+            if previous_status != "ON":
+                times["lastTimeOn"] = record_time
+        elif status == "OFF":
+            if previous_status != "OFF":
+                times["lastTimeOff"] = record_time
+
+        previous_status = status
+
     client.close()
-    return [dict(zip(names, times))]
+    return [times]
 
 def get_battery_data():
     client = get_influxdb_client()

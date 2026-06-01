@@ -6,5 +6,7 @@ cors = CORS()
 mqtt = Mqtt()
 
 scheduler = BackgroundScheduler({
-    "apscheduler.timezone": "Europe/Berlin"
+    "apscheduler.timezone": "Europe/Berlin",
+    "apscheduler.job_defaults.coalesce": True,
+    "apscheduler.job_defaults.max_instances": 1,
 })
