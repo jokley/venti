@@ -268,8 +268,60 @@ Beim Panstamp-Compose wird nur `influxdbv2` benoetigt.
 - `delete_old_chirpstack_volumes.sh`: alte ChirpStack Volumes entfernen
 - `migrate_chirpstack_to_venti.sh`: Migration/Anpassung bestehender Installation
 - `piTerminal/install-docker.sh`: Docker Installation fuer Pi-Terminal
-- `piTerminal/install_piterminal.sh`: Pi-Terminal Setup
-- `piTerminal/start.sh`: Startskript fuer Terminal-Umgebung
+- `piTerminal/install_piterminal.sh`: Pi-Terminal- und Kiosk-Setup
+- `piTerminal/start.sh`: robuster, Desktop-unabhaengiger Chromium-Kiosk-Start
+- `piTerminal/start-kiosk-loop.sh`: startet den Kiosk nach einem Fehler erneut
+- `piTerminal/venti.desktop`: manuell nutzbare Dashboard-Verknuepfung als Fallback
+
+## Pi-Terminal-Kiosk einrichten
+
+Das Kiosk-Setup startet Chromium erst nach dem grafischen Login des Benutzers
+`pi`. Der Client muss deshalb so konfiguriert sein, dass sich `pi` automatisch
+in eine grafische Sitzung einloggt. Das Setup erkennt aktuelle Raspberry-Pi-OS-
+Installationen mit Wayland und `labwc`, aeltere LXDE/X11-Installationen und
+verwendet fuer andere Desktop-Umgebungen XDG-Autostart als Fallback.
+
+Einrichtung mit automatischer Erkennung:
+
+```bash
+sudo ./piTerminal/install_piterminal.sh --autostart auto
+```
+
+Bei Bedarf kann der Mechanismus explizit mit `--autostart labwc`,
+`--autostart lxde` oder `--autostart xdg` ausgewaehlt werden. Das Setup
+installiert immer nur einen aktiven Venti-Autostart und entfernt einen alten
+systemweiten `kiosk.service`.
+
+Die lokale Datei `/etc/venti-kiosk.conf` wird bei der ersten Einrichtung
+erzeugt und bei spaeteren Setup-Aufrufen nicht ueberschrieben:
+
+```bash
+KIOSK_URL="http://127.0.0.1/?kiosk=1"
+KIOSK_HEALTH_URL="http://127.0.0.1/"
+KIOSK_WAIT_TIMEOUT_SEC="300"
+```
+
+Das Startskript wartet auf das Dashboard, erkennt `chromium` und
+`chromium-browser`, verhindert doppelte Browserstarts und verwendet die vom
+Desktop bereitgestellte X11- oder Wayland-Sitzung. Das Setup erzeugt ausserdem
+eine Desktop-Verknuepfung aus der lokalen `KIOSK_URL`. Die versionierte Datei
+`piTerminal/venti.desktop` bleibt als manuell nutzbarer Fallback erhalten. Ein
+manueller Test muss aus einem Terminal innerhalb der grafischen Sitzung
+erfolgen:
+
+```bash
+./piTerminal/start.sh
+```
+
+Nach der Installation sollte der Raspberry Pi mindestens zweimal neu gestartet
+und der automatische Dashboard-Start geprueft werden. Je nach erkanntem Desktop
+liegt der aktive Autostart in einer dieser Dateien:
+
+```text
+/home/pi/.config/labwc/autostart
+/home/pi/.config/lxsession/LXDE-pi/autostart
+/home/pi/.config/autostart/venti-kiosk.desktop
+```
 
 ## Entwicklung
 
