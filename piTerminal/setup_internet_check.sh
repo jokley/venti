@@ -1,97 +1,69 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -Eeuo pipefail
 
-# Ensure script is run as root
-if [[ $EUID -ne 0 ]]; then
-   echo "This script must be run as root. Use sudo." 
-   exit 1
-fi
+CONFIG_FILE="/etc/venti-internet-check.conf"
+RUNTIME_SCRIPT="/usr/local/sbin/venti-check-internet"
+SERVICE_FILE="/etc/systemd/system/venti-internet-check.service"
+TIMER_FILE="/etc/systemd/system/venti-internet-check.timer"
 
-echo "Creating internet check script..."
+log() {
+  printf '%s %s\n' "$(date --iso-8601=seconds)" "$*"
+}
 
-# Step 1: Create the check script
-cat << 'EOF' > /usr/local/bin/check_internet.sh
-#!/bin/bash
+fail() {
+  log "FEHLER: $*" >&2
+  exit 1
+}
 
-# Define the address to ping
+[[ "$EUID" -eq 0 ]] || fail "Dieses Script muss mit sudo ausgeführt werden."
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SOURCE_DIR="$SCRIPT_DIR/internet-check"
+
+for file in \
+  "$SOURCE_DIR/check-internet" \
+  "$SOURCE_DIR/venti-internet-check.service" \
+  "$SOURCE_DIR/venti-internet-check.timer"
+do
+  [[ -f "$file" ]] || fail "Benötigte Datei nicht gefunden: $file"
+done
+
+log "Installiere optionalen Internet- und USB-Modem-Recovery-Job."
+install -o root -g root -m 0755 "$SOURCE_DIR/check-internet" "$RUNTIME_SCRIPT"
+install -o root -g root -m 0644 "$SOURCE_DIR/venti-internet-check.service" "$SERVICE_FILE"
+install -o root -g root -m 0644 "$SOURCE_DIR/venti-internet-check.timer" "$TIMER_FILE"
+
+if [[ ! -e "$CONFIG_FILE" ]]; then
+  cat > "$CONFIG_FILE" <<'CONFIG'
 PING_ADDRESS="8.8.8.8"
-PING_COUNT=4
-
-# Define the USB device details
-USB_ID="12d1:14db"
-
-# Define the log file
-LOG_FILE="/var/log/internet_check.log"
-
-log_message() {
-    echo "$(date): $1" >> "$LOG_FILE"
-}
-
-reboot_modem() {
-    log_message "Rebooting Huawei E3371 modem by USB reset..."
-    USB_BUS=$(lsusb | grep "$USB_ID" | awk '{print $2}')
-    USB_DEV=$(lsusb | grep "$USB_ID" | awk '{print $4}' | sed 's/://')
-
-    if [ -n "$USB_BUS" ] && [ -n "$USB_DEV" ]; then
-        log_message "Found device on bus $USB_BUS, device $USB_DEV"
-
-        echo "1-1" | sudo tee /sys/bus/usb/drivers/usb/unbind
-        sleep 5
-        echo "1-1" | sudo tee /sys/bus/usb/drivers/usb/bind
-        sleep 10
-    else
-        log_message "Error: Unable to find the USB device"
-    fi
-}
-
-restart_wireguard() {
-    log_message "Restarting WireGuard service..."
-    sudo systemctl restart wg-quick@wg0
-}
-
-if ping -c "$PING_COUNT" "$PING_ADDRESS" > /dev/null; then
-    log_message "Internet connection is up."
+PING_COUNT="4"
+USB_VENDOR_ID="12d1"
+USB_PRODUCT_ID="14db"
+WIREGUARD_UNIT="wg-quick@wg0.service"
+CONFIG
+  chown root:root "$CONFIG_FILE"
+  chmod 0644 "$CONFIG_FILE"
+  log "Erzeuge lokale Konfiguration: $CONFIG_FILE"
 else
-    log_message "Internet connection is down."
-    reboot_modem
-    restart_wireguard
+  log "Behalte vorhandene Konfiguration: $CONFIG_FILE"
 fi
-EOF
 
-# Step 2: Make it executable
-chmod +x /usr/local/bin/check_internet.sh
-echo "Script created and made executable."
+# Entferne die frühere Cron- und Logrotate-Variante bei einem Upgrade.
+if command -v crontab >/dev/null 2>&1 \
+  && crontab -l 2>/dev/null | grep -q '/usr/local/bin/check_internet.sh'; then
+  log "Entferne veralteten Internet-Check-Cronjob."
+  CRONTAB_FILE="$(mktemp)"
+  crontab -l 2>/dev/null \
+    | grep -v '/usr/local/bin/check_internet.sh' \
+    > "$CRONTAB_FILE" || true
+  crontab "$CRONTAB_FILE"
+  rm -f "$CRONTAB_FILE"
+fi
+rm -f /usr/local/bin/check_internet.sh /etc/logrotate.d/internet_check
 
-# Step 3: Add to cronjob
-echo "Installing cronjob..."
-# Only add cronjob if it doesn't already exist
-(crontab -l 2>/dev/null | grep -q "/usr/local/bin/check_internet.sh") || \
-  (crontab -l 2>/dev/null; echo "*/5 * * * * /usr/local/bin/check_internet.sh") | crontab -
+systemctl daemon-reload
+systemctl enable --now venti-internet-check.timer
 
-# Step 4: Set up logrotate
-echo "Setting up logrotate config..."
-
-cat << 'EOF' > /etc/logrotate.d/internet_check
-/var/log/internet_check.log {
-    daily
-    missingok
-    rotate 7
-    compress
-    delaycompress
-    notifempty
-    create 644 root root
-    sharedscripts
-    postrotate
-        systemctl reload rsyslog > /dev/null 2>&1 || true
-    endscript
-}
-EOF
-
-# Step 5: Test logrotate config (optional)
-echo "Testing logrotate config (dry run)..."
-logrotate -d /etc/logrotate.d/internet_check
-
-# Step 6: Force logrotate run (optional)
-echo "Forcing logrotate..."
-logrotate -f /etc/logrotate.d/internet_check
-
-echo "✅ Setup complete!"
+log "Internet-Check-Timer wurde aktiviert."
+log "Status: systemctl list-timers venti-internet-check.timer"
+log "Logs: journalctl -u venti-internet-check.service --since today"
