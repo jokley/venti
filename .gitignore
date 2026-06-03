@@ -4,3 +4,8 @@ venti.env
 # Python cache
 __pycache__/
 *.pyc
+
+# Lokale Client-Provisionierung und WireGuard-Schlüssel
+piTerminal/client-configs/
+*-wg0.conf
+*.conf.local

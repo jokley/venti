@@ -267,11 +267,80 @@ Beim Panstamp-Compose wird nur `influxdbv2` benoetigt.
 
 - `delete_old_chirpstack_volumes.sh`: alte ChirpStack Volumes entfernen
 - `migrate_chirpstack_to_venti.sh`: Migration/Anpassung bestehender Installation
+- `piTerminal/setup_client.sh`: Bootstrap fuer neue Raspberry-Pi-Clients
 - `piTerminal/install-docker.sh`: Docker Installation fuer Pi-Terminal
+- `piTerminal/setup_wireguard.sh`: WireGuard Installation und Aktivierung
+- `piTerminal/setup_internet_check.sh`: optionaler USB-Modem-Recovery-Timer
 - `piTerminal/install_piterminal.sh`: Pi-Terminal- und Kiosk-Setup
 - `piTerminal/start.sh`: robuster, Desktop-unabhaengiger Chromium-Kiosk-Start
 - `piTerminal/start-kiosk-loop.sh`: startet den Kiosk nach einem Fehler erneut
 - `piTerminal/venti.desktop`: manuell nutzbare Dashboard-Verknuepfung als Fallback
+
+## Raspberry-Pi-Client einrichten
+
+`piTerminal/setup_client.sh` richtet einen neuen Client modular ein. Docker,
+WireGuard und das Kiosk-Setup werden standardmaessig installiert, weil die
+aktuellen Venti-Clients Raspberry Pis mit Display sind. Der USB-Modem-Recovery-
+Timer ist optional.
+
+Die client-spezifische WireGuard-Datei enthaelt einen privaten Schluessel und
+wird deshalb nicht committed. Fuer eine wiederholbare Installation kann sie auf
+dem Client unter folgendem ignorierten Standardpfad abgelegt werden:
+
+```text
+piTerminal/client-configs/wg0.conf
+```
+
+Regulaerer Client mit Desktop-Kiosk und lokaler `piTerminal/client-configs/wg0.conf`:
+
+```bash
+sudo ./piTerminal/setup_client.sh
+```
+
+Alternativ kann eine WireGuard-Konfiguration explizit uebergeben werden:
+
+```bash
+sudo ./piTerminal/setup_client.sh \
+  --wireguard-config /root/client-configs/client-07-wg0.conf
+```
+
+Client mit Desktop-Kiosk und Huawei-USB-Mobilfunkmodem:
+
+```bash
+sudo ./piTerminal/setup_client.sh \
+  --wireguard-config /root/client-configs/client-08-wg0.conf \
+  --usb-modem-recovery
+```
+
+Eine vorhandene `/etc/wireguard/wg0.conf` wird nicht stillschweigend ersetzt.
+Eine bewusste Aktualisierung erfolgt mit `--replace-wireguard-config`. Auf
+bestehenden Clients mit bereits funktionierendem WireGuard kann dessen Schritt
+mit `--skip-wireguard` uebersprungen werden. Falls Docker bereits separat
+vorbereitet wurde, kann dessen Installation mit `--skip-docker` uebersprungen
+werden. Fuer zukuenftige Headless-Clients kann das Kiosk-Setup mit `--no-kiosk`
+ausgeschaltet werden.
+
+WireGuard wird als `wg-quick@wg0` aktiviert. Die wichtigsten Statusbefehle sind:
+
+```bash
+systemctl status docker
+systemctl status wg-quick@wg0
+```
+
+Der optionale Internet-Check ist nur fuer Clients mit USB-Mobilfunkmodem
+gedacht. Er laeuft als systemd-Timer, prueft alle fuenf Minuten die Verbindung,
+ermittelt den USB-Sysfs-Pfad des Modems dynamisch und startet nach einem Fehler
+WireGuard neu. Seine lokale Konfiguration liegt unter
+`/etc/venti-internet-check.conf`. Status und Logs sind abrufbar mit:
+
+```bash
+systemctl list-timers venti-internet-check.timer
+journalctl -u venti-internet-check.service --since today
+```
+
+Private WireGuard-Konfigurationen und lokale Provisionierungsdateien duerfen
+nicht committed werden. Das Bootstrap-Script installiert noch keinen
+automatischen Git- oder Docker-Compose-Rollout; dieser folgt separat.
 
 ## Pi-Terminal-Kiosk einrichten
 

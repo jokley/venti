@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+CONFIG_FILE="/etc/venti-internet-check.conf"
+
+log() {
+  printf '%s %s\n' "$(date --iso-8601=seconds)" "$*"
+}
+
+fail() {
+  log "FEHLER: $*" >&2
+  exit 1
+}
+
+[[ -r "$CONFIG_FILE" ]] || fail "Konfiguration ist nicht lesbar: $CONFIG_FILE"
+# shellcheck source=/dev/null
+source "$CONFIG_FILE"
+
+: "${PING_ADDRESS:?PING_ADDRESS fehlt in $CONFIG_FILE}"
+: "${PING_COUNT:?PING_COUNT fehlt in $CONFIG_FILE}"
+: "${USB_VENDOR_ID:?USB_VENDOR_ID fehlt in $CONFIG_FILE}"
+: "${USB_PRODUCT_ID:?USB_PRODUCT_ID fehlt in $CONFIG_FILE}"
+: "${WIREGUARD_UNIT:?WIREGUARD_UNIT fehlt in $CONFIG_FILE}"
+
+find_usb_device_path() {
+  local vendor_file product_file device_dir
+
+  for vendor_file in /sys/bus/usb/devices/*/idVendor; do
+    [[ -f "$vendor_file" ]] || continue
+    device_dir="${vendor_file%/idVendor}"
+    product_file="$device_dir/idProduct"
+    [[ -f "$product_file" ]] || continue
+
+    if [[ "$(<"$vendor_file")" == "$USB_VENDOR_ID" \
+      && "$(<"$product_file")" == "$USB_PRODUCT_ID" ]]; then
+      basename "$device_dir"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+reset_usb_modem() {
+  local usb_device_path
+
+  if ! usb_device_path="$(find_usb_device_path)"; then
+    log "WARNUNG: USB-Modem ${USB_VENDOR_ID}:${USB_PRODUCT_ID} wurde nicht gefunden. Überspringe USB-Reset."
+    return 0
+  fi
+
+  log "Setze USB-Modem ${USB_VENDOR_ID}:${USB_PRODUCT_ID} über $usb_device_path zurück."
+  printf '%s' "$usb_device_path" > /sys/bus/usb/drivers/usb/unbind
+  sleep 5
+  printf '%s' "$usb_device_path" > /sys/bus/usb/drivers/usb/bind
+  sleep 10
+}
+
+if ping -c "$PING_COUNT" "$PING_ADDRESS" >/dev/null 2>&1; then
+  log "Internetverbindung ist erreichbar: $PING_ADDRESS"
+  exit 0
+fi
+
+log "Internetverbindung ist nicht erreichbar: $PING_ADDRESS"
+reset_usb_modem
+log "Starte WireGuard-Unit neu: $WIREGUARD_UNIT"
+systemctl restart "$WIREGUARD_UNIT"
