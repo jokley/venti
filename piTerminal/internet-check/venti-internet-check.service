@@ -1,0 +1,8 @@
+[Unit]
+Description=Check internet connectivity and recover optional USB modem
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/venti-check-internet
