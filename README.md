@@ -271,6 +271,7 @@ Beim Panstamp-Compose wird nur `influxdbv2` benoetigt.
 - `piTerminal/install-docker.sh`: Docker Installation fuer Pi-Terminal
 - `piTerminal/setup_wireguard.sh`: WireGuard Installation und Aktivierung
 - `piTerminal/setup_internet_check.sh`: optionaler USB-Modem-Recovery-Timer
+- `piTerminal/setup_rollout.sh`: optionaler Git-/Docker-Compose-Rollout-Timer
 - `piTerminal/install_piterminal.sh`: Pi-Terminal- und Kiosk-Setup
 - `piTerminal/start.sh`: robuster, Desktop-unabhaengiger Chromium-Kiosk-Start
 - `piTerminal/start-kiosk-loop.sh`: startet den Kiosk nach einem Fehler erneut
@@ -279,9 +280,9 @@ Beim Panstamp-Compose wird nur `influxdbv2` benoetigt.
 ## Raspberry-Pi-Client einrichten
 
 `piTerminal/setup_client.sh` richtet einen neuen Client modular ein. Docker,
-WireGuard und das Kiosk-Setup werden standardmaessig installiert, weil die
-aktuellen Venti-Clients Raspberry Pis mit Display sind. Der USB-Modem-Recovery-
-Timer ist optional.
+WireGuard, Kiosk-Setup und der automatische Git-/Docker-Compose-Rollout werden
+standardmaessig installiert, weil die aktuellen Venti-Clients Raspberry Pis mit
+Display sind. Der USB-Modem-Recovery-Timer ist optional.
 
 Die client-spezifische WireGuard-Datei enthaelt einen privaten Schluessel und
 wird deshalb nicht committed. Fuer eine wiederholbare Installation kann sie auf
@@ -291,10 +292,18 @@ dem Client unter folgendem ignorierten Standardpfad abgelegt werden:
 piTerminal/client-configs/wg0.conf
 ```
 
-Regulaerer Client mit Desktop-Kiosk und lokaler `piTerminal/client-configs/wg0.conf`:
+Regulaerer Produktiv-Client mit Desktop-Kiosk, Rollout auf `main` und lokaler
+`piTerminal/client-configs/wg0.conf`:
 
 ```bash
 sudo ./piTerminal/setup_client.sh
+```
+
+QA-Client mit Rollout auf `qa`:
+
+```bash
+sudo ./piTerminal/setup_client.sh \
+  --rollout-branch qa
 ```
 
 Alternativ kann eine WireGuard-Konfiguration explizit uebergeben werden:
@@ -304,12 +313,20 @@ sudo ./piTerminal/setup_client.sh \
   --wireguard-config /root/client-configs/client-07-wg0.conf
 ```
 
-Client mit Desktop-Kiosk und Huawei-USB-Mobilfunkmodem:
+Client mit Desktop-Kiosk, Rollout und Huawei-USB-Mobilfunkmodem:
 
 ```bash
 sudo ./piTerminal/setup_client.sh \
   --wireguard-config /root/client-configs/client-08-wg0.conf \
   --usb-modem-recovery
+```
+
+Panstamp-Client mit passender Compose-Datei fuer den Rollout:
+
+```bash
+sudo ./piTerminal/setup_client.sh \
+  --wireguard-config /root/client-configs/client-09-wg0.conf \
+  --rollout-compose docker-compose-panstamp.yml
 ```
 
 Eine vorhandene `/etc/wireguard/wg0.conf` wird nicht stillschweigend ersetzt.
@@ -318,7 +335,9 @@ bestehenden Clients mit bereits funktionierendem WireGuard kann dessen Schritt
 mit `--skip-wireguard` uebersprungen werden. Falls Docker bereits separat
 vorbereitet wurde, kann dessen Installation mit `--skip-docker` uebersprungen
 werden. Fuer zukuenftige Headless-Clients kann das Kiosk-Setup mit `--no-kiosk`
-ausgeschaltet werden.
+ausgeschaltet werden. Der Rollout ist ebenfalls Standard und kann fuer Sonder-
+oder Testfaelle mit `--no-rollout` deaktiviert werden. Eine vorhandene
+`/etc/venti-update.conf` wird nur mit `--replace-rollout-config` ersetzt.
 
 WireGuard wird als `wg-quick@wg0` aktiviert. Die wichtigsten Statusbefehle sind:
 
@@ -339,8 +358,77 @@ journalctl -u venti-internet-check.service --since today
 ```
 
 Private WireGuard-Konfigurationen und lokale Provisionierungsdateien duerfen
-nicht committed werden. Das Bootstrap-Script installiert noch keinen
-automatischen Git- oder Docker-Compose-Rollout; dieser folgt separat.
+nicht committed werden. Das Bootstrap-Script installiert den Rollout-Timer
+standardmaessig; `piTerminal/setup_rollout.sh` bleibt fuer manuelle Wartung oder
+nachtraegliche Konfigurationsaenderungen separat nutzbar.
+
+## Automatischen Client-Rollout einrichten
+
+Der Rollout wird bei `piTerminal/setup_client.sh` standardmaessig mitinstalliert.
+`piTerminal/setup_rollout.sh` kann zusaetzlich direkt genutzt werden, um den
+Rollout auf bestehenden Clients nachtraeglich einzurichten oder die lokale
+Konfiguration bewusst zu ersetzen. Es installiert ein Laufzeitscript nach
+`/usr/local/sbin/venti-update`, eine lokale Konfiguration unter
+`/etc/venti-update.conf` sowie einen systemd-Timer. Das Script laeuft nicht
+direkt aus dem Git-Checkout, damit es sich waehrend eines Updates nicht selbst
+ersetzt.
+
+QA-Client, der den Branch `qa` verfolgt:
+
+```bash
+sudo ./piTerminal/setup_rollout.sh \
+  --branch qa \
+  --compose docker-compose.yml
+```
+
+Produktiv-Client, der `main` verfolgt:
+
+```bash
+sudo ./piTerminal/setup_rollout.sh \
+  --branch main \
+  --compose docker-compose.yml
+```
+
+Panstamp-Client:
+
+```bash
+sudo ./piTerminal/setup_rollout.sh \
+  --branch main \
+  --compose docker-compose-panstamp.yml
+```
+
+Die lokale Konfiguration wird nur mit `--replace-config` ueberschrieben:
+
+```bash
+VENTI_DIR="/home/pi/Projects/venti"
+DEPLOY_BRANCH="main"
+COMPOSE_FILE="docker-compose.yml"
+HEALTH_URL="http://127.0.0.1:5000/healthz"
+HEALTH_RETRIES="12"
+HEALTH_SLEEP_SEC="10"
+COMPOSE_WAIT_TIMEOUT_SEC="180"
+```
+
+Der Timer prueft nach dem Boot und danach in regelmaessigen Abstaenden mit
+zufaelliger Verzoegerung, ob `origin/$DEPLOY_BRANCH` einen neuen Commit hat. Bei
+einem Update wird der Checkout hart auf den Remote-Stand gesetzt, die Compose-
+Konfiguration validiert, Registry-Images werden geladen und der Stack mit Build,
+`--remove-orphans` und `--wait` neu gestartet. Danach muss der Backend-
+Health-Endpunkt erfolgreich antworten. Wenn Build, Start oder Health-Check
+fehlschlagen, setzt das Script den vorherigen Commit zurueck und startet diesen
+Stand erneut.
+
+Wichtige Diagnosebefehle:
+
+```bash
+sudo -u pi /usr/local/sbin/venti-update
+systemctl list-timers venti-update.timer
+journalctl -u venti-update.service --since today
+```
+
+Der Rollout bricht ab, wenn versionierte Dateien lokale Aenderungen enthalten.
+Client-spezifische Dateien wie `venti.env` und `/etc/venti-update.conf` bleiben
+lokal und werden nicht aus Git ueberschrieben.
 
 ## Pi-Terminal-Kiosk einrichten
 
