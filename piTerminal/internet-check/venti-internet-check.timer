@@ -1,0 +1,11 @@
+[Unit]
+Description=Periodically check internet connectivity for Venti
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=5min
+RandomizedDelaySec=30s
+Persistent=true
+
+[Install]
+WantedBy=timers.target

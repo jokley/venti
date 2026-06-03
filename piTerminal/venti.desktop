@@ -1,6 +1,6 @@
 [Desktop Entry]
 Type=Link
 Name=Heulüfter
-Comment=Heulüfter Steuerung
+Comment=Heulüfter Steuerung manuell öffnen
 Icon=/home/pi/Projects/venti/piTerminal/venti.png
-URL=http://172.16.238.19
+URL=http://127.0.0.1/?kiosk=1
