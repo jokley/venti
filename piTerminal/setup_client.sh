@@ -9,6 +9,10 @@ INSTALL_KIOSK=true
 KIOSK_AUTOSTART="auto"
 INSTALL_USB_MODEM_RECOVERY=false
 SKIP_DOCKER=false
+INSTALL_ROLLOUT=true
+ROLLOUT_BRANCH="main"
+ROLLOUT_COMPOSE_FILE="docker-compose.yml"
+REPLACE_ROLLOUT_CONFIG=false
 
 log() {
   printf '%s %s\n' "$(date --iso-8601=seconds)" "$*"
@@ -33,6 +37,11 @@ Optionen:
   --kiosk-autostart MODE            auto, labwc, lxde oder xdg (Standard: auto)
   --usb-modem-recovery              Optionalen Huawei-USB-Modem-Recovery-Timer installieren
   --skip-docker                     Docker-Installation überspringen, falls bereits vorbereitet
+  --no-rollout                      Git-/Docker-Compose-Rollout nicht installieren (Standard: Rollout wird installiert)
+  --rollout                         Legacy-Alias; Rollout ist bereits Standard
+  --rollout-branch qa|main          Git-Branch fuer diesen Client (Standard: main)
+  --rollout-compose DATEI           docker-compose.yml oder docker-compose-panstamp.yml
+  --replace-rollout-config          Vorhandene /etc/venti-update.conf bewusst ersetzen
   -h, --help                        Diese Hilfe anzeigen
 USAGE
 }
@@ -74,6 +83,29 @@ while (($# > 0)); do
       SKIP_DOCKER=true
       shift
       ;;
+    --no-rollout)
+      INSTALL_ROLLOUT=false
+      shift
+      ;;
+    --rollout)
+      # Legacy-Alias: Rollout ist fuer Standard-Clients bereits aktiv.
+      INSTALL_ROLLOUT=true
+      shift
+      ;;
+    --rollout-branch)
+      (($# >= 2)) || fail "Für --rollout-branch fehlt ein Wert."
+      ROLLOUT_BRANCH="$2"
+      shift 2
+      ;;
+    --rollout-compose)
+      (($# >= 2)) || fail "Für --rollout-compose fehlt ein Wert."
+      ROLLOUT_COMPOSE_FILE="$2"
+      shift 2
+      ;;
+    --replace-rollout-config)
+      REPLACE_ROLLOUT_CONFIG=true
+      shift
+      ;;
     -h|--help)
       usage
       exit 0
@@ -86,6 +118,14 @@ done
 case "$KIOSK_AUTOSTART" in
   auto|labwc|lxde|xdg) ;;
   *) fail "Ungültiger --kiosk-autostart Wert: $KIOSK_AUTOSTART" ;;
+esac
+case "$ROLLOUT_BRANCH" in
+  qa|main) ;;
+  *) fail "Ungültiger --rollout-branch Wert: $ROLLOUT_BRANCH" ;;
+esac
+case "$ROLLOUT_COMPOSE_FILE" in
+  docker-compose.yml|docker-compose-panstamp.yml) ;;
+  *) fail "Ungültiger --rollout-compose Wert: $ROLLOUT_COMPOSE_FILE" ;;
 esac
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -130,6 +170,16 @@ else
   log "USB-Modem-Recovery wurde nicht angefordert."
 fi
 
+if [[ "$INSTALL_ROLLOUT" == true ]]; then
+  ROLLOUT_ARGS=(--branch "$ROLLOUT_BRANCH" --compose "$ROLLOUT_COMPOSE_FILE")
+  if [[ "$REPLACE_ROLLOUT_CONFIG" == true ]]; then
+    ROLLOUT_ARGS+=(--replace-config)
+  fi
+  "$SCRIPT_DIR/setup_rollout.sh" "${ROLLOUT_ARGS[@]}"
+else
+  log "Rollout-Setup wurde nicht angefordert."
+fi
+
 log "Client-Bootstrap abgeschlossen."
 if [[ "$SKIP_WIREGUARD" != true ]]; then
   log "Prüfe WireGuard mit: systemctl status wg-quick@wg0"
@@ -140,4 +190,7 @@ if [[ "$INSTALL_KIOSK" == true ]]; then
 fi
 if [[ "$INSTALL_USB_MODEM_RECOVERY" == true ]]; then
   log "Prüfe den Internet-Timer mit: systemctl list-timers venti-internet-check.timer"
+fi
+if [[ "$INSTALL_ROLLOUT" == true ]]; then
+  log "Prüfe den Rollout-Timer mit: systemctl list-timers venti-update.timer"
 fi

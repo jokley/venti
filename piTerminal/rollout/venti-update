@@ -1,0 +1,136 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+CONFIG_FILE="/etc/venti-update.conf"
+LOCK_FILE="/run/lock/venti-update.lock"
+
+log() {
+  printf '%s %s\n' "$(date --iso-8601=seconds)" "$*"
+}
+
+fail() {
+  log "FEHLER: $*" >&2
+  exit 1
+}
+
+run_compose() {
+  docker compose -f "$COMPOSE_FILE" "$@"
+}
+
+load_config() {
+  [[ -r "$CONFIG_FILE" ]] || fail "Konfiguration fehlt oder ist nicht lesbar: $CONFIG_FILE"
+  # shellcheck source=/dev/null
+  source "$CONFIG_FILE"
+
+  : "${VENTI_DIR:?VENTI_DIR fehlt in $CONFIG_FILE}"
+  : "${DEPLOY_BRANCH:?DEPLOY_BRANCH fehlt in $CONFIG_FILE}"
+  : "${COMPOSE_FILE:?COMPOSE_FILE fehlt in $CONFIG_FILE}"
+  : "${HEALTH_URL:?HEALTH_URL fehlt in $CONFIG_FILE}"
+  HEALTH_RETRIES="${HEALTH_RETRIES:-12}"
+  HEALTH_SLEEP_SEC="${HEALTH_SLEEP_SEC:-10}"
+  COMPOSE_WAIT_TIMEOUT_SEC="${COMPOSE_WAIT_TIMEOUT_SEC:-180}"
+
+  case "$DEPLOY_BRANCH" in
+    qa|main) ;;
+    *) fail "Nicht erlaubter DEPLOY_BRANCH: $DEPLOY_BRANCH (erlaubt: qa, main)" ;;
+  esac
+
+  case "$COMPOSE_FILE" in
+    docker-compose.yml|docker-compose-panstamp.yml) ;;
+    *) fail "Nicht erlaubte COMPOSE_FILE: $COMPOSE_FILE" ;;
+  esac
+
+  [[ "$HEALTH_RETRIES" =~ ^[0-9]+$ ]] || fail "HEALTH_RETRIES muss eine Ganzzahl sein."
+  [[ "$HEALTH_SLEEP_SEC" =~ ^[0-9]+$ ]] || fail "HEALTH_SLEEP_SEC muss eine Ganzzahl sein."
+  [[ "$COMPOSE_WAIT_TIMEOUT_SEC" =~ ^[0-9]+$ ]] || fail "COMPOSE_WAIT_TIMEOUT_SEC muss eine Ganzzahl sein."
+}
+
+wait_for_health() {
+  local attempt
+
+  for ((attempt = 1; attempt <= HEALTH_RETRIES; attempt++)); do
+    if curl \
+      --fail \
+      --silent \
+      --show-error \
+      --max-time 10 \
+      "$HEALTH_URL" \
+      >/dev/null; then
+      log "Health-Check erfolgreich: $HEALTH_URL"
+      return 0
+    fi
+
+    log "Health-Check noch nicht erfolgreich ($attempt/$HEALTH_RETRIES)."
+    sleep "$HEALTH_SLEEP_SEC"
+  done
+
+  return 1
+}
+
+rollback_to_previous_commit() {
+  log "Rollback auf $LOCAL_COMMIT wird gestartet."
+  git reset --hard "$LOCAL_COMMIT"
+
+  if run_compose config --quiet \
+    && run_compose up -d --build --remove-orphans --wait --wait-timeout "$COMPOSE_WAIT_TIMEOUT_SEC" \
+    && wait_for_health; then
+    log "Rollback auf $LOCAL_COMMIT abgeschlossen."
+  else
+    log "KRITISCH: Rollback auf $LOCAL_COMMIT ist fehlgeschlagen." >&2
+  fi
+
+  exit 1
+}
+
+load_config
+
+exec 9>"$LOCK_FILE"
+if ! flock -n 9; then
+  log "Ein Rollout läuft bereits. Beende diesen Start."
+  exit 0
+fi
+
+cd "$VENTI_DIR"
+git rev-parse --is-inside-work-tree >/dev/null \
+  || fail "$VENTI_DIR ist kein Git-Repository."
+
+if ! git diff --quiet || ! git diff --cached --quiet; then
+  fail "Lokale Änderungen an versionierten Dateien gefunden. Rollout abgebrochen."
+fi
+
+log "Prüfe origin/$DEPLOY_BRANCH in $VENTI_DIR."
+git fetch --prune origin \
+  "+refs/heads/${DEPLOY_BRANCH}:refs/remotes/origin/${DEPLOY_BRANCH}"
+
+LOCAL_COMMIT="$(git rev-parse HEAD)"
+REMOTE_COMMIT="$(git rev-parse "origin/${DEPLOY_BRANCH}")"
+
+if [[ "$LOCAL_COMMIT" == "$REMOTE_COMMIT" ]]; then
+  log "Kein Update vorhanden. Commit: $LOCAL_COMMIT"
+  exit 0
+fi
+
+log "Update gefunden: $LOCAL_COMMIT -> $REMOTE_COMMIT"
+git reset --hard "$REMOTE_COMMIT"
+
+if ! run_compose config --quiet; then
+  log "Compose-Konfiguration ist ungültig." >&2
+  rollback_to_previous_commit
+fi
+
+if ! run_compose pull --ignore-buildable; then
+  log "docker compose pull ist fehlgeschlagen." >&2
+  rollback_to_previous_commit
+fi
+
+if ! run_compose up -d --build --remove-orphans --wait --wait-timeout "$COMPOSE_WAIT_TIMEOUT_SEC"; then
+  log "docker compose up ist fehlgeschlagen." >&2
+  rollback_to_previous_commit
+fi
+
+if ! wait_for_health; then
+  log "Health-Check nach Update fehlgeschlagen." >&2
+  rollback_to_previous_commit
+fi
+
+log "Rollout auf $REMOTE_COMMIT erfolgreich abgeschlossen."
