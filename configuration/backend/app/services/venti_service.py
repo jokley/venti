@@ -83,7 +83,6 @@ def venti_auto(cmd, trockenMasse, stockAufbau):
     ]
 
     write_api.write(bucket=Config.INFLUX_BUCKET, org=ORG, record=record)
-    client.close()
 
 
 def venti_auto_param(
@@ -174,7 +173,6 @@ def venti_auto_param(
     ]
 
     write_api.write(bucket=Config.INFLUX_BUCKET, org=ORG, record=record)
-    client.close()
 
 
 # =============================================================================
@@ -279,7 +277,6 @@ def heizung_auto(cmd, heizung_dauer, heizung_sdef_limit=0):
     ]
 
     write_api.write(bucket=Config.INFLUX_BUCKET, org=ORG, record=record)
-    client.close()
 
 
 def heizung_auto_param(
@@ -324,7 +321,6 @@ def heizung_auto_param(
     ]
 
     write_api.write(bucket=Config.INFLUX_BUCKET, org=ORG, record=record)
-    client.close()
 
 
 # =============================================================================
@@ -352,7 +348,6 @@ def write_controller_state(state, command, mode, details=None):
         point = point.field("details_json", std_json.dumps(details, default=str))
 
     write_api.write(bucket=Config.INFLUX_BUCKET, org=ORG, record=[point])
-    client.close()
 
 
 def write_heizung_controller_state(state, command, mode, details=None):
@@ -377,7 +372,6 @@ def write_heizung_controller_state(state, command, mode, details=None):
             point = point.field("venti_forced", bool(details["venti_forced"]))
 
     write_api.write(bucket=Config.INFLUX_BUCKET, org=ORG, record=[point])
-    client.close()
 
 
 # =============================================================================

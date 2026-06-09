@@ -110,7 +110,6 @@ def get_heizung_control_values():
             elif field == "heizung_sdef_limit":
                 heizung_sdef_limit = float(value) / 10.0
 
-    client.close()
 
     if mode is None:
         mode = "off"
@@ -142,7 +141,6 @@ def get_heizung_param_values():
         for r in table.records:
             values[r.get_field()] = (r.get_time(), r.get_value())
 
-    client.close()
     return [values]
 
 
@@ -216,7 +214,6 @@ def get_venti_control_values():
             elif field == "trockenmasse":
                 trockenmasse = float(value) / 10.0   # ✅ ONLY HERE
 
-    client.close()
 
     Venti = namedtuple("Venti", ["startTime", "mode", "stockaufbau", "trockenmasse"])
 
@@ -232,39 +229,36 @@ def get_last_controller_state():
       |> last()
     '''
 
-    try:
-        result = client.query_api().query(query=query)
+    result = client.query_api().query(query=query)
 
-        state_data = {
-            "started_at": None,
-            "state": None,
-            "command": None,
-            "mode": None,
-            "details": None,
-        }
+    state_data = {
+        "started_at": None,
+        "state": None,
+        "command": None,
+        "mode": None,
+        "details": None,
+    }
 
-        for table in result:
-            for record in table.records:
-                field_name = record.get_field()
-                field_value = record.get_value()
+    for table in result:
+        for record in table.records:
+            field_name = record.get_field()
+            field_value = record.get_value()
 
-                if state_data["started_at"] is None:
-                    state_data["started_at"] = record.get_time().timestamp()
+            if state_data["started_at"] is None:
+                state_data["started_at"] = record.get_time().timestamp()
 
-                if field_name == "details_json" and field_value:
-                    try:
-                        state_data["details"] = json.loads(field_value)
-                    except Exception:
-                        state_data["details"] = {"raw": field_value}
-                elif field_name in ("state", "command", "mode"):
-                    state_data[field_name] = field_value
+            if field_name == "details_json" and field_value:
+                try:
+                    state_data["details"] = json.loads(field_value)
+                except Exception:
+                    state_data["details"] = {"raw": field_value}
+            elif field_name in ("state", "command", "mode"):
+                state_data[field_name] = field_value
 
-        if state_data["state"] is None:
-            return None
+    if state_data["state"] is None:
+        return None
 
-        return state_data
-    finally:
-        client.close()
+    return state_data
 
 
 def get_last_heizung_controller_state():
@@ -276,39 +270,37 @@ def get_last_heizung_controller_state():
       |> last()
     '''
 
-    try:
-        result = client.query_api().query(query=query)
+    result = client.query_api().query(query=query)
 
-        state_data = {
-            "started_at": None,
-            "state": None,
-            "command": None,
-            "mode": None,
-            "details": None,
-        }
+    state_data = {
+        "started_at": None,
+        "state": None,
+        "command": None,
+        "mode": None,
+        "details": None,
+    }
 
-        for table in result:
-            for record in table.records:
-                field_name = record.get_field()
-                field_value = record.get_value()
+    for table in result:
+        for record in table.records:
+            field_name = record.get_field()
+            field_value = record.get_value()
 
-                if state_data["started_at"] is None:
-                    state_data["started_at"] = record.get_time().timestamp()
+            if state_data["started_at"] is None:
+                state_data["started_at"] = record.get_time().timestamp()
 
-                if field_name == "details_json" and field_value:
-                    try:
-                        state_data["details"] = json.loads(field_value)
-                    except Exception:
-                        state_data["details"] = {"raw": field_value}
-                elif field_name in ("state", "command", "mode"):
-                    state_data[field_name] = field_value
+            if field_name == "details_json" and field_value:
+                try:
+                    state_data["details"] = json.loads(field_value)
+                except Exception:
+                    state_data["details"] = {"raw": field_value}
+            elif field_name in ("state", "command", "mode"):
+                state_data[field_name] = field_value
 
-        if state_data["state"] is None:
-            return None
+    if state_data["state"] is None:
+        return None
 
-        return state_data
-    finally:
-        client.close()
+    return state_data
+
 
 def get_venti_control_param_values():
     client = get_influxdb_client()
@@ -324,7 +316,6 @@ def get_venti_control_param_values():
         for r in table.records:
             values[r.get_field()] = (r.get_time(), r.get_value())
 
-    client.close()
     return [values]
 
 
@@ -390,25 +381,24 @@ def get_outdoor_values():
                 "trockenMasseOut": r.values.get("device_frmpayload_data_trockenmasse"),
             }
 
-    client.close()
 
     return [values] if values else []
 
 def get_min_max_values():
     client = get_influxdb_client()
     query = '''
-        from(bucket: "jokley_bucket")
-            |> range(start: -1h)
-            |> filter(fn: (r) => r["device_name"] =~ /^probe/)
-            |> filter(fn: (r) =>
-                r["_measurement"] == "device_frmpayload_data_temperature" or
-                r["_measurement"] == "device_frmpayload_data_humidity" or
-                r["_measurement"] == "device_frmpayload_data_trockenmasse" or
-                r["_measurement"] == "device_frmpayload_data_sdef"
-            )
-            |> filter(fn: (r) => r._value <= 150 and r._value >= -150)
-            |> group(columns: ["device_name", "_measurement"])
-            |> last()
+    from(bucket: "jokley_bucket")
+        |> range(start: -1h)
+        |> filter(fn: (r) => r["device_name"] =~ /^probe/)
+        |> filter(fn: (r) =>
+            r["_measurement"] == "device_frmpayload_data_temperature" or
+            r["_measurement"] == "device_frmpayload_data_humidity" or
+            r["_measurement"] == "device_frmpayload_data_trockenmasse" or
+            r["_measurement"] == "device_frmpayload_data_sdef"
+        )
+        |> filter(fn: (r) => r._value <= 150 and r._value >= -150)
+        |> group(columns: ["device_name", "_measurement"])
+        |> last()
     '''
     result = client.query_api().query(query=query)
 
@@ -419,44 +409,40 @@ def get_min_max_values():
         "device_frmpayload_data_trockenmasse": [],
     }
 
-    try:
-        for table in result:
-            for r in table.records:
-                measurement = r.values.get("_measurement")
-                value = r.get_value()
+    for table in result:
+        for r in table.records:
+            measurement = r.values.get("_measurement")
+            value = r.get_value()
 
-                if measurement in values_by_measurement and value is not None:
-                    values_by_measurement[measurement].append(float(value))
+            if measurement in values_by_measurement and value is not None:
+                values_by_measurement[measurement].append(float(value))
 
-        values = {
-            "humidityMin": None,
-            "humidityMax": None,
-            "sDefMin": None,
-            "sDefMax": None,
-            "temperatureMin": None,
-            "temperatureMax": None,
-            "trockenMasseMin": None,
-            "trockenMasseMax": None,
-        }
+    values = {
+        "humidityMin": None,
+        "humidityMax": None,
+        "sDefMin": None,
+        "sDefMax": None,
+        "temperatureMin": None,
+        "temperatureMax": None,
+        "trockenMasseMin": None,
+        "trockenMasseMax": None,
+    }
 
-        mapping = {
-            "device_frmpayload_data_humidity": ("humidityMin", "humidityMax"),
-            "device_frmpayload_data_sdef": ("sDefMin", "sDefMax"),
-            "device_frmpayload_data_temperature": ("temperatureMin", "temperatureMax"),
-            "device_frmpayload_data_trockenmasse": ("trockenMasseMin", "trockenMasseMax"),
-        }
+    mapping = {
+        "device_frmpayload_data_humidity": ("humidityMin", "humidityMax"),
+        "device_frmpayload_data_sdef": ("sDefMin", "sDefMax"),
+        "device_frmpayload_data_temperature": ("temperatureMin", "temperatureMax"),
+        "device_frmpayload_data_trockenmasse": ("trockenMasseMin", "trockenMasseMax"),
+    }
 
-        for measurement, measurement_values in values_by_measurement.items():
-            min_key, max_key = mapping[measurement]
+    for measurement, measurement_values in values_by_measurement.items():
+        min_key, max_key = mapping[measurement]
 
-            if measurement_values:
-                values[min_key] = min(measurement_values)
-                values[max_key] = max(measurement_values)
+        if measurement_values:
+            values[min_key] = min(measurement_values)
+            values[max_key] = max(measurement_values)
 
-        return [values]
-
-    finally:
-        client.close()
+    return [values]
 
 def get_venti_lastTimeOn():
     client = get_influxdb_client()
@@ -494,7 +480,6 @@ def get_venti_lastTimeOn():
 
         previous_status = status
 
-    client.close()
     return [times]
 
 def get_battery_data():
@@ -738,8 +723,6 @@ def get_measurement_change_over_hours(measurement, device_filter, hours, use_min
     except Exception as e:
         print(f"Error getting change for {measurement}: {e}")
         return 0.0
-    finally:
-        client.close()
 
 def get_temperature_change_over_hours(hours):
     device_filter = 'r["device_name"] =~ /^probe/'
@@ -777,17 +760,13 @@ def get_measurement_value_hours_ago(measurement, device_filter, hours, use_min=T
     else:
         query += '|> group(columns: ["_measurement"]) |> max()'
 
-    try:
-        result = client.query_api().query(query=query)
+    result = client.query_api().query(query=query)
 
-        for table in result:
-            for record in table.records:
-                return record.get_value()
+    for table in result:
+        for record in table.records:
+            return record.get_value()
 
-        return None
-    finally:
-        client.close()
-
+    return None
 
 def get_2h_values(hours=2):
     device_filter = 'r["device_name"] =~ /^probe/'

@@ -24,8 +24,6 @@ def _influx_ok() -> bool:
         return True
     except Exception:
         return False
-    finally:
-        client.close()
 
 
 def _is_panstamp_mode() -> bool:
