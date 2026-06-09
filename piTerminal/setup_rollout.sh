@@ -75,6 +75,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 SOURCE_DIR="$SCRIPT_DIR/rollout"
 
+log "Setze Repository-Rechte für Rollout-Benutzer $VENTI_USER:$VENTI_GROUP."
+chown -R "$VENTI_USER:$VENTI_GROUP" "$REPO_DIR"
+
 for file in \
   "$SOURCE_DIR/venti-update" \
   "$SOURCE_DIR/venti-update.service" \
