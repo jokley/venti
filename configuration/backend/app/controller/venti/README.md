@@ -80,10 +80,7 @@ At the moment, the default persisted control parameters in [influx_service.py](/
   - `self_learning_enabled`
   - `ts_weight`
 
-Derived flags are also built in [context.py](/home/pi/Projects/venti/configuration/backend/app/controller/venti/context.py:1):
-
-- `overheat`
-- `drying_conditions_met`
+Derived protection and drying checks are evaluated by the decision engine in [drying_decision_engine.py](/home/pi/Projects/venti/configuration/backend/app/controller/venti/efficiency/drying_decision_engine.py:1).
 
 The current drying start condition is:
 

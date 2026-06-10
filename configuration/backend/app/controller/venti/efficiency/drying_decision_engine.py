@@ -81,7 +81,7 @@ class DryingDecisionEngine:
                     },
                 )
 
-        if ctx.overheat:
+        if self._is_overheat(ctx):
             # Ueberhitzung hat Vorrang vor Komfort-/Effizienzregeln:
             # Luefter an, bis die Hysterese in control_data wieder freigibt.
             step("overheat", True, "OVERHEAT")
@@ -118,13 +118,113 @@ class DryingDecisionEngine:
 
         return self._decide_classic(ctx, metrics, trace, step)
 
+    def _is_overheat(self, ctx):
+        return (
+            ctx.tempMax is not None
+            and ctx.uschutz_on is not None
+            and ctx.tempMax >= ctx.uschutz_on
+        )
+
+    def _drying_conditions(self, ctx):
+        # Vollstaendige Hysterese aus VentiContext:
+        # Luefter AUS startet mit oberen SDef- und unteren TS-Schwellen;
+        # Luefter EIN laeuft bis zu den unteren SDef- und oberen TS-Schwellen.
+        if not self._has_drying_condition_values(ctx):
+            return self._drying_conditions_result(
+                met=False,
+                phase="unavailable",
+                reason="missing_required_values",
+                sdef_ok=False,
+                ts_ok=False,
+                sdef_threshold_min=None,
+                sdef_threshold_on=None,
+                ts_threshold=None,
+            )
+
+        thresholds = self._drying_thresholds(ctx)
+        sdef_ok = (
+            ctx.sDefOut >= thresholds["sdef_threshold_min"]
+            and ctx.sDefOut >= thresholds["sdef_threshold_on"]
+        )
+        ts_ok = ctx.tsMin <= thresholds["ts_threshold"]
+
+        return self._drying_conditions_result(
+            met=sdef_ok and ts_ok,
+            phase=thresholds["phase"],
+            reason=self._drying_conditions_reason(sdef_ok, ts_ok),
+            sdef_ok=sdef_ok,
+            ts_ok=ts_ok,
+            sdef_threshold_min=thresholds["sdef_threshold_min"],
+            sdef_threshold_on=thresholds["sdef_threshold_on"],
+            ts_threshold=thresholds["ts_threshold"],
+        )
+
+    def _has_drying_condition_values(self, ctx):
+        return (
+            ctx.sDefOut is not None
+            and ctx.sdefMinThreshold is not None
+            and ctx.sdef_on is not None
+            and ctx.tsSoll is not None
+            and ctx.tsMin is not None
+            and ctx.sdef_hys_half is not None
+            and ctx.ts_hys_half is not None
+        )
+
+    def _drying_thresholds(self, ctx):
+        if ctx.is_fan_on:
+            return {
+                "phase": "continue",
+                "sdef_threshold_min": ctx.sdefMinThreshold - ctx.sdef_hys_half,
+                "sdef_threshold_on": ctx.sdef_on - ctx.sdef_hys_half,
+                "ts_threshold": ctx.tsSoll + ctx.ts_hys_half,
+            }
+
+        return {
+            "phase": "start",
+            "sdef_threshold_min": ctx.sdefMinThreshold + ctx.sdef_hys_half,
+            "sdef_threshold_on": ctx.sdef_on + ctx.sdef_hys_half,
+            "ts_threshold": ctx.tsSoll - ctx.ts_hys_half,
+        }
+
+    def _drying_conditions_reason(self, sdef_ok, ts_ok):
+        if sdef_ok and ts_ok:
+            return "conditions_met"
+        if not sdef_ok and not ts_ok:
+            return "sdef_and_ts_not_met"
+        if not sdef_ok:
+            return "sdef_not_met"
+        return "ts_not_met"
+
+    def _drying_conditions_result(
+        self,
+        met,
+        phase,
+        reason,
+        sdef_ok,
+        ts_ok,
+        sdef_threshold_min,
+        sdef_threshold_on,
+        ts_threshold,
+    ):
+        return {
+            "met": met,
+            "phase": phase,
+            "reason": reason,
+            "sdef_ok": sdef_ok,
+            "ts_ok": ts_ok,
+            "sdef_threshold_min": sdef_threshold_min,
+            "sdef_threshold_on": sdef_threshold_on,
+            "ts_threshold": ts_threshold,
+        }
+
     def _decide_classic(self, ctx, metrics, trace, step):
         # Classic mode stays close to the old parameter-based behavior:
         # if drying conditions are good, run; otherwise try interval mode;
         # otherwise remain idle.
-        # sDefOut Hysterese ist in ctx.drying_conditions_met abgedeckt –
+        # sDefOut Hysterese wird in _drying_conditions abgedeckt –
         # EIN bei oberer Schwelle, Weiterlaufen bis untere Schwelle.
-        if ctx.drying_conditions_met:
+        drying = self._drying_conditions(ctx)
+        if drying["met"]:
             if self._drying_delay_active(ctx):
                 # Nach einem beendeten Trocknungslauf blockiert der Delay nur
                 # erneutes DRYING_ACTIVE. Intervall darf trotzdem laufen.
@@ -132,13 +232,13 @@ class DryingDecisionEngine:
                 if interval_decision:
                     return interval_decision
                 step("drying_delay", True, "AUTO_IDLE")
-                return self._auto_idle(ctx, metrics, trace, "drying_delay")
+                return self._auto_idle(ctx, metrics, trace, "drying_delay", drying)
     
             step("drying_active", True, "DRYING_ACTIVE")
             return Decision(
                 "on",
                 "DRYING_ACTIVE",
-                self._drying_details(ctx, metrics, trace, "legacy_drying"),
+                self._drying_details(ctx, metrics, trace, "legacy_drying", drying),
             )
     
         interval_decision = self._interval_decision(ctx, trace, step)
@@ -146,7 +246,7 @@ class DryingDecisionEngine:
             return interval_decision
     
         # Ziel erreicht – tsMin hat tsSoll + ts_hys_half überschritten
-        # sDefOut Checks entfallen hier da in drying_conditions_met mit
+        # sDefOut Checks entfallen hier da in _drying_conditions mit
         # korrekter Hysterese abgedeckt.
         if (
             ctx.remainingTimeStock > ctx.stock
@@ -155,16 +255,17 @@ class DryingDecisionEngine:
             and ctx.tsMin > ctx.tsSoll + ctx.ts_hys_half
         ):
             step("drying_not_possible", True, "AUTO_IDLE")
-            return self._auto_idle(ctx, metrics, trace, "ts_target_reached")
+            return self._auto_idle(ctx, metrics, trace, "ts_target_reached", drying)
     
         step("auto_idle_default", True, "AUTO_IDLE")
-        return self._auto_idle(ctx, metrics, trace, "drying_conditions_not_met")
+        return self._auto_idle(ctx, metrics, trace, "drying_conditions_not_met", drying)
 
     def _decide_self_learning(self, ctx, metrics, trace, step):
         # Self-learning uses the same start condition as classic mode,
         # then adds runtime-based efficiency checks and restart blocking
         # after a previously bad drying run.
-        if ctx.drying_conditions_met:
+        drying = self._drying_conditions(ctx)
+        if drying["met"]:
             if self._drying_delay_active(ctx):
                 # Self-Learning nutzt denselben Restart-Delay wie Classic:
                 # erst Intervall pruefen, sonst im Idle mit Delaygrund bleiben.
@@ -173,7 +274,7 @@ class DryingDecisionEngine:
                     return interval_decision
 
                 step("drying_delay", True, "AUTO_IDLE")
-                return self._auto_idle(ctx, metrics, trace, "drying_delay")
+                return self._auto_idle(ctx, metrics, trace, "drying_delay", drying)
 
             # Nach einem schlechten Lauf muss die neue Ausgangslage messbar
             # besser sein, damit der Controller nicht sofort wieder startet.
@@ -192,6 +293,7 @@ class DryingDecisionEngine:
                         "adaptive_threshold": ctx.min_efficiency_threshold,
                         "last_bad_drying": state_manager.last_bad_drying_snapshot,
                         "retry_check": retry_details,
+                        "drying_conditions": drying,
                         "trace": trace,
                     },
                 )
@@ -201,7 +303,7 @@ class DryingDecisionEngine:
                 return Decision(
                     "on",
                     "DRYING_ACTIVE",
-                    self._drying_details(ctx, metrics, trace, "start"),
+                    self._drying_details(ctx, metrics, trace, "start", drying),
                 )
 
             # Give a fresh drying run time to produce history before
@@ -211,7 +313,7 @@ class DryingDecisionEngine:
                 return Decision(
                     "on",
                     "DRYING_ACTIVE",
-                    self._drying_details(ctx, metrics, trace, "startup_window"),
+                    self._drying_details(ctx, metrics, trace, "startup_window", drying),
                 )
 
             # Once enough history exists, stop the fan if the measured
@@ -222,7 +324,7 @@ class DryingDecisionEngine:
                     "off",
                     "INEFFICIENT_DRYING",
                     {
-                        **self._drying_details(ctx, metrics, trace, "inefficient"),
+                        **self._drying_details(ctx, metrics, trace, "inefficient", drying),
                         "runtime": ctx.fan_runtime_current,
                         "weighted_gain": metrics["weighted_gain"],
                     },
@@ -232,7 +334,7 @@ class DryingDecisionEngine:
             return Decision(
                 "on",
                 "DRYING_ACTIVE",
-                self._drying_details(ctx, metrics, trace, "efficient"),
+                self._drying_details(ctx, metrics, trace, "efficient", drying),
             )
 
         interval_decision = self._interval_decision(ctx, trace, step)
@@ -240,11 +342,15 @@ class DryingDecisionEngine:
             return interval_decision
 
         step("drying_conditions_missing", True, "AUTO_IDLE")
-        return self._auto_idle(ctx, metrics, trace, "drying_conditions_not_met")
+        return self._auto_idle(ctx, metrics, trace, "drying_conditions_not_met", drying)
 
-    def _auto_idle(self, ctx, metrics, trace, reason):
+    def _auto_idle(self, ctx, metrics, trace, reason, drying=None):
+        if drying is None:
+            drying = self._drying_conditions(ctx)
+
         details = {
             "reason": reason,
+            "drying_conditions": drying,
             "sDefOut": ctx.sDefOut,
             "threshold": ctx.sdefMinThreshold,
             "tsDiff": ctx.tsSoll - ctx.tsMin if ctx.tsSoll is not None and ctx.tsMin is not None else None,
@@ -324,9 +430,12 @@ class DryingDecisionEngine:
 
         return None
 
-    def _drying_details(self, ctx, metrics, trace, phase):
+    def _drying_details(self, ctx, metrics, trace, phase, drying=None):
         # Keep all drying-related telemetry in one place so logs,
         # persistence, and notifications use the same payload shape.
+        if drying is None:
+            drying = self._drying_conditions(ctx)
+
         return {
             "sDefOut": ctx.sDefOut,
             "sDefMin": ctx.sDefMin,
@@ -336,6 +445,7 @@ class DryingDecisionEngine:
             "tsDiff": ctx.tsSoll - ctx.tsMin if ctx.tsSoll is not None and ctx.tsMin is not None else None,
             "efficiency": metrics["efficiency"],
             "adaptive_threshold": ctx.min_efficiency_threshold,
+            "drying_conditions": drying,
             "sdef_change_2h": metrics["sdef_gain"],
             "ts_change_2h": metrics["ts_gain"],
             "window_hours": metrics["window_hours"],
