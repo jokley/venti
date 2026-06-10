@@ -96,12 +96,9 @@ def venti_auto_param(
     intervall_time,
     intervall_duration,
     notifications_enabled,
-    self_learning_enabled,
     efficiency_window_hours,
     base_min_efficiency_threshold,
-    good_drying_level,
-    efficiency_learning_up,
-    efficiency_learning_down,
+    efficiency_endphase_ts_margin,
     ts_weight,
 ):
     """
@@ -122,12 +119,9 @@ def venti_auto_param(
     logger.info('Intervall time: {}'.format(intervall_time))
     logger.info('Intervall duration: {}'.format(intervall_duration))
     logger.info('Notifications enabled: {}'.format(notifications_enabled))
-    logger.info('Self learning enabled: {}'.format(self_learning_enabled))
     logger.info('Efficiency window hours: {}'.format(efficiency_window_hours))
     logger.info('Base min efficiency threshold: {}'.format(base_min_efficiency_threshold))
-    logger.info('Good drying level: {}'.format(good_drying_level))
-    logger.info('Efficiency learning up: {}'.format(efficiency_learning_up))
-    logger.info('Efficiency learning down: {}'.format(efficiency_learning_down))
+    logger.info('Efficiency endphase TS margin: {}'.format(efficiency_endphase_ts_margin))
     logger.info('TS weight: {}'.format(ts_weight))
 
     sdef_on = int(sdef_on * 10)
@@ -140,12 +134,9 @@ def venti_auto_param(
     intervall_time = int(intervall_time * 10)
     intervall_duration = int(intervall_duration * 10)
     notifications_enabled = _to_bool(notifications_enabled)
-    self_learning_enabled = _to_bool(self_learning_enabled)
     efficiency_window_hours = int(efficiency_window_hours * 10)
     base_min_efficiency_threshold = int(base_min_efficiency_threshold * 100)
-    good_drying_level = int(good_drying_level * 100)
-    efficiency_learning_up = int(efficiency_learning_up * 100)
-    efficiency_learning_down = int(efficiency_learning_down * 100)
+    efficiency_endphase_ts_margin = int(efficiency_endphase_ts_margin * 10)
     ts_weight = int(ts_weight * 100)
 
     client = get_influxdb_client()
@@ -163,12 +154,9 @@ def venti_auto_param(
         .field("intervall_time", intervall_time)
         .field("intervall_duration", intervall_duration)
         .field("notifications_enabled", notifications_enabled)
-        .field("self_learning_enabled", self_learning_enabled)
         .field("efficiency_window_hours", efficiency_window_hours)
         .field("base_min_efficiency_threshold", base_min_efficiency_threshold)
-        .field("good_drying_level", good_drying_level)
-        .field("efficiency_learning_up", efficiency_learning_up)
-        .field("efficiency_learning_down", efficiency_learning_down)
+        .field("efficiency_endphase_ts_margin", efficiency_endphase_ts_margin)
         .field("ts_weight", ts_weight)
     ]
 

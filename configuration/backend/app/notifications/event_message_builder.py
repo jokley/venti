@@ -72,8 +72,6 @@ def pretty_detail_reason(reason):
         "auto_disabled":                            "Trocknung abgeschlossen – Automatik deaktiviert",
         "drying_delay":                             "Delay nach Trocknungs-Aus",
         "sdef_delay":                               "Delay nach SDEF-Aus",
-        "inefficient_cooldown":                     "Pause nach ineffizienter Trocknung",
-        "waiting_better_than_last_bad_drying":      "Warte auf bessere Bedingungen als beim letzten Fehlversuch",
         "humidity_low":                             "Feuchte zu niedrig",
         "ts_target_reached":                        "TS Ziel erreicht",
         "interval_wait":                            "Warte auf Intervall",
@@ -266,7 +264,7 @@ def build_event_message(event):
             f"(Min: {fmt_float(new_d.get('sDefMin'))})\n"
             f"📉 TS Diff: {fmt_float(new_d.get('tsDiff'))}\n"
             f"📊 Effizienz: {fmt_float(new_d.get('efficiency'), 3)} "
-            f"(Limit: {fmt_float(new_d.get('adaptive_threshold'), 3)})"
+            f"(Limit: {fmt_float(new_d.get('min_efficiency_threshold'), 3)})"
         )
 
     # --- STOCK BUILD ---
@@ -291,7 +289,7 @@ def build_event_message(event):
         if new_d.get("efficiency") is not None:
             msg += (
                 f"📊 Effizienz: {fmt_float(new_d.get('efficiency'), 3)} "
-                f"(Limit: {fmt_float(new_d.get('adaptive_threshold'), 3)})\n"
+                f"(Limit: {fmt_float(new_d.get('min_efficiency_threshold'), 3)})\n"
             )
 
         if new_d.get("cooldown_remaining") is not None:
@@ -335,7 +333,7 @@ def build_event_message(event):
             f"🌬 SDef Δ 2h: {fmt_float(new_d.get('sdef_change_2h'))}\n"
             f"📉 TS Δ 2h: {fmt_float(new_d.get('ts_change_2h'))}\n"
             f"📊 Effizienz: {fmt_float(new_d.get('efficiency'), 3)} "
-            f"(Limit: {fmt_float(new_d.get('adaptive_threshold'), 3)})"
+            f"(Limit: {fmt_float(new_d.get('min_efficiency_threshold'), 3)})"
         )
 
     # --- OVERHEAT ---
