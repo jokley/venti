@@ -3,7 +3,13 @@ from ..control.state_manager import state_manager
 
 
 class DryingDecisionEngine:
-    def decide(self, ctx, metrics):
+    def decide(self, ctx, metrics, previous_state=None):
+        decision = self._decide_base(ctx, metrics)
+        decision = self._apply_auto_disable(ctx, decision)
+        decision = self._apply_drying_delay_start(ctx, decision, previous_state)
+        return decision
+
+    def _decide_base(self, ctx, metrics):
         trace = []
 
         def step(name, matched, reason=None):
@@ -117,6 +123,70 @@ class DryingDecisionEngine:
             return self._decide_self_learning(ctx, metrics, trace, step)
 
         return self._decide_classic(ctx, metrics, trace, step)
+
+
+    def _apply_auto_disable(self, ctx, decision):
+        # Sicherheitsausstieg fuer lange, wirkungslose Automatikphasen:
+        # Wenn Auto seit laengerem AUS ist und TS praktisch am Ziel liegt,
+        # liefert die Engine nur den Mode-Override. venti_auto() bleibt als
+        # Seiteneffekt bewusst im Controller.
+        auto_disable_triggered = (
+            ctx.mode == "auto"
+            and decision.command == "off"
+            and ctx.remainingTimeStock is not None
+            and ctx.stock is not None
+            and ctx.remainingTimeStock > ctx.stock
+            and not ctx.is_fan_on
+            and ctx.remainingTimeIntervalOn is not None
+            and ctx.remainingTimeIntervalOn >= 7200
+            and ctx.tsSoll is not None
+            and ctx.tsMin is not None
+            and (ctx.tsSoll - ctx.tsMin) <= 0.5
+        )
+
+        if not auto_disable_triggered:
+            return decision
+
+        details = {
+            "runtime": ctx.remainingTimeInterval,
+            "tsDiff": ctx.tsSoll - ctx.tsMin,
+            "reason": "auto_disabled",
+            "mode_override": "off",
+            "previous_decision_reason": decision.reason,
+            "previous_decision_detail_reason": (decision.details or {}).get("reason"),
+            "auto_off_after_seconds": ctx.remainingTimeIntervalOn,
+        }
+
+        trace = (decision.details or {}).get("trace")
+        if trace is not None:
+            details["trace"] = trace + [{
+                "step": "auto_disable",
+                "matched": True,
+                "reason": "MANUAL_MODE",
+            }]
+
+        return Decision("off", "MANUAL_MODE", details)
+
+    def _apply_drying_delay_start(self, ctx, decision, previous_state):
+        # Restart-Sperre nach Ende eines Trocknungslaufs. Die aktive Sperre wird
+        # weiter in _drying_delay_active() ausgewertet; diese Methode startet nur
+        # den Delay, wenn DRYING_ACTIVE gerade wegen fehlender Bedingungen endet.
+        should_start_delay = (
+            ctx.mode == "auto"
+            and previous_state == "DRYING_ACTIVE"
+            and decision.reason == "AUTO_IDLE"
+            and (decision.details or {}).get("reason") == "drying_conditions_not_met"
+        )
+
+        if not should_start_delay:
+            return decision
+
+        state_manager.start_venti_drying_delay(ctx)
+        decision.details["delay_remaining"] = (
+            state_manager.get_venti_drying_delay_remaining(ctx.now)
+        )
+        decision.details["delay_started"] = True
+        return decision
 
     def _is_overheat(self, ctx):
         return (
