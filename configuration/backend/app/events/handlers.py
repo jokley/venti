@@ -131,7 +131,13 @@ def handle_decision_log(event: Event):
 
     # --- MANUAL STATES ---
     elif decision.reason in ("MANUAL_MODE", "VENTI_MANUAL_ON", "VENTI_MANUAL_OFF"):
-        log("Automatik deaktiviert")
+        if details.get("reason") == "auto_disabled":
+            log("Trocknung abgeschlossen – Automatik deaktiviert")
+            log(f"Grund: {details.get('reason')}")
+            log(f"Vorherige Entscheidung: {details.get('previous_decision_reason')}")
+            log(f"Auto AUS seit: {details.get('auto_off_after_seconds')}")
+        else:
+            log("Automatik deaktiviert")
         log(f"State: {decision.reason}")
         log(f"Laufzeit Intervall: {details.get('runtime')}")
         log(f"TS diff: {details.get('tsDiff')}")
@@ -152,6 +158,8 @@ def handle_decision_log(event: Event):
         logger.debug(f"Intervall Zeit: {details.get('intervall_time')}")
         logger.debug(f"Lüfter Hardware EIN: {details.get('is_fan_on')}")
         logger.debug(f"Laufzeit aktuell: {details.get('fan_runtime_current')}")
+        if details.get("delay_remaining") is not None:
+            logger.debug(f"Trocknungs-Delay: {details.get('delay_remaining')} (started={details.get('delay_started')})")
 
     # --- HEIZUNG ACTIVE ---
     elif decision.reason in ("HEIZUNG_ACTIVE", "HEIZUNG_MANUAL_ON"):
