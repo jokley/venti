@@ -112,7 +112,7 @@ def handle_decision_log(event: Event):
         log(f"SDef diff: {details.get('sDefDiff')}")
         log(f"TS ist: {details.get('tsMin')} | TS soll: {details.get('tsSoll')}")
         log(f"TS diff: {details.get('tsDiff')}")
-        log(f"Effizienz: {details.get('efficiency')} | Limit: {details.get('adaptive_threshold')}")
+        log(f"Effizienz: {details.get('efficiency')} | Limit: {details.get('min_efficiency_threshold')}")
 
     # --- INTERVAL_ACTIVE ---
     elif decision.reason == "INTERVAL_ACTIVE":
@@ -127,11 +127,17 @@ def handle_decision_log(event: Event):
         log("Ineffiziente Trocknung erkannt")
         log(f"SDEF Change 2h: {details.get('sdef_change_2h')}")
         log(f"TS Change 2h: {details.get('ts_change_2h')}")
-        log(f"Effizienz: {details.get('efficiency')} | Limit: {details.get('adaptive_threshold')}")
+        log(f"Effizienz: {details.get('efficiency')} | Limit: {details.get('min_efficiency_threshold')}")
 
     # --- MANUAL STATES ---
     elif decision.reason in ("MANUAL_MODE", "VENTI_MANUAL_ON", "VENTI_MANUAL_OFF"):
-        log("Automatik deaktiviert")
+        if details.get("reason") == "auto_disabled":
+            log("Trocknung abgeschlossen – Automatik deaktiviert")
+            log(f"Grund: {details.get('reason')}")
+            log(f"Vorherige Entscheidung: {details.get('previous_decision_reason')}")
+            log(f"Auto AUS seit: {details.get('auto_off_after_seconds')}")
+        else:
+            log("Automatik deaktiviert")
         log(f"State: {decision.reason}")
         log(f"Laufzeit Intervall: {details.get('runtime')}")
         log(f"TS diff: {details.get('tsDiff')}")
@@ -146,12 +152,14 @@ def handle_decision_log(event: Event):
             f"EIN ab MinThreshold: {details.get('sdefMinThreshold_ein')}"
         )
         log(f"tsDiff: {details.get('tsDiff')}")
-        logger.debug(f"Effizienz: {details.get('efficiency')} | Limit: {details.get('adaptive_threshold')}")
+        logger.debug(f"Effizienz: {details.get('efficiency')} | Limit: {details.get('min_efficiency_threshold')}")
         logger.debug(f"Intervall Feuchte: {details.get('humMax')} / {details.get('intervall_on')}")
         logger.debug(f"Dauer aus: {details.get('remainingTimeIntervalOn')}")
         logger.debug(f"Intervall Zeit: {details.get('intervall_time')}")
         logger.debug(f"Lüfter Hardware EIN: {details.get('is_fan_on')}")
         logger.debug(f"Laufzeit aktuell: {details.get('fan_runtime_current')}")
+        if details.get("delay_remaining") is not None:
+            logger.debug(f"Trocknungs-Delay: {details.get('delay_remaining')} (started={details.get('delay_started')})")
 
     # --- HEIZUNG ACTIVE ---
     elif decision.reason in ("HEIZUNG_ACTIVE", "HEIZUNG_MANUAL_ON"):

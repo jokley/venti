@@ -13,12 +13,9 @@ VENTI_PARAM_DEFAULTS = {
     "intervall_time": 12.0,
     "intervall_duration": 12.0,
     "notifications_enabled": True,
-    "self_learning_enabled": False,
     "efficiency_window_hours": 2.0,
     "base_min_efficiency_threshold": 0.25,
-    "good_drying_level": 0.35,
-    "efficiency_learning_up": 1.01,
-    "efficiency_learning_down": 0.99,
+    "efficiency_endphase_ts_margin": 3.0,
     "ts_weight": 0.30,
 }
 
@@ -34,13 +31,11 @@ VENTI_PARAM_SCALES = {
     "intervall_duration": 10,
     "efficiency_window_hours": 10,
     "base_min_efficiency_threshold": 100,
-    "good_drying_level": 100,
-    "efficiency_learning_up": 100,
-    "efficiency_learning_down": 100,
+    "efficiency_endphase_ts_margin": 10,
     "ts_weight": 100,
 }
 
-VENTI_PARAM_BOOL_FIELDS = {"self_learning_enabled", "notifications_enabled"}
+VENTI_PARAM_BOOL_FIELDS = {"notifications_enabled"}
 
 # =============================================================================
 # 🔥 HEIZUNG – influx_service.py Ergänzungen

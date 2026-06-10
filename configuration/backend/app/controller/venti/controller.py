@@ -1,4 +1,3 @@
-from .decision import Decision
 from .context import VentiContext
 from .efficiency.drying_efficiency_engine import DryingEfficiencyEngine
 from .efficiency.drying_decision_engine import DryingDecisionEngine
@@ -29,72 +28,17 @@ efficiency_engine = DryingEfficiencyEngine()
 decision_engine = DryingDecisionEngine()
 
 
-def evaluate(ctx):
-    # Die Effizienz ist nur ein Eingangssignal. Die eigentliche
-    # Prioritaetsentscheidung bleibt in DryingDecisionEngine gekapselt.
+def evaluate(ctx, previous_state=None):
+    # Die Effizienz ist nur ein Eingangssignal. Es gibt kein Self-Learning mehr:
+    # die Schwelle bleibt der konfigurierte Basiswert und wird nicht adaptiv
+    # nachgefuehrt.
     metrics = efficiency_engine.compute(ctx)
+    ctx.min_efficiency_threshold = ctx.base_min_efficiency_threshold
 
-    # Self-Learning arbeitet mit einer adaptiven Schwelle aus dem
-    # Runtime-State. Classic benutzt immer den aktuell konfigurierten Basiswert.
-    if ctx.self_learning_enabled:
-        ctx.min_efficiency_threshold = state_manager.get_adaptive_threshold(
-            ctx.base_min_efficiency_threshold
-        )
-    else:
-        ctx.min_efficiency_threshold = ctx.base_min_efficiency_threshold
-
-    decision = decision_engine.decide(ctx, metrics)
-
-    # Ein ineffizienter Lauf wird als Referenz gespeichert. Der naechste
-    # Start darf erst erfolgen, wenn sich SDEF/TS gegenueber dieser Lage bessert.
-    if ctx.self_learning_enabled and decision.reason == "INEFFICIENT_DRYING":
-        state_manager.remember_bad_drying(ctx, metrics, decision.details)
-
-    # Sobald wieder aktiv getrocknet wird, ist die alte schlechte Referenz
-    # abgearbeitet und darf keine weiteren Starts blockieren.
-    if ctx.self_learning_enabled and decision.reason == "DRYING_ACTIVE":
-        state_manager.clear_bad_drying()
-
-    # Die Schwelle wird nach jeder Bewertung leicht nachgefuehrt. Ohne
-    # vollstaendige Historie bleibt sie stabil.
-    if ctx.self_learning_enabled:
-        updated_threshold = state_manager.update_adaptive_threshold(
-            metrics["efficiency"],
-            ctx,
-            has_history=metrics["has_history"],
-        )
-    else:
-        updated_threshold = ctx.min_efficiency_threshold
-
-    # Sicherheitsausstieg fuer lange, wirkungslose Automatikphasen:
-    # wenn seit laengerem nichts Sinnvolles passiert und TS kaum Abstand hat,
-    # wird Auto deaktiviert statt weiter leere Zyklen zu fahren.
-    auto_disable_triggered = (
-        ctx.mode == "auto"
-        and decision.command == "off"
-        and ctx.remainingTimeStock > ctx.stock
-        and not ctx.is_fan_on                       # Lüfter muss AUS sein
-        and ctx.remainingTimeIntervalOn >= 7200     # AUS seit >= 2h (now - lastOff)
-        and ctx.tsSoll is not None
-        and ctx.tsMin is not None
-        and (ctx.tsSoll - ctx.tsMin) <= 0.5
-    )
-
-    if auto_disable_triggered:
-        venti_auto("off", ctx.tsSoll, "0")
-        decision = Decision(
-            "off",
-            "MANUAL_MODE",
-            {
-                "runtime": ctx.remainingTimeInterval,
-                "tsDiff": ctx.tsSoll - ctx.tsMin,
-                "reason": "auto_disabled",
-                "mode_override": "off",
-            },
-        )
+    decision = decision_engine.decide(ctx, metrics, previous_state=previous_state)
 
     decision.details.setdefault("efficiency", metrics["efficiency"])
-    decision.details.setdefault("adaptive_threshold", updated_threshold)
+    decision.details.setdefault("min_efficiency_threshold", ctx.min_efficiency_threshold)
     decision.details.setdefault("sdef_change_2h", metrics["sdef_gain"])
     decision.details.setdefault("ts_change_2h", metrics["ts_gain"])
     decision.details.setdefault("window_hours", metrics["window_hours"])
@@ -200,28 +144,22 @@ def venti_control():
     )
 
     # 4. DECISION ENGINE
-    decision = evaluate(ctx)
-    effective_mode = decision.details.get("mode_override", ctx.mode)
+    decision = evaluate(ctx, previous_state=previous_state)
 
-    # venti_drying_delay ist eine Restart-Sperre nach Ende einer Trocknung.
-    # Es ist kein Minimum-ON: der aktuelle Lauf wurde hier bereits beendet.
-    if (
-        ctx.mode == "auto"
-        and previous_state == "DRYING_ACTIVE"
-        and decision.reason == "AUTO_IDLE"
-        and (decision.details or {}).get("reason") == "drying_conditions_not_met"
-    ):
-        state_manager.start_venti_drying_delay(ctx)
-        decision.details["delay_remaining"] = (
-            state_manager.get_venti_drying_delay_remaining(ctx.now)
-        )
+    if ctx.mode == "auto" and decision.details.get("mode_override") == "off":
+        venti_auto("off", ctx.tsSoll, "0")
+
+    effective_mode = decision.details.get("mode_override", ctx.mode)
 
     mode_changed = previous_mode != effective_mode
     state_changed = previous_state != decision.reason
-    threshold_changed = (
-        (state_manager.last_details or {}).get("adaptive_threshold")
-        != decision.details.get("adaptive_threshold")
-    )
+    previous_details = state_manager.last_details or {}
+    previous_threshold = previous_details.get("min_efficiency_threshold")
+    if previous_threshold is None:
+        # Backward compatibility for states persisted before the Self-Learning
+        # cleanup, where the static threshold was stored under this old name.
+        previous_threshold = previous_details.get("adaptive_threshold")
+    threshold_changed = previous_threshold != decision.details.get("min_efficiency_threshold")
 
     # 5. EXECUTE CONTROL
     venti_cmd(decision.command)

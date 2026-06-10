@@ -69,10 +69,9 @@ def pretty_reason(reason):
 def pretty_detail_reason(reason):
     mapping = {
         "drying_conditions_not_met":                "Trocknung nicht möglich",
+        "auto_disabled":                            "Trocknung abgeschlossen – Automatik deaktiviert",
         "drying_delay":                             "Delay nach Trocknungs-Aus",
         "sdef_delay":                               "Delay nach SDEF-Aus",
-        "inefficient_cooldown":                     "Pause nach ineffizienter Trocknung",
-        "waiting_better_than_last_bad_drying":      "Warte auf bessere Bedingungen als beim letzten Fehlversuch",
         "humidity_low":                             "Feuchte zu niedrig",
         "ts_target_reached":                        "TS Ziel erreicht",
         "interval_wait":                            "Warte auf Intervall",
@@ -158,6 +157,12 @@ def build_message(decision):
         return "Lüfter Hand aus"
 
     elif state == "MANUAL_MODE":
+        if d.get("reason") == "auto_disabled":
+            return (
+                "🛑 Trocknung abgeschlossen – Automatik deaktiviert\n"
+                f"📌 Grund: {pretty_detail_reason(d.get('reason'))}\n"
+                f"📉 TS Diff: {fmt_float(d.get('tsDiff'))}"
+            )
         return "🛑 Manueller Modus"
 
     return f"ℹ️ Status: {state}"
@@ -259,7 +264,7 @@ def build_event_message(event):
             f"(Min: {fmt_float(new_d.get('sDefMin'))})\n"
             f"📉 TS Diff: {fmt_float(new_d.get('tsDiff'))}\n"
             f"📊 Effizienz: {fmt_float(new_d.get('efficiency'), 3)} "
-            f"(Limit: {fmt_float(new_d.get('adaptive_threshold'), 3)})"
+            f"(Limit: {fmt_float(new_d.get('min_efficiency_threshold'), 3)})"
         )
 
     # --- STOCK BUILD ---
@@ -284,22 +289,34 @@ def build_event_message(event):
         if new_d.get("efficiency") is not None:
             msg += (
                 f"📊 Effizienz: {fmt_float(new_d.get('efficiency'), 3)} "
-                f"(Limit: {fmt_float(new_d.get('adaptive_threshold'), 3)})\n"
+                f"(Limit: {fmt_float(new_d.get('min_efficiency_threshold'), 3)})\n"
             )
 
         if new_d.get("cooldown_remaining") is not None:
             msg += f"⏳ Pause: {fmt_duration(new_d.get('cooldown_remaining'))}\n"
 
         if new_d.get("delay_remaining") is not None:
-            msg += f"⏳ Delay: {fmt_duration(new_d.get('delay_remaining'))}\n"
+            label = "Delay gestartet" if new_d.get("delay_started") else "Delay"
+            msg += f"⏳ {label}: {fmt_duration(new_d.get('delay_remaining'))}\n"
 
     # --- MANUAL MODE ---
     elif new == "MANUAL_MODE":
-        msg += (
-            f"🛑 Automatik deaktiviert\n"
-            f"⏱ Laufzeit: {fmt_duration(new_d.get('runtime'))}\n"
-            f"📉 TS Diff: {fmt_float(new_d.get('tsDiff'))}"
-        )
+        detail_reason = new_d.get("reason")
+        if detail_reason == "auto_disabled":
+            msg += (
+                f"🛑 Trocknung abgeschlossen – Automatik deaktiviert\n"
+                f"📌 Grund: {pretty_detail_reason(detail_reason)}\n"
+                f"⏱ Auto AUS seit: {fmt_duration(new_d.get('auto_off_after_seconds'))}\n"
+                f"📉 TS Diff: {fmt_float(new_d.get('tsDiff'))}"
+            )
+            if new_d.get("previous_decision_reason") is not None:
+                msg += f"\n↩ Vorherige Entscheidung: {pretty_reason(new_d.get('previous_decision_reason'))}"
+        else:
+            msg += (
+                f"🛑 Automatik deaktiviert\n"
+                f"⏱ Laufzeit: {fmt_duration(new_d.get('runtime'))}\n"
+                f"📉 TS Diff: {fmt_float(new_d.get('tsDiff'))}"
+            )
 
     # --- VENTI MANUAL ---
     elif new in ("VENTI_MANUAL_ON", "VENTI_MANUAL_OFF"):
@@ -316,7 +333,7 @@ def build_event_message(event):
             f"🌬 SDef Δ 2h: {fmt_float(new_d.get('sdef_change_2h'))}\n"
             f"📉 TS Δ 2h: {fmt_float(new_d.get('ts_change_2h'))}\n"
             f"📊 Effizienz: {fmt_float(new_d.get('efficiency'), 3)} "
-            f"(Limit: {fmt_float(new_d.get('adaptive_threshold'), 3)})"
+            f"(Limit: {fmt_float(new_d.get('min_efficiency_threshold'), 3)})"
         )
 
     # --- OVERHEAT ---
