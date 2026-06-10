@@ -29,44 +29,16 @@ decision_engine = DryingDecisionEngine()
 
 
 def evaluate(ctx, previous_state=None):
-    # Die Effizienz ist nur ein Eingangssignal. Die eigentliche
-    # Prioritaetsentscheidung bleibt in DryingDecisionEngine gekapselt.
+    # Die Effizienz ist nur ein Eingangssignal. Es gibt kein Self-Learning mehr:
+    # die Schwelle bleibt der konfigurierte Basiswert und wird nicht adaptiv
+    # nachgefuehrt.
     metrics = efficiency_engine.compute(ctx)
-
-    # Self-Learning arbeitet mit einer adaptiven Schwelle aus dem
-    # Runtime-State. Classic benutzt immer den aktuell konfigurierten Basiswert.
-    if ctx.self_learning_enabled:
-        ctx.min_efficiency_threshold = state_manager.get_adaptive_threshold(
-            ctx.base_min_efficiency_threshold
-        )
-    else:
-        ctx.min_efficiency_threshold = ctx.base_min_efficiency_threshold
+    ctx.min_efficiency_threshold = ctx.base_min_efficiency_threshold
 
     decision = decision_engine.decide(ctx, metrics, previous_state=previous_state)
 
-    # Ein ineffizienter Lauf wird als Referenz gespeichert. Der naechste
-    # Start darf erst erfolgen, wenn sich SDEF/TS gegenueber dieser Lage bessert.
-    if ctx.self_learning_enabled and decision.reason == "INEFFICIENT_DRYING":
-        state_manager.remember_bad_drying(ctx, metrics, decision.details)
-
-    # Sobald wieder aktiv getrocknet wird, ist die alte schlechte Referenz
-    # abgearbeitet und darf keine weiteren Starts blockieren.
-    if ctx.self_learning_enabled and decision.reason == "DRYING_ACTIVE":
-        state_manager.clear_bad_drying()
-
-    # Die Schwelle wird nach jeder Bewertung leicht nachgefuehrt. Ohne
-    # vollstaendige Historie bleibt sie stabil.
-    if ctx.self_learning_enabled:
-        updated_threshold = state_manager.update_adaptive_threshold(
-            metrics["efficiency"],
-            ctx,
-            has_history=metrics["has_history"],
-        )
-    else:
-        updated_threshold = ctx.min_efficiency_threshold
-
     decision.details.setdefault("efficiency", metrics["efficiency"])
-    decision.details.setdefault("adaptive_threshold", updated_threshold)
+    decision.details.setdefault("min_efficiency_threshold", ctx.min_efficiency_threshold)
     decision.details.setdefault("sdef_change_2h", metrics["sdef_gain"])
     decision.details.setdefault("ts_change_2h", metrics["ts_gain"])
     decision.details.setdefault("window_hours", metrics["window_hours"])
@@ -181,10 +153,13 @@ def venti_control():
 
     mode_changed = previous_mode != effective_mode
     state_changed = previous_state != decision.reason
-    threshold_changed = (
-        (state_manager.last_details or {}).get("adaptive_threshold")
-        != decision.details.get("adaptive_threshold")
-    )
+    previous_details = state_manager.last_details or {}
+    previous_threshold = previous_details.get("min_efficiency_threshold")
+    if previous_threshold is None:
+        # Backward compatibility for states persisted before the Self-Learning
+        # cleanup, where the static threshold was stored under this old name.
+        previous_threshold = previous_details.get("adaptive_threshold")
+    threshold_changed = previous_threshold != decision.details.get("min_efficiency_threshold")
 
     # 5. EXECUTE CONTROL
     venti_cmd(decision.command)

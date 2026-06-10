@@ -64,12 +64,9 @@ class VentiContext:
         self.sdef_change_2h = d.get("sdef_change_2h", 0)
         self.ts_change_2h = d.get("ts_change_2h", 0)
         self.efficiency_window = d.get("efficiency_window", 2 * 3600)
-        self.self_learning_enabled = d.get("self_learning_enabled", False)
         self.base_min_efficiency_threshold = d.get("base_min_efficiency_threshold", 0.25)
         self.min_efficiency_threshold = d.get("min_efficiency_threshold", self.base_min_efficiency_threshold)
-        self.good_drying_level = d.get("good_drying_level", 0.35)
-        self.efficiency_learning_up = d.get("efficiency_learning_up", 1.01)
-        self.efficiency_learning_down = d.get("efficiency_learning_down", 0.99)
+        self.efficiency_endphase_ts_margin = d.get("efficiency_endphase_ts_margin", 3.0)
         self.ts_weight = d.get("ts_weight", 0.30)
         # =========================
         # 🔥 HEIZUNG

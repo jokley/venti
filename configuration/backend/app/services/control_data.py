@@ -219,10 +219,7 @@ def build_control_data():
         "sDef_2h_ago": history_2h["sDef_2h_ago"],
         "ts_2h_ago": history_2h["ts_2h_ago"],
         "efficiency_window": history_2h["window_seconds"],
-        "self_learning_enabled": params["self_learning_enabled"],
         "base_min_efficiency_threshold": params["base_min_efficiency_threshold"],
-        "good_drying_level": params["good_drying_level"],
-        "efficiency_learning_up": params["efficiency_learning_up"],
-        "efficiency_learning_down": params["efficiency_learning_down"],
+        "efficiency_endphase_ts_margin": params["efficiency_endphase_ts_margin"],
         "ts_weight": params["ts_weight"],
     }
