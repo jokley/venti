@@ -1,4 +1,3 @@
-from .decision import Decision
 from .context import VentiContext
 from .efficiency.drying_efficiency_engine import DryingEfficiencyEngine
 from .efficiency.drying_decision_engine import DryingDecisionEngine
@@ -29,7 +28,7 @@ efficiency_engine = DryingEfficiencyEngine()
 decision_engine = DryingDecisionEngine()
 
 
-def evaluate(ctx):
+def evaluate(ctx, previous_state=None):
     # Die Effizienz ist nur ein Eingangssignal. Die eigentliche
     # Prioritaetsentscheidung bleibt in DryingDecisionEngine gekapselt.
     metrics = efficiency_engine.compute(ctx)
@@ -43,7 +42,7 @@ def evaluate(ctx):
     else:
         ctx.min_efficiency_threshold = ctx.base_min_efficiency_threshold
 
-    decision = decision_engine.decide(ctx, metrics)
+    decision = decision_engine.decide(ctx, metrics, previous_state=previous_state)
 
     # Ein ineffizienter Lauf wird als Referenz gespeichert. Der naechste
     # Start darf erst erfolgen, wenn sich SDEF/TS gegenueber dieser Lage bessert.
@@ -65,33 +64,6 @@ def evaluate(ctx):
         )
     else:
         updated_threshold = ctx.min_efficiency_threshold
-
-    # Sicherheitsausstieg fuer lange, wirkungslose Automatikphasen:
-    # wenn seit laengerem nichts Sinnvolles passiert und TS kaum Abstand hat,
-    # wird Auto deaktiviert statt weiter leere Zyklen zu fahren.
-    auto_disable_triggered = (
-        ctx.mode == "auto"
-        and decision.command == "off"
-        and ctx.remainingTimeStock > ctx.stock
-        and not ctx.is_fan_on                       # Lüfter muss AUS sein
-        and ctx.remainingTimeIntervalOn >= 7200     # AUS seit >= 2h (now - lastOff)
-        and ctx.tsSoll is not None
-        and ctx.tsMin is not None
-        and (ctx.tsSoll - ctx.tsMin) <= 0.5
-    )
-
-    if auto_disable_triggered:
-        venti_auto("off", ctx.tsSoll, "0")
-        decision = Decision(
-            "off",
-            "MANUAL_MODE",
-            {
-                "runtime": ctx.remainingTimeInterval,
-                "tsDiff": ctx.tsSoll - ctx.tsMin,
-                "reason": "auto_disabled",
-                "mode_override": "off",
-            },
-        )
 
     decision.details.setdefault("efficiency", metrics["efficiency"])
     decision.details.setdefault("adaptive_threshold", updated_threshold)
@@ -200,21 +172,12 @@ def venti_control():
     )
 
     # 4. DECISION ENGINE
-    decision = evaluate(ctx)
-    effective_mode = decision.details.get("mode_override", ctx.mode)
+    decision = evaluate(ctx, previous_state=previous_state)
 
-    # venti_drying_delay ist eine Restart-Sperre nach Ende einer Trocknung.
-    # Es ist kein Minimum-ON: der aktuelle Lauf wurde hier bereits beendet.
-    if (
-        ctx.mode == "auto"
-        and previous_state == "DRYING_ACTIVE"
-        and decision.reason == "AUTO_IDLE"
-        and (decision.details or {}).get("reason") == "drying_conditions_not_met"
-    ):
-        state_manager.start_venti_drying_delay(ctx)
-        decision.details["delay_remaining"] = (
-            state_manager.get_venti_drying_delay_remaining(ctx.now)
-        )
+    if ctx.mode == "auto" and decision.details.get("mode_override") == "off":
+        venti_auto("off", ctx.tsSoll, "0")
+
+    effective_mode = decision.details.get("mode_override", ctx.mode)
 
     mode_changed = previous_mode != effective_mode
     state_changed = previous_state != decision.reason
