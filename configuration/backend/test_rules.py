@@ -34,8 +34,8 @@ from controller.venti.interval_scheduler import get_interval_scheduler_delay
 def load_drying_decision_engine():
     fake_state_manager_module = types.ModuleType("controller.venti.control.state_manager")
     fake_state_manager_module.state_manager = types.SimpleNamespace(
-        retry_conditions_improved=lambda ctx: (True, None),
-        last_bad_drying_snapshot=None,
+        start_venti_drying_delay=lambda ctx: None,
+        get_venti_drying_delay_remaining=lambda now: 600,
     )
     sys.modules["controller.venti.control.state_manager"] = fake_state_manager_module
 
@@ -1032,6 +1032,178 @@ def test_venti_drying_delay_engine():
     print("✓ Venti drying delay: Stock building bypasses delay")
 
 
+
+    ctx = VentiContext({
+        "mode": "auto",
+        "tempMax": 25.0,
+        "uschutz_on": 35.0,
+        "stock": 0,
+        "remainingTimeStock": 7200,
+        "sDefOut": 5.0,
+        "sDefMin": 9.0,
+        "sdefMinThreshold": 10.0,
+        "sdef_hys_half": 0.5,
+        "sdef_on": 12.0,
+        "tsSoll": 20.0,
+        "tsMin": 15.0,
+        "ts_hys_half": 0.5,
+        "humMax": 50.0,
+        "intervall_on": 70.0,
+        "remainingTimeIntervalOn": 10,
+        "is_fan_on": False,
+        "fan_runtime_current": 0,
+        "venti_drying_delay_remaining": 0,
+        "now": 12345,
+    })
+    result = engine.decide(ctx, metrics, previous_state="DRYING_ACTIVE")
+    assert result.command == "off", "Ended drying should stay off"
+    assert result.reason == "AUTO_IDLE", "Ended drying should become auto idle"
+    assert result.details["reason"] == "drying_conditions_not_met", "Should keep base idle reason"
+    assert result.details["delay_started"] is True, "Should mark newly started drying delay"
+    assert result.details["delay_remaining"] == 600, "Should expose newly started delay"
+    print("✓ Venti drying delay: Engine starts delay after drying stops")
+
+def test_venti_auto_disable_engine():
+    """Test auto-disable rule is decided by the drying decision engine."""
+    print("Testing venti auto-disable engine rule...")
+    DryingDecisionEngine = load_drying_decision_engine()
+    engine = DryingDecisionEngine()
+    metrics = {
+        "efficiency": 0.0,
+        "sdef_gain": 0.0,
+        "ts_gain": 0.0,
+        "window_hours": 2,
+        "has_history": False,
+    }
+
+    ctx = VentiContext({
+        "mode": "auto",
+        "tempMax": 25.0,
+        "uschutz_on": 35.0,
+        "stock": 0,
+        "remainingTimeStock": 7200,
+        "sDefOut": 5.0,
+        "sDefMin": 9.0,
+        "sdefMinThreshold": 10.0,
+        "sdef_hys_half": 0.5,
+        "sdef_on": 12.0,
+        "tsSoll": 20.0,
+        "tsMin": 19.7,
+        "ts_hys_half": 0.5,
+        "humMax": 50.0,
+        "intervall_on": 70.0,
+        "remainingTimeInterval": 9000,
+        "remainingTimeIntervalOn": 7200,
+        "is_fan_on": False,
+        "fan_runtime_current": 0,
+        "venti_drying_delay_remaining": 0,
+    })
+    result = engine.decide(ctx, metrics)
+    assert result.command == "off", "Auto-disable should leave fan off"
+    assert result.reason == "MANUAL_MODE", "Auto-disable should request manual/off mode"
+    assert result.details["reason"] == "auto_disabled", "Should expose auto-disabled detail reason"
+    assert result.details["mode_override"] == "off", "Should request controller-side venti_auto off"
+    assert result.details["previous_decision_reason"] == "AUTO_IDLE", "Should keep previous engine reason"
+    assert result.details["auto_off_after_seconds"] == 7200, "Should expose off duration"
+    print("✓ Venti auto-disable: Engine returns mode override")
+
+
+
+def test_venti_efficiency_endphase_check():
+    """Test static efficiency check only stops near the TS target."""
+    print("Testing venti efficiency endphase check...")
+    DryingDecisionEngine = load_drying_decision_engine()
+    engine = DryingDecisionEngine()
+    metrics = {
+        "efficiency": 0.1,
+        "weighted_gain": 0.2,
+        "sdef_gain": 0.0,
+        "ts_gain": 0.0,
+        "window_hours": 2,
+        "has_history": True,
+    }
+
+    ctx = VentiContext({
+        "mode": "auto",
+        "tempMax": 25.0,
+        "uschutz_on": 35.0,
+        "stock": 0,
+        "remainingTimeStock": 7200,
+        "sDefOut": 15.0,
+        "sDefMin": 9.0,
+        "sdefMinThreshold": 10.0,
+        "sdef_hys_half": 0.5,
+        "sdef_on": 12.0,
+        "tsSoll": 20.0,
+        "tsMin": 18.0,
+        "ts_hys_half": 0.5,
+        "base_min_efficiency_threshold": 0.25,
+        "min_efficiency_threshold": 0.25,
+        "efficiency_endphase_ts_margin": 3.0,
+        "humMax": 50.0,
+        "intervall_on": 70.0,
+        "is_fan_on": True,
+        "fan_runtime_current": 7200,
+    })
+    result = engine.decide(ctx, metrics)
+    assert result.command == "off", "Low efficiency near target should stop drying"
+    assert result.reason == "INEFFICIENT_DRYING", "Should expose inefficient drying state"
+    assert result.details["phase"] == "inefficient_near_target", "Should expose endphase reason"
+    print("✓ Venti efficiency endphase: Stops low-efficiency drying near target")
+
+    ctx = VentiContext({
+        "mode": "auto",
+        "tempMax": 25.0,
+        "uschutz_on": 35.0,
+        "stock": 0,
+        "remainingTimeStock": 7200,
+        "sDefOut": 15.0,
+        "sDefMin": 9.0,
+        "sdefMinThreshold": 10.0,
+        "sdef_hys_half": 0.5,
+        "sdef_on": 12.0,
+        "tsSoll": 20.0,
+        "tsMin": 18.0,
+        "ts_hys_half": 0.5,
+        "base_min_efficiency_threshold": 0.0,
+        "min_efficiency_threshold": 0.0,
+        "humMax": 50.0,
+        "intervall_on": 70.0,
+        "is_fan_on": True,
+        "fan_runtime_current": 7200,
+    })
+    result = engine.decide(ctx, metrics)
+    assert result.command == "on", "Threshold 0 should disable efficiency stop"
+    assert result.reason == "DRYING_ACTIVE", "Drying should continue when check is disabled"
+    print("✓ Venti efficiency endphase: Threshold 0 disables check")
+
+    ctx = VentiContext({
+        "mode": "auto",
+        "tempMax": 25.0,
+        "uschutz_on": 35.0,
+        "stock": 0,
+        "remainingTimeStock": 7200,
+        "sDefOut": 15.0,
+        "sDefMin": 9.0,
+        "sdefMinThreshold": 10.0,
+        "sdef_hys_half": 0.5,
+        "sdef_on": 12.0,
+        "tsSoll": 20.0,
+        "tsMin": 18.0,
+        "ts_hys_half": 0.5,
+        "base_min_efficiency_threshold": 0.25,
+        "min_efficiency_threshold": 0.25,
+        "efficiency_endphase_ts_margin": 1.0,
+        "humMax": 50.0,
+        "intervall_on": 70.0,
+        "is_fan_on": True,
+        "fan_runtime_current": 7200,
+    })
+    result = engine.decide(ctx, metrics)
+    assert result.command == "on", "TS margin should control when endphase starts"
+    assert result.reason == "DRYING_ACTIVE", "Drying should continue outside the configured endphase margin"
+    print("✓ Venti efficiency endphase: TS margin controls when check starts")
+
 def test_interval_scheduler_delay():
     """Test interval end scheduler delay calculation."""
     print("Testing interval scheduler delay...")
@@ -1103,6 +1275,12 @@ def run_all_tests():
     print()
 
     test_venti_drying_delay_engine()
+    print()
+
+    test_venti_auto_disable_engine()
+    print()
+
+    test_venti_efficiency_endphase_check()
     print()
 
     test_interval_scheduler_delay()
