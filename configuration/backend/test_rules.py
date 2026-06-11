@@ -27,7 +27,7 @@ decision_module = load_module("decision", os.path.join(os.path.dirname(__file__)
 VentiContext = context_module.VentiContext
 Decision = decision_module.Decision
 
-from controller.venti.heating_decision_engine import HeatingDecisionEngine
+from controller.venti.heating.heating_decision_engine import HeatingDecisionEngine
 from controller.venti.interval_scheduler import get_interval_scheduler_delay
 
 
@@ -39,7 +39,7 @@ def load_drying_decision_engine():
     )
     sys.modules["controller.venti.control.state_manager"] = fake_state_manager_module
 
-    from controller.venti.efficiency.drying_decision_engine import DryingDecisionEngine
+    from controller.venti.drying.drying_decision_engine import DryingDecisionEngine
     return DryingDecisionEngine
 
 # For testing rules, we'll recreate the logic inline to avoid import issues

@@ -1,4 +1,5 @@
-from .decision import Decision
+from ..decision import Decision
+from .heating_metrics import HeatingMetricsCalculator
 
 
 class HeatingDecisionEngine:
@@ -7,15 +8,24 @@ class HeatingDecisionEngine:
     Future heater rules (sDef, night window, outdoor temperature) belong here.
     """
 
-    def decide(self, ctx):
+    def __init__(self, metrics_calculator=None):
+        self.metrics_calculator = metrics_calculator or HeatingMetricsCalculator()
+
+    def compute_active(self, ctx):
+        return self.metrics_calculator.compute(ctx)["active"]
+
+    def decide(self, ctx, metrics=None):
+        if metrics is None:
+            metrics = self.metrics_calculator.compute(ctx)
+
         # Manuelle Befehle aus UI/Grafana haben Vorrang vor jeder Automatik.
         # AUS darf trotzdem den Nachlauf ausloesen, wenn die Heizung aktiv war.
         if ctx.heizung_manual_command == "on":
             return Decision("on", "HEIZUNG_MANUAL_ON", self._active_details(ctx))
 
         if ctx.heizung_manual_command == "off":
-            if self._nachlauf_active(ctx):
-                return self._nachlauf_decision(ctx, "off", "manual_off_nachlauf")
+            if metrics["nachlauf_active"]:
+                return self._nachlauf_decision(ctx, metrics, "off", "manual_off_nachlauf")
 
             return Decision(
                 "off",
@@ -34,7 +44,7 @@ class HeatingDecisionEngine:
         heizung_active = (
             ctx.heizung_mode == "auto"
             and ctx.heizung_enabled
-            and self._compute_active(ctx)
+            and metrics["active"]
         )
 
         if heizung_active:
@@ -42,8 +52,8 @@ class HeatingDecisionEngine:
 
         # Nachlauf ist eine Luefter-Funktion nach Heizungsende:
         # Heizung aus, Luefter bleibt ueber controller_Heizung gesperrt/ein.
-        if self._nachlauf_active(ctx):
-            return self._nachlauf_decision(ctx, ctx.heizung_mode)
+        if metrics["nachlauf_active"]:
+            return self._nachlauf_decision(ctx, metrics, ctx.heizung_mode)
 
         if ctx.heizung_mode == "off":
             return Decision(
@@ -68,7 +78,7 @@ class HeatingDecisionEngine:
             )
 
         # SDEF-Delay blockiert erneutes Einschalten nach erreichtem Limit.
-        if self._sdef_delay_active(ctx):
+        if metrics["sdef_delay_active"]:
             return Decision(
                 "off",
                 "HEIZUNG_SDEF_LIMIT",
@@ -85,7 +95,7 @@ class HeatingDecisionEngine:
 
         # Expliziter Limit-Zustand: fachlich hilfreich fuer Logs/Timeline,
         # auch wenn das Kommando wie HEIZUNG_IDLE "off" ist.
-        if self._sdef_limit_reached(ctx):
+        if metrics["sdef_limit_reached"]:
             return Decision(
                 "off",
                 "HEIZUNG_SDEF_LIMIT",
@@ -109,59 +119,10 @@ class HeatingDecisionEngine:
             },
         )
 
-    def _compute_active(self, ctx):
-        # Diese Hilfsfunktion berechnet nur "soll Heizung aktiv sein?".
-        # Nachlauf, Disabled-Reason und Detailtexte kommen erst in decide().
-        if ctx.heizung_manual_command == "on":
-            return True
-
-        if ctx.heizung_manual_command == "off":
-            return False
-
-        if ctx.heizung_mode == "on":
-            return True
-
-        if ctx.heizung_mode == "auto":
-            if ctx.heizung_dauer > 0 and ctx.remainingTimeHeizung <= ctx.heizung_dauer:
-                return True
-
-            return self._compute_sdef_active(ctx)
-
-        return False
-
-    def _compute_sdef_active(self, ctx):
-        limit = ctx.heizung_sdef_limit or 0
-
-        if limit <= 0:
-            return False
-
-        if self._sdef_delay_active(ctx):
-            return False
-
-        if ctx.sDefOut is None:
-            return bool(ctx.heizung_sdef_was_active)
-
-        hys = max(0, ctx.heizung_sdef_hys or 0)
-
-        # Hysterese liegt unterhalb des Limits:
-        # - >= limit: aus
-        # - <= limit - hys: ein
-        # - dazwischen: bisherigen SDEF-Zustand halten
-        if ctx.sDefOut >= limit:
-            return False
-
-        if ctx.sDefOut <= limit - hys:
-            return True
-
-        return bool(ctx.heizung_sdef_was_active)
-
-    def _nachlauf_active(self, ctx):
-        return ctx.heizung_nachlauf > 0 and ctx.heizung_off_since < ctx.heizung_nachlauf
-
-    def _nachlauf_decision(self, ctx, heizung_mode, reason=None):
+    def _nachlauf_decision(self, ctx, metrics, heizung_mode, reason=None):
         details = {
             "heizung_mode": heizung_mode,
-            "nachlauf_remaining": ctx.heizung_nachlauf - ctx.heizung_off_since,
+            "nachlauf_remaining": metrics["nachlauf_remaining"],
             "heizung_nachlauf": ctx.heizung_nachlauf,
             "heizung_off_since": ctx.heizung_off_since,
             "venti_forced": True,
@@ -171,23 +132,6 @@ class HeatingDecisionEngine:
             details["reason"] = reason
 
         return Decision("off", "HEIZUNG_NACHLAUF", details)
-
-    def _sdef_limit_reached(self, ctx):
-        return (
-            ctx.heizung_mode == "auto"
-            and (ctx.heizung_sdef_limit or 0) > 0
-            and ctx.remainingTimeHeizung > ctx.heizung_dauer
-            and ctx.sDefOut is not None
-            and ctx.sDefOut >= ctx.heizung_sdef_limit
-        )
-
-    def _sdef_delay_active(self, ctx):
-        return (
-            ctx.heizung_mode == "auto"
-            and (ctx.heizung_sdef_limit or 0) > 0
-            and ctx.remainingTimeHeizung > ctx.heizung_dauer
-            and (ctx.heizung_sdef_delay_remaining or 0) > 0
-        )
 
     def _active_details(self, ctx):
         return {

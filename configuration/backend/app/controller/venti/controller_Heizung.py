@@ -2,7 +2,7 @@ from .context import VentiContext
 from app.services.control_data import build_control_data
 from app.services.venti_service import heizung_cmd, heizung_venti_cmd
 from .control.state_manager import state_manager
-from .heating_decision_engine import HeatingDecisionEngine
+from .heating.heating_decision_engine import HeatingDecisionEngine
 from app.notifications.transitions import TransitionDetector
 from app.events.event_bus import event_bus, EventType, Event
 from app.utils.logger import logger
@@ -35,7 +35,7 @@ def heizung_control():
         # Erste Bewertung ohne Nachlauf-Decision: wir brauchen nur die echte
         # Aktiv-Flanke, damit SDEF-Delay und Nachlaufzeit korrekt starten.
         heizung_was_active = state_manager.heizung_was_active
-        heizung_active = heating_engine._compute_active(ctx)
+        heizung_active = heating_engine.compute_active(ctx)
         ctx.heizung_active = heizung_active
 
         # Wenn die SDEF-Automatik wegen erreichtem Limit ausgeht, startet eine
