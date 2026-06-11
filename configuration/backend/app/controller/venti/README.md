@@ -5,8 +5,8 @@ Seiteneffekte:
 
 - `controller.py` baut den `VentiContext`, ruft die Decision Engine auf, schaltet
   den Lüfter, persistiert Zustände und veröffentlicht Events.
-- `context.py` stellt Rohwerte und einfache abgeleitete Werte bereit.
-- `efficiency/drying_efficiency_engine.py` berechnet Effizienz-Metriken für Logs,
+- `context.py` hält die Rohdaten und Defaultwerte des aktuellen Regelzyklus.
+- `efficiency/drying_metrics.py` berechnet Trocknungsmetriken für Logs,
   Debugging und den statischen Endphasencheck.
 - `efficiency/drying_decision_engine.py` enthält die fachliche Lüfterlogik.
 

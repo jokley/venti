@@ -1,5 +1,4 @@
 from .context import VentiContext
-from .efficiency.drying_efficiency_engine import DryingEfficiencyEngine
 from .efficiency.drying_decision_engine import DryingDecisionEngine
 from .interval_scheduler import get_interval_scheduler_delay
 from datetime import datetime, timedelta
@@ -24,25 +23,11 @@ from app.notifications.summary.auto_summary import build_auto_summary
 from app.events.event_bus import event_bus, EventType, Event
 from app.utils.logger import logger
 
-efficiency_engine = DryingEfficiencyEngine()
 decision_engine = DryingDecisionEngine()
 
 
 def evaluate(ctx, previous_state=None):
-    # Die Effizienz ist nur ein Eingangssignal. Es gibt kein Self-Learning mehr:
-    # die Schwelle bleibt der konfigurierte Basiswert und wird nicht adaptiv
-    # nachgefuehrt.
-    metrics = efficiency_engine.compute(ctx)
-    ctx.min_efficiency_threshold = ctx.base_min_efficiency_threshold
-
-    decision = decision_engine.decide(ctx, metrics, previous_state=previous_state)
-
-    decision.details.setdefault("efficiency", metrics["efficiency"])
-    decision.details.setdefault("min_efficiency_threshold", ctx.min_efficiency_threshold)
-    decision.details.setdefault("sdef_change_2h", metrics["sdef_gain"])
-    decision.details.setdefault("ts_change_2h", metrics["ts_gain"])
-    decision.details.setdefault("window_hours", metrics["window_hours"])
-    return decision
+    return decision_engine.evaluate(ctx, previous_state=previous_state)
 
 
 def sync_interval_end_scheduler(decision):
