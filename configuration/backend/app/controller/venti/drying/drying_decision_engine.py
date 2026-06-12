@@ -160,8 +160,8 @@ class DryingDecisionEngine:
             and ctx.stock is not None
             and ctx.remainingTimeStock > ctx.stock
             and not ctx.is_fan_on
-            and ctx.remainingTimeIntervalOn is not None
-            and ctx.remainingTimeIntervalOn >= 7200
+            and ctx.remainingTimeInterval is not None
+            and ctx.remainingTimeInterval >= 7200
             and metrics.get("ts_diff") is not None
             and metrics["ts_diff"] <= 0.5
         )
@@ -343,16 +343,16 @@ class DryingDecisionEngine:
             and ctx.intervall_time is not None
             and ctx.remainingTimeIntervalOn >= ctx.intervall_time
         )
-        # Die laufende Intervallphase kommt aus dem Hardwarestatus: solange
-        # der Luefter wirklich EIN ist und die Dauer nicht abgelaufen ist,
-        # bleibt INTERVAL_ACTIVE aktiv.
+    
         interval_running = (
             ctx.is_fan_on
-            and ctx.fan_runtime_current is not None
+            and ctx.remainingTimeIntervalOn is not None
             and ctx.intervall_duration is not None
-            and ctx.fan_runtime_current <= ctx.intervall_duration
+            and ctx.remainingTimeIntervalOn <= ctx.intervall_duration
+            and ctx.remainingTimeIntervalDiff is not None
+            and ctx.remainingTimeIntervalDiff > 0
         )
-
+    
         if (
             ctx.humMax is not None
             and ctx.intervall_on is not None
@@ -360,7 +360,7 @@ class DryingDecisionEngine:
             and (interval_start_due or interval_running)
         ):
             step("interval_active", True, "INTERVAL_ACTIVE")
-            runtime = ctx.fan_runtime_current if ctx.is_fan_on else 0
+            runtime = ctx.remainingTimeIntervalOn if interval_running else 0
             return Decision(
                 "on",
                 "INTERVAL_ACTIVE",
@@ -376,7 +376,7 @@ class DryingDecisionEngine:
                     "trace": trace,
                 },
             )
-
+    
         return None
 
     def _drying_details(self, ctx, metrics, trace, phase, drying=None):
