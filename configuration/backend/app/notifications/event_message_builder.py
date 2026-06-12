@@ -79,7 +79,7 @@ def pretty_detail_reason(reason):
     return mapping.get(reason, reason)
 
 
-# States die keinen "gestartet"-Suffix brauchen (sind Stopp- oder Idle-Zustände)
+# States die keinen "gestartet"-Suffix brauchen (Stopp- oder Idle-Zustände)
 _NO_STARTED_SUFFIX = {
     "AUTO_IDLE",
     "INEFFICIENT_DRYING",
@@ -87,6 +87,18 @@ _NO_STARTED_SUFFIX = {
     "HEIZUNG_DISABLED",
     "HEIZUNG_MANUAL_OFF",
     "VENTI_MANUAL_OFF",
+}
+
+# Übergänge die reine Mechanik abbilden und keinen Mehrwert für den User haben.
+# Format: (old, new) → None unterdrückt die Meldung komplett.
+_SUPPRESS_TRANSITIONS = {
+    # Delay abgelaufen nach ineffizienter Trocknung – bereits bei
+    # INEFFICIENT_DRYING mit Delay-Zeit kommuniziert.
+    ("INEFFICIENT_DRYING", "AUTO_IDLE"),
+    # Nachlauf-Ende → Heizung inaktiv ist reine Mechanik,
+    # der User wurde bereits beim Nachlauf-Start informiert.
+    ("HEIZUNG_NACHLAUF",   "HEIZUNG_IDLE"),
+    ("HEIZUNG_NACHLAUF",   "HEIZUNG_DISABLED"),
 }
 
 
@@ -171,16 +183,22 @@ def build_event_message(event):
         return None
 
     old, new, duration, data = event[1], event[2], event[3], event[4]
+
+    # Mechanische Folge-Übergänge unterdrücken – kein Mehrwert für den User.
+    if (old, new) in _SUPPRESS_TRANSITIONS:
+        return None
+
     old_d = data.get("old_details") or {}
     new_d = data.get("new_details") or {}
 
-    msg = _build_old_block(old, old_d, duration)
+    msg = _build_old_block(old, new, old_d, duration)
     msg += _build_new_block(new, new_d)
     return msg
 
 
-def _build_old_block(old, old_d, duration):
+def _build_old_block(old, new, old_d, duration):
     """Beschreibt den beendeten Zustand."""
+
     if old == "DRYING_ACTIVE":
         return (
             f"✅ Trocknung beendet\n"
@@ -188,8 +206,9 @@ def _build_old_block(old, old_d, duration):
             f"🌬 SDef: {fmt_float(old_d.get('sDefOut'))}\n"
             f"📉 TS Diff: {fmt_float(old_d.get('tsDiff'))}\n\n"
         )
+
     elif old == "INEFFICIENT_DRYING":
-        # Werte kommen aus old_d, nicht new_d!
+        # Werte kommen aus old_d – nicht new_d!
         msg = (
             f"⚠️ Ineffiziente Trocknung beendet\n"
             f"⏱ Laufzeit: {fmt_duration(old_d.get('runtime'))}\n"
@@ -203,33 +222,45 @@ def _build_old_block(old, old_d, duration):
             f"(Limit: {fmt_float(old_d.get('min_efficiency_threshold'), 3)})\n\n"
         )
         return msg
+
     elif old == "INTERVAL_ACTIVE":
         return (
             f"⏱ Intervall beendet\n"
             f"⏱ Dauer: {fmt_duration(duration)}\n"
             f"💧 Feuchte: {fmt_percent(old_d.get('humMax'))}\n\n"
         )
+
     elif old == "STOCK_BUILDING":
         return (
             f"🌾 Stockaufbau beendet\n"
             f"⏱ Dauer: {fmt_duration(duration)}\n"
             f"⏳ Restzeit: {fmt_duration(old_d.get('restzeit'))}\n\n"
         )
+
     elif old == "OVERHEAT":
         return (
             f"🔥 Überhitzung beendet\n"
             f"⏱ Dauer: {fmt_duration(duration)}\n\n"
         )
+
     elif old in ("HEIZUNG_ACTIVE", "HEIZUNG_MANUAL_ON"):
+        if new == "HEIZUNG_NACHLAUF":
+            # Heizung → Nachlauf: Dauer in die Nachlauf-Meldung integrieren,
+            # kein separater "Heizung beendet"-Block nötig.
+            return f"🔥 Heizung beendet (Dauer: {fmt_duration(duration)})\n"
         return (
             f"🔥 Heizung beendet\n"
             f"⏱ Dauer: {fmt_duration(duration)}\n\n"
         )
+
     elif old == "HEIZUNG_NACHLAUF":
+        # HEIZUNG_NACHLAUF → HEIZUNG_IDLE/DISABLED wird via _SUPPRESS_TRANSITIONS
+        # bereits unterdrückt. Dieser Block greift nur bei unerwarteten Folge-States.
         return (
             f"🌡 Heizung Nachlauf beendet\n"
             f"⏱ Dauer: {fmt_duration(duration)}\n\n"
         )
+
     return ""
 
 
@@ -258,10 +289,9 @@ def _build_new_block(new, new_d):
             msg += f"⚖️ Gewichtet: {fmt_float(new_d.get('weighted_gain'), 3)}\n"
         msg += (
             f"📊 Effizienz: {fmt_float(new_d.get('efficiency'), 3)} "
-            f"(Limit: {fmt_float(new_d.get('min_efficiency_threshold'), 3)})"
+            f"(Limit: {fmt_float(new_d.get('min_efficiency_threshold'), 3)})\n"
+            f"⏳ Pause: {fmt_duration(new_d.get('delay_remaining'))}"
         )
-        if new_d.get("delay_remaining") is not None:
-            msg += f"\n⏳ Delay: {fmt_duration(new_d.get('delay_remaining'))}"
 
     elif new == "INTERVAL_ACTIVE":
         msg += (
