@@ -19,7 +19,7 @@ class DryingDecisionEngine:
             metrics = self.metrics_calculator.compute(ctx)
         elif any(key not in metrics for key in ("drying_conditions", "ts_diff", "sdef_diff", "near_efficiency_endphase")):
             metrics = self._complete_metrics(ctx, metrics)
-        decision = self._decide_base(ctx, metrics)
+        decision = self._decide_base(ctx, metrics, previous_state=previous_state)
         decision = self._apply_auto_disable(ctx, decision, metrics)
         decision = self._apply_drying_delay_start(ctx, decision, previous_state)
         return decision
@@ -37,7 +37,7 @@ class DryingDecisionEngine:
         decision.details.setdefault("ts_change_2h", metrics["ts_gain"])
         decision.details.setdefault("window_hours", metrics["window_hours"])
 
-    def _decide_base(self, ctx, metrics):
+    def _decide_base(self, ctx, metrics,previous_state=None):
         trace = []
 
         def step(name, matched, reason=None):
@@ -115,7 +115,7 @@ class DryingDecisionEngine:
                     },
                 )
 
-        if self._is_overheat(ctx):
+        if self._is_overheat(ctx, previous_state=previous_state):
             # Ueberhitzung hat Vorrang vor Komfort-/Effizienzregeln:
             # Luefter an, bis die Hysterese in control_data wieder freigibt.
             step("overheat", True, "OVERHEAT")
@@ -176,7 +176,7 @@ class DryingDecisionEngine:
             "mode_override": "off",
             "previous_decision_reason": decision.reason,
             "previous_decision_detail_reason": (decision.details or {}).get("reason"),
-            "auto_off_after_seconds": ctx.remainingTimeIntervalOn,
+            "auto_off_after_seconds": ctx.remainingTimeInterval,
         }
 
         trace = (decision.details or {}).get("trace")
@@ -211,12 +211,18 @@ class DryingDecisionEngine:
         decision.details["delay_started"] = True
         return decision
 
-    def _is_overheat(self, ctx):
-        return (
-            ctx.tempMax is not None
-            and ctx.uschutz_on is not None
-            and ctx.tempMax >= ctx.uschutz_on
-        )
+    def _is_overheat(self, ctx, previous_state=None):
+        if ctx.tempMax is None or ctx.uschutz_on is None:
+            return False
+        if ctx.tempMax >= ctx.uschutz_on:
+            return True
+        if (
+            previous_state == "OVERHEAT"
+            and ctx.uschutz_hys is not None
+            and ctx.tempMax + ctx.uschutz_hys >= ctx.uschutz_on
+        ):
+            return True
+        return False
 
     def _decide_classic(self, ctx, metrics, trace, step):
         # Classic mode stays close to the old parameter-based behavior:
