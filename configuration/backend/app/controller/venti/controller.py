@@ -127,6 +127,9 @@ def venti_control():
     ctx.venti_drying_delay_remaining = (
         state_manager.get_venti_drying_delay_remaining(ctx.now)
     )
+    ctx.venti_post_heizung_delay_remaining = (
+        state_manager.get_venti_post_heizung_delay_remaining(ctx.now)
+    )
 
     # 4. DECISION ENGINE
     decision = evaluate(ctx, previous_state=previous_state)
