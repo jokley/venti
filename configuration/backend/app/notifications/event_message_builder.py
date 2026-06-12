@@ -69,6 +69,7 @@ def pretty_reason(reason):
 def pretty_detail_reason(reason):
     mapping = {
         "drying_conditions_not_met":                "Trocknung nicht möglich",
+        "inefficient_near_target":                  "Trocknung ineffizient – Endphase",
         "auto_disabled":                            "Trocknung abgeschlossen – Automatik deaktiviert",
         "drying_delay":                             "Delay nach Trocknungs-Aus",
         "sdef_delay":                               "Delay nach SDEF-Aus",
@@ -219,10 +220,13 @@ def build_event_message(event):
 
     elif old == "INEFFICIENT_DRYING":
         msg += (
-            f"⚠️ Ineffiziente Trocknung beendet\n"
-            f"⏱ Dauer: {fmt_duration(duration)}\n"
-            f"🌬 SDef Δ 2h: {fmt_float(old_d.get('sdef_change_2h'))}\n"
-            f"📉 TS Δ 2h: {fmt_float(old_d.get('ts_change_2h'))}\n\n"
+            f"⚠️ Trocknung gestoppt\n"
+            f"⏱ Laufzeit: {fmt_duration(new_d.get('runtime'))}\n"
+            f"🌬 SDef Δ 2h: {fmt_float(new_d.get('sdef_change_2h'))}\n"
+            f"📉 TS Δ 2h: {fmt_float(new_d.get('ts_change_2h'))}\n"
+            f"⚖️ Gewichtet: {fmt_float(new_d.get('weighted_gain'), 3)}\n"
+            f"📊 Effizienz: {fmt_float(new_d.get('efficiency'), 3)} "
+            f"(Limit: {fmt_float(new_d.get('min_efficiency_threshold'), 3)})"
         )
 
     elif old in ("HEIZUNG_ACTIVE", "HEIZUNG_MANUAL_ON"):
