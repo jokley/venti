@@ -19,7 +19,7 @@ class DryingDecisionEngine:
             metrics = self.metrics_calculator.compute(ctx)
         elif any(key not in metrics for key in ("drying_conditions", "ts_diff", "sdef_diff", "near_efficiency_endphase")):
             metrics = self._complete_metrics(ctx, metrics)
-        decision = self._decide_base(ctx, metrics)
+        decision = self._decide_base(ctx, metrics, previous_state=previous_state)
         decision = self._apply_auto_disable(ctx, decision, metrics)
         decision = self._apply_drying_delay_start(ctx, decision, previous_state)
         return decision
@@ -37,7 +37,7 @@ class DryingDecisionEngine:
         decision.details.setdefault("ts_change_2h", metrics["ts_gain"])
         decision.details.setdefault("window_hours", metrics["window_hours"])
 
-    def _decide_base(self, ctx, metrics):
+    def _decide_base(self, ctx, metrics,previous_state=None):
         trace = []
 
         def step(name, matched, reason=None):
@@ -115,7 +115,7 @@ class DryingDecisionEngine:
                     },
                 )
 
-        if self._is_overheat(ctx):
+        if self._is_overheat(ctx, previous_state=previous_state):
             # Ueberhitzung hat Vorrang vor Komfort-/Effizienzregeln:
             # Luefter an, bis die Hysterese in control_data wieder freigibt.
             step("overheat", True, "OVERHEAT")
@@ -160,8 +160,8 @@ class DryingDecisionEngine:
             and ctx.stock is not None
             and ctx.remainingTimeStock > ctx.stock
             and not ctx.is_fan_on
-            and ctx.remainingTimeIntervalOn is not None
-            and ctx.remainingTimeIntervalOn >= 7200
+            and ctx.remainingTimeInterval is not None
+            and ctx.remainingTimeInterval >= 7200
             and metrics.get("ts_diff") is not None
             and metrics["ts_diff"] <= 0.5
         )
@@ -176,7 +176,7 @@ class DryingDecisionEngine:
             "mode_override": "off",
             "previous_decision_reason": decision.reason,
             "previous_decision_detail_reason": (decision.details or {}).get("reason"),
-            "auto_off_after_seconds": ctx.remainingTimeIntervalOn,
+            "auto_off_after_seconds": ctx.remainingTimeInterval,
         }
 
         trace = (decision.details or {}).get("trace")
@@ -211,12 +211,18 @@ class DryingDecisionEngine:
         decision.details["delay_started"] = True
         return decision
 
-    def _is_overheat(self, ctx):
-        return (
-            ctx.tempMax is not None
-            and ctx.uschutz_on is not None
-            and ctx.tempMax >= ctx.uschutz_on
-        )
+    def _is_overheat(self, ctx, previous_state=None):
+        if ctx.tempMax is None or ctx.uschutz_on is None:
+            return False
+        if ctx.tempMax >= ctx.uschutz_on:
+            return True
+        if (
+            previous_state == "OVERHEAT"
+            and ctx.uschutz_hys is not None
+            and ctx.tempMax + ctx.uschutz_hys >= ctx.uschutz_on
+        ):
+            return True
+        return False
 
     def _decide_classic(self, ctx, metrics, trace, step):
         # Classic mode stays close to the old parameter-based behavior:
@@ -343,16 +349,16 @@ class DryingDecisionEngine:
             and ctx.intervall_time is not None
             and ctx.remainingTimeIntervalOn >= ctx.intervall_time
         )
-        # Die laufende Intervallphase kommt aus dem Hardwarestatus: solange
-        # der Luefter wirklich EIN ist und die Dauer nicht abgelaufen ist,
-        # bleibt INTERVAL_ACTIVE aktiv.
+    
         interval_running = (
             ctx.is_fan_on
-            and ctx.fan_runtime_current is not None
+            and ctx.remainingTimeIntervalOn is not None
             and ctx.intervall_duration is not None
-            and ctx.fan_runtime_current <= ctx.intervall_duration
+            and ctx.remainingTimeIntervalOn <= ctx.intervall_duration
+            and ctx.remainingTimeIntervalDiff is not None
+            and ctx.remainingTimeIntervalDiff > 0
         )
-
+    
         if (
             ctx.humMax is not None
             and ctx.intervall_on is not None
@@ -360,7 +366,7 @@ class DryingDecisionEngine:
             and (interval_start_due or interval_running)
         ):
             step("interval_active", True, "INTERVAL_ACTIVE")
-            runtime = ctx.fan_runtime_current if ctx.is_fan_on else 0
+            runtime = ctx.remainingTimeIntervalOn if interval_running else 0
             return Decision(
                 "on",
                 "INTERVAL_ACTIVE",
@@ -376,7 +382,7 @@ class DryingDecisionEngine:
                     "trace": trace,
                 },
             )
-
+    
         return None
 
     def _drying_details(self, ctx, metrics, trace, phase, drying=None):
