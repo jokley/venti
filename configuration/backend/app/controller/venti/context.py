@@ -55,6 +55,7 @@ class VentiContext:
         self.is_fan_on = d.get("is_fan_on", False)
         self.fan_runtime_current = d.get("fan_runtime_current", 0)
         self.venti_drying_delay_remaining = d.get("venti_drying_delay_remaining", 0)
+        self.venti_post_heizung_delay_remaining = 0
         # =========================
         # 🧠 EFFICIENCY ENGINE
         # =========================
@@ -68,6 +69,7 @@ class VentiContext:
         self.min_efficiency_threshold = d.get("min_efficiency_threshold", self.base_min_efficiency_threshold)
         self.efficiency_endphase_ts_margin = d.get("efficiency_endphase_ts_margin", 3.0)
         self.ts_weight = d.get("ts_weight", 0.30)
+        self.efficiency_min_runtime = d.get("efficiency_min_runtime",int((self.efficiency_window or 7200) * 0.25))
         # =========================
         # 🔥 HEIZUNG
         # =========================

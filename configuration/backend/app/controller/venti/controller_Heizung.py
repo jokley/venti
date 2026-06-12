@@ -83,6 +83,7 @@ def heizung_control():
             if state_manager.heizung_lock:
                 # War gesperrt, jetzt freigeben
                 state_manager.release_heizung_lock()
+                state_manager.start_venti_post_heizung_delay(ctx)
 
         # =========================
         # 🔌 RELAYS SCHALTEN

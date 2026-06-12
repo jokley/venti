@@ -190,19 +190,20 @@ class DryingDecisionEngine:
         return Decision("off", "MANUAL_MODE", details)
 
     def _apply_drying_delay_start(self, ctx, decision, previous_state):
-        # Restart-Sperre nach Ende eines Trocknungslaufs. Die aktive Sperre wird
-        # weiter in _drying_delay_active() ausgewertet; diese Methode startet nur
-        # den Delay, wenn DRYING_ACTIVE gerade wegen fehlender Bedingungen endet.
         should_start_delay = (
             ctx.mode == "auto"
             and previous_state == "DRYING_ACTIVE"
-            and decision.reason == "AUTO_IDLE"
-            and (decision.details or {}).get("reason") == "drying_conditions_not_met"
+            and decision.reason in ("AUTO_IDLE", "INEFFICIENT_DRYING") 
+            and (decision.details or {}).get("reason") in (
+                "drying_conditions_not_met",
+                "inefficient_near_target",
+                None,
+            )
         )
-
+    
         if not should_start_delay:
             return decision
-
+    
         state_manager.start_venti_drying_delay(ctx)
         decision.details["delay_remaining"] = (
             state_manager.get_venti_drying_delay_remaining(ctx.now)
@@ -274,14 +275,17 @@ class DryingDecisionEngine:
 
 
     def _inefficient_near_target(self, ctx, metrics):
-        # Kein Self-Learning: nur ein statischer Effizienz-Check in der
-        # Endphase. Er greift nur bei laufendem Luefter, vorhandener Historie
-        # und wenn TS bereits innerhalb des konfigurierten Zielabstands liegt.
-        # Threshold <= 0 deaktiviert den Check vollstaendig.
         threshold = ctx.min_efficiency_threshold
+        min_runtime = getattr(ctx, "efficiency_min_runtime", 1800)
+        sufficient_runtime = (
+            ctx.fan_runtime_current is not None
+            and ctx.fan_runtime_current >= min_runtime
+        )
+    
         return (
             ctx.is_fan_on
             and metrics["has_history"]
+            and sufficient_runtime                   # ← NEU
             and threshold is not None
             and threshold > 0
             and metrics["efficiency"] < threshold
@@ -330,8 +334,9 @@ class DryingDecisionEngine:
         return (ctx.venti_drying_delay_remaining or 0) > 0
 
     def _interval_decision(self, ctx, trace, step):
-        # Intervall-Start zaehlt die echte AUS-Zeit seit letztem Hardware-OFF.
-        # Dadurch startet Auto nach manuellem AUS nicht sofort wieder.
+        if (ctx.venti_post_heizung_delay_remaining or 0) > 0:
+            return None
+    
         interval_start_due = (
             not ctx.is_fan_on
             and ctx.remainingTimeIntervalOn is not None
