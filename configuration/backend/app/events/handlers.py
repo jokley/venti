@@ -1,7 +1,8 @@
 from .event_bus import event_bus, EventType, Event
 from app.notifications.event_message_builder import (
     build_event_message,
-    pretty_reason
+    pretty_reason,
+    fmt_duration
 )
 from app.notifications.notifier import send_notification
 from app.notifications.alerts.alert_message_builder import build_system_alert_message
@@ -125,6 +126,7 @@ def handle_decision_log(event: Event):
     # --- INEFFICIENT_DRYING ---
     elif decision.reason == "INEFFICIENT_DRYING":
         log("Ineffiziente Trocknung erkannt")
+        log(f"Laufzeit: {fmt_duration(details.get('runtime'))}")
         log(f"SDEF Change 2h: {details.get('sdef_change_2h')}")
         log(f"TS Change 2h: {details.get('ts_change_2h')}")
         log(f"Effizienz: {details.get('efficiency')} | Limit: {details.get('min_efficiency_threshold')}")
