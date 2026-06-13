@@ -160,8 +160,8 @@ class DryingDecisionEngine:
             and ctx.stock is not None
             and ctx.remainingTimeStock > ctx.stock
             and not ctx.is_fan_on
-            and ctx.remainingTimeInterval is not None
-            and ctx.remainingTimeInterval >= 7200
+            and ctx.remainingTimeIntervalOn is not None
+            and ctx.remainingTimeIntervalOn >= 7200
             and metrics.get("ts_diff") is not None
             and metrics["ts_diff"] <= 0.5
         )
@@ -176,7 +176,7 @@ class DryingDecisionEngine:
             "mode_override": "off",
             "previous_decision_reason": decision.reason,
             "previous_decision_detail_reason": (decision.details or {}).get("reason"),
-            "auto_off_after_seconds": ctx.remainingTimeInterval,
+            "auto_off_after_seconds": ctx.remainingTimeIntervalOn,
         }
 
         trace = (decision.details or {}).get("trace")
@@ -350,13 +350,16 @@ class DryingDecisionEngine:
             and ctx.remainingTimeIntervalOn >= ctx.intervall_time
         )
     
+        # Die laufende Intervallphase kommt aus dem Hardwarestatus: solange
+        # der Luefter wirklich EIN ist und die Dauer nicht abgelaufen ist,
+        # bleibt INTERVAL_ACTIVE aktiv. remainingTimeIntervalOn beschreibt
+        # die AUS-Zeit seit letztem Hardware-OFF und darf hier nicht als
+        # Laufzeit verwendet werden.
         interval_running = (
             ctx.is_fan_on
-            and ctx.remainingTimeIntervalOn is not None
+            and ctx.fan_runtime_current is not None
             and ctx.intervall_duration is not None
-            and ctx.remainingTimeIntervalOn <= ctx.intervall_duration
-            and ctx.remainingTimeIntervalDiff is not None
-            and ctx.remainingTimeIntervalDiff > 0
+            and ctx.fan_runtime_current <= ctx.intervall_duration
         )
     
         if (
@@ -366,7 +369,7 @@ class DryingDecisionEngine:
             and (interval_start_due or interval_running)
         ):
             step("interval_active", True, "INTERVAL_ACTIVE")
-            runtime = ctx.remainingTimeIntervalOn if interval_running else 0
+            runtime = ctx.fan_runtime_current if interval_running else 0
             return Decision(
                 "on",
                 "INTERVAL_ACTIVE",
