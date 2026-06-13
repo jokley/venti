@@ -4,17 +4,27 @@ from .heating_metrics import HeatingMetricsCalculator
 
 class HeatingDecisionEngine:
     """
-    Small, separate decision engine for the heater.
-    Future heater rules (sDef, night window, outdoor temperature) belong here.
+    Separate Entscheidungs-Engine fuer die Heizung.
+
+    Die Engine gibt nur die fachliche Entscheidung zurueck. Das eigentliche
+    Schalten von Relais und das Setzen/Freigeben des Venti-Locks passiert im
+    controller_Heizung. Neue Heizungsregeln gehoeren hier hinein, nicht in den
+    Venti-Controller.
     """
 
     def __init__(self, metrics_calculator=None):
         self.metrics_calculator = metrics_calculator or HeatingMetricsCalculator()
 
     def compute_active(self, ctx):
+        # Kleine Hilfsfunktion fuer controller_Heizung:
+        # Dort wird vor der eigentlichen Decision die echte Aktiv-Flanke
+        # benoetigt, damit Nachlauf und SDEF-Delay korrekt gestartet werden.
         return self.metrics_calculator.compute(ctx)["active"]
 
     def decide(self, ctx, metrics=None):
+        # Metrics enthalten alle vorberechneten Teilbedingungen:
+        # Dauerphase, SDEF-Bedarf, SDEF-Delay, Nachlauf usw.
+        # Falls Tests fertige Metrics uebergeben, werden sie direkt genutzt.
         if metrics is None:
             metrics = self.metrics_calculator.compute(ctx)
 
@@ -38,9 +48,12 @@ class HeatingDecisionEngine:
             )
 
         if ctx.heizung_mode == "on":
+            # Parameter/Modus "on" ist wie manueller Dauerbetrieb zu behandeln.
+            # Der Luefter wird spaeter ueber controller_Heizung mit erzwungen.
             return Decision("on", "HEIZUNG_MANUAL_ON", self._active_details(ctx))
 
         # Auto-Aktiv ist entweder eine feste Dauerphase oder SDEF-Bedarf.
+        # Die Details der Berechnung liegen in HeatingMetricsCalculator.
         heizung_active = (
             ctx.heizung_mode == "auto"
             and ctx.heizung_enabled
@@ -56,6 +69,8 @@ class HeatingDecisionEngine:
             return self._nachlauf_decision(ctx, metrics, ctx.heizung_mode)
 
         if ctx.heizung_mode == "off":
+            # Modus off ist ein expliziter Benutzer-/Parameterzustand und wird
+            # separat von HEIZUNG_DISABLED protokolliert.
             return Decision(
                 "off",
                 "HEIZUNG_MANUAL_OFF",
@@ -67,6 +82,8 @@ class HeatingDecisionEngine:
             )
 
         if not ctx.heizung_enabled:
+            # Auto kann aktiv sein, aber die Heizungsfunktion global deaktiviert.
+            # Dann bleibt die Heizung aus und erzwingt keinen Luefter.
             return Decision(
                 "off",
                 "HEIZUNG_DISABLED",
@@ -78,6 +95,8 @@ class HeatingDecisionEngine:
             )
 
         # SDEF-Delay blockiert erneutes Einschalten nach erreichtem Limit.
+        # Der Delay wird vom StateManager gestartet, wenn die Heizung nach
+        # Erreichen des SDEF-Limits ausgeht. Hier wird nur ausgewertet.
         if metrics["sdef_delay_active"]:
             return Decision(
                 "off",
@@ -95,6 +114,8 @@ class HeatingDecisionEngine:
 
         # Expliziter Limit-Zustand: fachlich hilfreich fuer Logs/Timeline,
         # auch wenn das Kommando wie HEIZUNG_IDLE "off" ist.
+        # Ohne diesen Zustand waere spaeter nicht erkennbar, ob "aus" normal
+        # idle war oder vom SDEF-Limit verursacht wurde.
         if metrics["sdef_limit_reached"]:
             return Decision(
                 "off",
@@ -120,6 +141,9 @@ class HeatingDecisionEngine:
         )
 
     def _nachlauf_decision(self, ctx, metrics, heizung_mode, reason=None):
+        # Nachlauf bedeutet: Heizung selbst AUS, aber Venti bleibt fuer die
+        # eingestellte Nachlaufzeit erzwungen EIN. Deshalb command="off" fuer
+        # die Heizung, aber venti_forced=True fuer den Controller.
         details = {
             "heizung_mode": heizung_mode,
             "nachlauf_remaining": metrics["nachlauf_remaining"],
@@ -134,6 +158,9 @@ class HeatingDecisionEngine:
         return Decision("off", "HEIZUNG_NACHLAUF", details)
 
     def _active_details(self, ctx):
+        # Gemeinsame Details fuer manuell/automatisch aktive Heizung.
+        # remaining ist die Restdauer der Dauerphase; bei SDEF-Betrieb kann
+        # der Wert 0 sein, die SDEF-Felder erklaeren dann den Heizgrund.
         return {
             "heizung_mode": ctx.heizung_manual_command or ctx.heizung_mode,
             "remaining": max(0, ctx.heizung_dauer - ctx.remainingTimeHeizung),

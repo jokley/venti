@@ -898,7 +898,7 @@ def test_venti_drying_delay_engine():
         "fan_runtime_current": 0,
         "venti_drying_delay_remaining": 600,
     })
-    result = engine.decide(ctx, metrics)
+    result = engine.decide(ctx, metrics, previous_state="AUTO_IDLE")
     assert result.command == "on", "Interval should bypass drying delay"
     assert result.reason == "INTERVAL_ACTIVE", "Interval should keep priority"
     assert result.details["remaining_off_time"] == 7200, "Should expose time since last off"
@@ -906,6 +906,39 @@ def test_venti_drying_delay_engine():
     assert result.details["remaining"] == 300, "Should expose remaining interval duration"
     assert result.details["interval_duration"] == 300, "Should expose configured interval duration"
     print("✓ Venti drying delay: Interval bypasses delay")
+
+    ctx = VentiContext({
+        "mode": "auto",
+        "tempMax": 25.0,
+        "uschutz_on": 35.0,
+        "stock": 0,
+        "remainingTimeStock": 7200,
+        "sDefOut": 5.0,
+        "sDefMin": 9.0,
+        "sdefMinThreshold": 10.0,
+        "sdef_hys_half": 0.5,
+        "sdef_on": 12.0,
+        "tsSoll": 14.0,
+        "tsMin": 15.0,
+        "ts_hys_half": 0.5,
+        "humMax": 80.0,
+        "intervall_on": 70.0,
+        "remainingTimeInterval": 3600,
+        "remainingTimeIntervalOn": 3600,
+        "remainingTimeIntervalDiff": 0,
+        "intervall_time": 3600,
+        "intervall_duration": 300,
+        "is_fan_on": False,
+        "fan_runtime_current": 0,
+        "venti_post_heizung_delay_remaining": 600,
+    })
+    assert ctx.venti_post_heizung_delay_remaining == 600, "Context should preserve post-heating delay"
+    result = engine.decide(ctx, metrics)
+    assert result.command == "off", "Post-heating delay should block interval restart"
+    assert result.reason == "AUTO_IDLE", "Blocked interval should fall back to idle"
+    assert result.details["venti_post_heizung_delay_remaining"] == 600, "Should expose post-heating delay"
+    assert any(step["step"] == "post_heizung_delay" for step in result.details["trace"]), "Should trace post-heating delay"
+    print("✓ Venti post-heizung delay: Blocks interval restart")
 
     ctx = VentiContext({
         "mode": "auto",
@@ -967,14 +1000,49 @@ def test_venti_drying_delay_engine():
         "intervall_time": 3600,
         "intervall_duration": 300,
         "is_fan_on": True,
-        "fan_runtime_current": 120,
+        "fan_runtime_current": 900,
+        "now": 1120,
+        "previous_state_started_at": 1000,
     })
-    result = engine.decide(ctx, metrics)
+    result = engine.decide(ctx, metrics, previous_state="INTERVAL_ACTIVE")
     assert result.command == "on", "Running interval should stay on until duration expires"
     assert result.reason == "INTERVAL_ACTIVE", "Interval should remain active while runtime is within duration"
-    assert result.details["runtime"] == 120, "Should expose hardware runtime"
+    assert result.details["runtime"] == 120, "Should expose interval state runtime"
     assert result.details["remaining"] == 180, "Should expose remaining runtime"
-    print("✓ Venti interval: Hardware on stays active during duration")
+    print("✓ Venti interval: State runtime stays active during duration")
+
+    ctx = VentiContext({
+        "mode": "auto",
+        "tempMax": 25.0,
+        "uschutz_on": 35.0,
+        "stock": 0,
+        "remainingTimeStock": 7200,
+        "sDefOut": 5.0,
+        "sDefMin": 9.0,
+        "sdefMinThreshold": 10.0,
+        "sdef_hys_half": 0.5,
+        "sdef_on": 12.0,
+        "tsSoll": 14.0,
+        "tsMin": 15.0,
+        "ts_hys_half": 0.5,
+        "humMax": 80.0,
+        "intervall_on": 70.0,
+        "remainingTimeInterval": 900,
+        "remainingTimeIntervalOn": 7200,
+        "remainingTimeIntervalDiff": 7200,
+        "intervall_time": 3600,
+        "intervall_duration": 300,
+        "is_fan_on": True,
+        "fan_runtime_current": 900,
+    })
+    result = engine.decide(ctx, metrics, previous_state="DRYING_ACTIVE")
+    assert result.command == "off", "Interval must not start directly after drying"
+    assert result.reason == "AUTO_IDLE", "Drying handover should first enter idle"
+    assert result.details["reason"] in (
+        "drying_conditions_not_met",
+        "ts_target_reached",
+    ), "Should fall back to idle before interval can start"
+    print("✓ Venti interval: Drying handover waits for idle pause")
 
     ctx = VentiContext({
         "mode": "auto",
@@ -999,11 +1067,13 @@ def test_venti_drying_delay_engine():
         "intervall_duration": 300,
         "is_fan_on": True,
         "fan_runtime_current": 400,
+        "now": 1400,
+        "previous_state_started_at": 1000,
     })
-    result = engine.decide(ctx, metrics)
+    result = engine.decide(ctx, metrics, previous_state="INTERVAL_ACTIVE")
     assert result.command == "off", "Expired interval should fall back to off"
     assert result.reason == "AUTO_IDLE", "Interval should end after duration"
-    print("✓ Venti interval: Hardware on ends after duration")
+    print("✓ Venti interval: State runtime ends after duration")
 
     ctx = VentiContext({
         "mode": "auto",
