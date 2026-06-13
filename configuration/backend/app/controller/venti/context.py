@@ -55,7 +55,9 @@ class VentiContext:
         self.is_fan_on = d.get("is_fan_on", False)
         self.fan_runtime_current = d.get("fan_runtime_current", 0)
         self.venti_drying_delay_remaining = d.get("venti_drying_delay_remaining", 0)
-        self.venti_post_heizung_delay_remaining = 0
+        self.venti_post_heizung_delay_remaining = d.get("venti_post_heizung_delay_remaining", 0)
+        self.previous_state = d.get("previous_state")
+        self.previous_state_started_at = d.get("previous_state_started_at")
         # =========================
         # 🧠 EFFICIENCY ENGINE
         # =========================

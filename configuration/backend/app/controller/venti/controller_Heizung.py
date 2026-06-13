@@ -24,6 +24,10 @@ def heizung_control():
     - heizung_off_ts nach Nachlaufende zurücksetzen
     """
     try:
+        # 1. Context aufbauen
+        # build_control_data liefert dieselbe Datenbasis wie venti_control.
+        # Danach werden die Runtime-Werte aus dem StateManager ergaenzt, weil
+        # sie nicht direkt aus Influx/Parametern kommen.
         data = build_control_data()
         ctx = VentiContext(data)
         ctx.heizung_sdef_was_active = state_manager.heizung_was_active
@@ -40,6 +44,8 @@ def heizung_control():
 
         # Wenn die SDEF-Automatik wegen erreichtem Limit ausgeht, startet eine
         # Restart-Sperre. So schwingt die Heizung nicht direkt um das Limit.
+        # Die feste Anfangsdauer hat Vorrang; deshalb wird das Limit erst nach
+        # Ablauf von heizung_dauer als Abschaltgrund fuer den SDEF-Delay gewertet.
         if (
             heizung_was_active
             and not heizung_active
@@ -56,6 +62,9 @@ def heizung_control():
 
         # Flanke EIN→AUS erkennen, heizung_off_ts setzen,
         # heizung_was_active aktualisieren
+        # Wichtig: Diese Funktion setzt den vorlaeufigen Lock nur bei aktiver
+        # Heizung. Ob Nachlauf den Lock weiter haelt, entscheidet der Block
+        # weiter unten nach der finalen HeatingDecision.
         state_manager.update_heizung(heizung_active, ctx)
 
         # heizung_off_since NACH update_heizung() berechnen
@@ -66,6 +75,9 @@ def heizung_control():
             else 999999
         )
 
+        # 2. Fachliche Heizungsentscheidung
+        # Die HeatingDecisionEngine entscheidet nur Heizung/Nachlauf/Details.
+        # Relaiskommandos und Lock-Side-Effects passieren im Controller.
         decision = heating_engine.decide(ctx)
         details = decision.details or {}
         heizung_active = decision.reason in ("HEIZUNG_ACTIVE", "HEIZUNG_MANUAL_ON")
@@ -81,7 +93,10 @@ def heizung_control():
             state_manager.heizung_lock = True
         else:
             if state_manager.heizung_lock:
-                # War gesperrt, jetzt freigeben
+                # War gesperrt, jetzt freigeben. Direkt danach startet der
+                # Venti-Post-Heizung-Delay, damit die normale Intervalllogik
+                # nicht sofort nach Ende des erzwungenen Heizungs-Luefterlaufs
+                # wieder anspringt.
                 state_manager.release_heizung_lock()
                 state_manager.start_venti_post_heizung_delay(ctx)
 
@@ -92,6 +107,7 @@ def heizung_control():
         # Variante A: Heizung erzwingt RO1=Luefter EIN. Nachlauf laesst die
         # Heizung aus, haelt aber den Luefter weiter an.
         if heizung_active:
+            # Heizung aktiv: RO2=Heizung EIN und RO1=Luefter EIN.
             heizung_venti_cmd("on", "on")
             logger.info(
                 "Heizung aktiv – Lüfter EIN (mode=%s, remaining=%ss)",
@@ -99,15 +115,24 @@ def heizung_control():
                 details.get("remaining"),
             )
         elif nachlauf_active:
+            # Nachlauf: Heizung AUS, Luefter bleibt EIN. Dadurch wird Restwaerme
+            # abgefuehrt, ohne dass venti_control parallel eigene Befehle sendet.
             heizung_venti_cmd("off", "on")
             logger.info(
                 "Heizung Nachlauf – Lüfter EIN (noch %ss)",
                 details.get("nachlauf_remaining"),
             )
         else:
+            # Kein Heizungsgrund und kein Nachlauf: RO2 sicher AUS. RO1 wird
+            # nicht mehr von der Heizung erzwungen und darf durch venti_control
+            # im naechsten Zyklus wieder normal entschieden werden.
             heizung_cmd("off")
             logger.info("Heizung inaktiv – Lüfter durch venti_control")
 
+        # 3. Persistenz nur bei relevanten Aenderungen
+        # state/command/mode werden getrennt verglichen, weil z.B. derselbe
+        # Zustand mit anderem Kommando oder geaendertem manuellen Modus fuer
+        # Timeline und UI relevant ist.
         state_changed = state_manager.last_heizung_state != decision.reason
         command_changed = state_manager.last_heizung_command != decision.command
         effective_mode = ctx.heizung_manual_command or ctx.heizung_mode
@@ -124,11 +149,18 @@ def heizung_control():
                 ctx=ctx
             )
 
+        # 4. Decision-Event fuer Logs/Debugging. Wird unabhaengig von Persistenz
+        # gesendet, damit Beobachter jeden Heizungszyklus sehen koennen.
         event_bus.publish(Event(
             type=EventType.DECISION_LOG,
             data={"decision": decision, "ctx": ctx}
         ))
 
+        # 5. TransitionDetector initialisieren
+        # Wenn der Prozess mitten in einer aktiven Heiz-/Nachlaufphase startet,
+        # fehlt dem Detector ein vorheriger Zustand. Wir setzen dann bewusst
+        # HEIZUNG_IDLE als Startpunkt, damit die erste aktive Decision als
+        # sauberer Uebergang gemeldet werden kann.
         if heizung_detector.state_start_ts is None and decision.reason in (
             "HEIZUNG_ACTIVE",
             "HEIZUNG_MANUAL_ON",
@@ -148,6 +180,9 @@ def heizung_control():
                 state_start_ts=ctx.now,
             )
 
+        # 6. Transition-Events publizieren. Diese Events sind die Grundlage fuer
+        # Benachrichtigungen und unterscheiden sich vom reinen Decision-Log:
+        # Sie entstehen nur bei Zustandswechseln.
         events = heizung_detector.detect(decision, data)
 
         for event in events:
@@ -161,4 +196,7 @@ def heizung_control():
             ))
 
     except Exception as e:
+        # Der Heizungsjob darf bei einem Fehler nicht den Scheduler/Backend-
+        # Prozess beenden. Fehler werden geloggt; der naechste Schedulerlauf
+        # versucht erneut, einen konsistenten Zustand herzustellen.
         logger.error(f"heizung_control error: {e}", exc_info=True)
