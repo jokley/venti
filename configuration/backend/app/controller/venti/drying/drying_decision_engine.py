@@ -357,7 +357,6 @@ class DryingDecisionEngine:
             "intervall_duration": ctx.intervall_duration,
             "is_fan_on": ctx.is_fan_on,
             "fan_runtime_current": ctx.fan_runtime_current,
-            "venti_post_heizung_delay_remaining": ctx.venti_post_heizung_delay_remaining,
             "trace": trace,
             # Hysterese Debug
             "sdef_on": ctx.sdef_on,
@@ -381,13 +380,6 @@ class DryingDecisionEngine:
         return (ctx.venti_drying_delay_remaining or 0) > 0
 
     def _interval_decision(self, ctx, trace, step, previous_state=None):
-        # Nach Heizungsende verhindert der Post-Heizung-Delay einen sofortigen
-        # Intervall-Neustart. Die Heizung/Nachlauf-Phase hat den Luefter zuvor
-        # bereits erzwungen; danach soll Intervall nicht direkt wieder ziehen.
-        if (ctx.venti_post_heizung_delay_remaining or 0) > 0:
-            step("post_heizung_delay", True, "AUTO_IDLE")
-            return None
-    
         # Intervall ist ein Pausen-Programm: Es darf erst NACH AUTO_IDLE und
         # nach Ablauf der eingestellten Wartezeit starten. Ein direkter Wechsel
         # von DRYING_ACTIVE nach INTERVAL_ACTIVE ist fachlich falsch, weil der

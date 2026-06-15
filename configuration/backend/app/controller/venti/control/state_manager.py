@@ -34,7 +34,7 @@ class ControlStateManager:
         self.heizung_manual_command = None
         self.heizung_sdef_delay_started_at = None
         self.venti_drying_delay_started_at = None
-        self.venti_post_heizung_delay_started_at = None
+        self.venti_after_heizung_pending = False
 
     # =========================
     # 🔁 RESTORE
@@ -253,16 +253,6 @@ class ControlStateManager:
 
     def get_venti_drying_delay_remaining(self, now):
         return self._delay_remaining(self.venti_drying_delay_started_at, now)
-
-    def start_venti_post_heizung_delay(self, ctx):
-        self.venti_post_heizung_delay_started_at = ctx.now
-        logger.info("Venti Post-Heizung-Delay gestartet – %ss", AUTO_DELAY_SECONDS)
-
-    def clear_venti_post_heizung_delay(self):
-        self.venti_post_heizung_delay_started_at = None
-    
-    def get_venti_post_heizung_delay_remaining(self, now):
-        return self._delay_remaining(self.venti_post_heizung_delay_started_at, now)
 
     def _delay_remaining(self, started_at, now):
         if started_at is None:
