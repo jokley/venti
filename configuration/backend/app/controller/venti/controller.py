@@ -67,6 +67,28 @@ def sync_interval_end_scheduler(decision):
         return False
 
 
+
+def handle_after_heizung_pending(decision, ctx):
+    # Nach Ende von Heizung/Nachlauf bewertet genau die erste normale
+    # Venti-Decision, ob ein Restart-Delay noetig ist: Bei echter Trocknung
+    # darf der Luefter nahtlos weiterlaufen, bei AUS startet die bestehende
+    # Trocknungs-Restartsperre.
+    if not state_manager.venti_after_heizung_pending:
+        return
+
+    try:
+        if (
+            decision.command == "off"
+            and decision.reason in ("AUTO_IDLE", "INEFFICIENT_DRYING")
+        ):
+            state_manager.start_venti_drying_delay(ctx)
+            decision.details["delay_remaining"] = (
+                state_manager.get_venti_drying_delay_remaining(ctx.now)
+            )
+            decision.details["delay_started_after_heizung"] = True
+    finally:
+        state_manager.venti_after_heizung_pending = False
+
 # =========================
 # 🔁 RUNTIME STATE
 # =========================
@@ -147,9 +169,6 @@ def venti_control():
     ctx.venti_drying_delay_remaining = (
         state_manager.get_venti_drying_delay_remaining(ctx.now)
     )
-    ctx.venti_post_heizung_delay_remaining = (
-        state_manager.get_venti_post_heizung_delay_remaining(ctx.now)
-    )
     ctx.previous_state = previous_state
     ctx.previous_state_started_at = state_manager.last_ts
 
@@ -158,6 +177,8 @@ def venti_control():
     # fachlich ("on/off" + Reason + Details). Relais, Modusumschaltung und
     # Events passieren danach im Controller.
     decision = evaluate(ctx, previous_state=previous_state)
+
+    handle_after_heizung_pending(decision, ctx)
 
     if ctx.mode == "auto" and decision.details.get("mode_override") == "off":
         # Auto-Disable ist eine fachliche Decision, aber das Umschalten des
