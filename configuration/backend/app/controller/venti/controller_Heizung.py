@@ -93,12 +93,11 @@ def heizung_control():
             state_manager.heizung_lock = True
         else:
             if state_manager.heizung_lock:
-                # War gesperrt, jetzt freigeben. Direkt danach startet der
-                # Venti-Post-Heizung-Delay, damit die normale Intervalllogik
-                # nicht sofort nach Ende des erzwungenen Heizungs-Luefterlaufs
-                # wieder anspringt.
+                # War gesperrt, jetzt freigeben. Der naechste normale
+                # Venti-Zyklus entscheidet, ob Trocknung nahtlos weiterlaeuft
+                # oder ob die bestehende Trocknungs-Restartsperre startet.
                 state_manager.release_heizung_lock()
-                state_manager.start_venti_post_heizung_delay(ctx)
+                state_manager.venti_after_heizung_pending = True
 
         # =========================
         # 🔌 RELAYS SCHALTEN

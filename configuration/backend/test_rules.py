@@ -930,15 +930,12 @@ def test_venti_drying_delay_engine():
         "intervall_duration": 300,
         "is_fan_on": False,
         "fan_runtime_current": 0,
-        "venti_post_heizung_delay_remaining": 600,
+        "venti_drying_delay_remaining": 600,
     })
-    assert ctx.venti_post_heizung_delay_remaining == 600, "Context should preserve post-heating delay"
-    result = engine.decide(ctx, metrics)
-    assert result.command == "off", "Post-heating delay should block interval restart"
-    assert result.reason == "AUTO_IDLE", "Blocked interval should fall back to idle"
-    assert result.details["venti_post_heizung_delay_remaining"] == 600, "Should expose post-heating delay"
-    assert any(step["step"] == "post_heizung_delay" for step in result.details["trace"]), "Should trace post-heating delay"
-    print("✓ Venti post-heizung delay: Blocks interval restart")
+    result = engine.decide(ctx, metrics, previous_state="AUTO_IDLE")
+    assert result.command == "on", "Drying delay should not block interval restart"
+    assert result.reason == "INTERVAL_ACTIVE", "Interval remains allowed during drying delay"
+    print("✓ Venti drying delay: Interval remains allowed while drying is blocked")
 
     ctx = VentiContext({
         "mode": "auto",
