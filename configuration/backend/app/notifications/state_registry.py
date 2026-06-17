@@ -1,5 +1,6 @@
 from app.notifications.alerts.battery_engine import BatteryAlertState
 from app.notifications.alerts.rssi_engine import RSSIAlertState
+from app.notifications.alerts.hardware_engine import HardwareAlertState
 from app.notifications.summary.summary_state import SummaryState
 
 
@@ -7,6 +8,7 @@ class AlertState:
     def __init__(self):
         self.battery = BatteryAlertState()
         self.rssi = RSSIAlertState()
+        self.hardware = HardwareAlertState()
         self.summary = SummaryState()
 
 
