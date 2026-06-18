@@ -154,9 +154,7 @@ INFLUX_BUCKET=jokley_bucket
 
 `FAN_DI1_CHECK_ENABLED=true` aktiviert die DI1-Pruefung der
 Stern-Dreieck-Schuetzkombination. Standard ist `false`; bei `PANSTAMP=true`
-bleibt die DI1-Pruefung deaktiviert. `FAN_DO1_CHECK_ENABLED` wird als
-Rueckwaertskompatibilitaet ebenfalls gelesen, sollte aber durch
-`FAN_DI1_CHECK_ENABLED` ersetzt werden.
+bleibt die DI1-Pruefung deaktiviert.
 
 ## Starten
 
