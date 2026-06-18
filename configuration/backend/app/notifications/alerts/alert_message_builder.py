@@ -68,17 +68,17 @@ def build_system_alert_message(alert):
     if etype in ("FAN_RO1_RECOVERY", "FAN_RELAY_RECOVERY"):
         return "✅ Lüfter Relay RO1 meldet wieder korrekt"
 
-    if etype == "FAN_DO1_CONTACTOR_FAULT":
+    if etype == "FAN_DI1_CONTACTOR_FAULT":
         _, _device, duration, status, age = alert
         return (
             "⚠️ Lüfter Schütz-Kombination meldet nicht OK\n"
-            f"DO1 ist seit {fmt_minutes(duration)}min nicht TRUE "
+            f"DI1 ist seit {fmt_minutes(duration)}min nicht TRUE "
             f"(Status: {status}, Alter: {fmt_minutes(age)}min). "
             "Stern-Dreieck / Motorschutz prüfen."
         )
 
-    if etype == "FAN_DO1_RECOVERY":
-        return "✅ Lüfter Schütz-Kombination / DO1 wieder OK"
+    if etype == "FAN_DI1_RECOVERY":
+        return "✅ Lüfter Schütz-Kombination / DI1 wieder OK"
 
     if etype == "HARDWARE_FAILSAFE_RECOMMEND_MANUAL_ON":
         _, reason, ts_diff, threshold = alert

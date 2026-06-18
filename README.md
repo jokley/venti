@@ -141,7 +141,7 @@ Zusaetzlich unterstuetzt der Code optionale Variablen:
 ```text
 PANSTAMP=true
 PANSTAMP_MAX_SENSOR_AGE_SEC=300
-FAN_DO1_CHECK_ENABLED=false
+FAN_DI1_CHECK_ENABLED=false
 NODE_OUTDOOR00=<panstamp-node-id>
 NODE_PROBE01=<panstamp-node-id>
 NODE_PROBE02=<panstamp-node-id>
@@ -152,9 +152,9 @@ INFLUX_URL=http://172.16.238.16:8086
 INFLUX_BUCKET=jokley_bucket
 ```
 
-`FAN_DO1_CHECK_ENABLED=true` aktiviert die DO1-Pruefung der
+`FAN_DI1_CHECK_ENABLED=true` aktiviert die DI1-Pruefung der
 Stern-Dreieck-Schuetzkombination. Standard ist `false`; bei `PANSTAMP=true`
-bleibt die DO1-Pruefung deaktiviert.
+bleibt die DI1-Pruefung deaktiviert.
 
 ## Starten
 

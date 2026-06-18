@@ -9,7 +9,7 @@ RECOVERY_SUFFIXES = ("_RECOVERY",)
 INFO_ALERTS = {
     "FAN_RO1_RECOVERY",
     "FAN_RELAY_RECOVERY",
-    "FAN_DO1_RECOVERY",
+    "FAN_DI1_RECOVERY",
     "PROBE_RECOVERY",
     "OUTDOOR_RECOVERY",
     "RSSI_RECOVER",
@@ -19,7 +19,7 @@ INFO_ALERTS = {
 CRITICAL_ALERTS = {
     "PROBE_MISSING",
     "OUTDOOR_MISSING",
-    "FAN_DO1_CONTACTOR_FAULT",
+    "FAN_DI1_CONTACTOR_FAULT",
     "RSSI_CRITICAL",
 }
 WARNING_ALERTS = {
@@ -96,7 +96,7 @@ def _add_alert_fields(point, alert):
         point = _add_numeric_field(point, "age", alert[2])
     elif alert_type in ("FAN_RO1_NO_FEEDBACK", "FAN_RELAY_NO_FEEDBACK") and len(alert) >= 3:
         point = _add_numeric_field(point, "duration", alert[2])
-    elif alert_type == "FAN_DO1_CONTACTOR_FAULT" and len(alert) >= 5:
+    elif alert_type == "FAN_DI1_CONTACTOR_FAULT" and len(alert) >= 5:
         point = _add_numeric_field(point, "duration", alert[2])
         point = _add_string_field(point, "status", alert[3])
         point = _add_numeric_field(point, "age", alert[4])

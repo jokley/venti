@@ -7,7 +7,7 @@ from .influx_service import (
     get_battery_data,
     get_rssi_data,
     get_sensor_age,
-    get_fan_do1_status,
+    get_fan_di1_status,
     get_fan_runtime_today,
     get_last_auto_start,
     get_fan_runtime_since,
@@ -88,9 +88,9 @@ def build_control_data():
     }
     rssi = get_rssi_data()
     sensor_age = get_sensor_age()
-    fan_do1_status = (
-        get_fan_do1_status()
-        if Config.FAN_DO1_CHECK_ENABLED
+    fan_di1_status = (
+        get_fan_di1_status()
+        if Config.FAN_DI1_CHECK_ENABLED
         else {"enabled": False, "status": None, "ok": None, "age": None}
     )
     fan_runtime = get_fan_runtime_today()
@@ -211,8 +211,8 @@ def build_control_data():
         "battery": battery,
         "rssi": rssi,
         "sensor_age": sensor_age,
-        "fan_do1_status": fan_do1_status,
-        "fan_do1_check_enabled": Config.FAN_DO1_CHECK_ENABLED,
+        "fan_di1_status": fan_di1_status,
+        "fan_di1_check_enabled": Config.FAN_DI1_CHECK_ENABLED,
 
         # =========================
         # 🧠 FAN RUNTIME
