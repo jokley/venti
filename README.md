@@ -141,6 +141,7 @@ Zusaetzlich unterstuetzt der Code optionale Variablen:
 ```text
 PANSTAMP=true
 PANSTAMP_MAX_SENSOR_AGE_SEC=300
+FAN_DI1_CHECK_ENABLED=false
 NODE_OUTDOOR00=<panstamp-node-id>
 NODE_PROBE01=<panstamp-node-id>
 NODE_PROBE02=<panstamp-node-id>
@@ -150,6 +151,12 @@ MQTT_KEEPALIVE=20
 INFLUX_URL=http://172.16.238.16:8086
 INFLUX_BUCKET=jokley_bucket
 ```
+
+`FAN_DI1_CHECK_ENABLED=true` aktiviert die DI1-Pruefung der
+Stern-Dreieck-Schuetzkombination. Standard ist `false`; bei `PANSTAMP=true`
+bleibt die DI1-Pruefung deaktiviert. `FAN_DO1_CHECK_ENABLED` wird als
+Rueckwaertskompatibilitaet ebenfalls gelesen, sollte aber durch
+`FAN_DI1_CHECK_ENABLED` ersetzt werden.
 
 ## Starten
 
