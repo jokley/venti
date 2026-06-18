@@ -8,8 +8,8 @@ class HardwareAlertState:
         self.device_state = {}  # device -> "OK" / "MISSING"
         self.ro1_mismatch_since = None
         self.ro1_mismatch_alert_active = False
-        self.do1_fault_since = None
-        self.do1_fault_alert_active = False
+        self.di1_fault_since = None
+        self.di1_fault_alert_active = False
         self.failsafe_state = None
 
 
@@ -126,55 +126,55 @@ def _check_ro1_feedback(ctx, state, decision):
     )
 
 
-def _check_do1_feedback(ctx, state, decision):
-    # DO1 ist die echte Rueckmeldung der Stern-Dreieck-Schuetzkombination:
+def _check_di1_feedback(ctx, state, decision):
+    # DI1 ist die echte Rueckmeldung der Stern-Dreieck-Schuetzkombination:
     # 12V laufen ueber einen Oeffner. Wenn die Kombination nicht anzieht oder
-    # eine Stoerung oeffnet, ist DO1 false. Nur DO1=true bestaetigt die
+    # eine Stoerung oeffnet, ist DI1 false. Nur DI1=true bestaetigt die
     # Schuetzkette; ein echter mechanischer Luefterausfall braucht separate
     # Sensorik.
     if decision is None:
         return []
 
-    if not getattr(ctx, "fan_do1_check_enabled", False):
+    if not getattr(ctx, "fan_di1_check_enabled", False):
         return _reset_timed_alert(
             state,
-            "do1_fault_since",
-            "do1_fault_alert_active",
-            ("FAN_DO1_RECOVERY", "fan"),
+            "di1_fault_since",
+            "di1_fault_alert_active",
+            ("FAN_DI1_RECOVERY", "fan"),
         )
 
-    fan_do1_status = getattr(ctx, "fan_do1_status", {}) or {}
-    do1_ok = fan_do1_status.get("ok")
-    do1_age = fan_do1_status.get("age")
+    fan_di1_status = getattr(ctx, "fan_di1_status", {}) or {}
+    di1_ok = fan_di1_status.get("ok")
+    di1_age = fan_di1_status.get("age")
     now = getattr(ctx, "now", None)
     command = getattr(decision, "command", None)
     fan_should_run = command == "on"
-    do1_stale = _is_missing(do1_age)
+    di1_stale = _is_missing(di1_age)
 
-    if not fan_should_run or do1_ok is True:
+    if not fan_should_run or di1_ok is True:
         return _reset_timed_alert(
             state,
-            "do1_fault_since",
-            "do1_fault_alert_active",
-            ("FAN_DO1_RECOVERY", "fan"),
+            "di1_fault_since",
+            "di1_fault_alert_active",
+            ("FAN_DI1_RECOVERY", "fan"),
         )
 
-    if do1_ok is None and not do1_stale:
-        # Keine DO1-Daten im Context und auch kein explizit veralteter Wert:
+    if di1_ok is None and not di1_stale:
+        # Keine DI1-Daten im Context und auch kein explizit veralteter Wert:
         # nichts behaupten.
         return []
 
     return _check_timed_alert(
         state,
         now,
-        "do1_fault_since",
-        "do1_fault_alert_active",
+        "di1_fault_since",
+        "di1_fault_alert_active",
         lambda duration: (
-            "FAN_DO1_CONTACTOR_FAULT",
+            "FAN_DI1_CONTACTOR_FAULT",
             "fan",
             duration,
-            fan_do1_status.get("status"),
-            do1_age,
+            fan_di1_status.get("status"),
+            di1_age,
         ),
     )
 
@@ -224,6 +224,6 @@ def check_hardware_alerts(ctx, state, decision=None):
     return (
         _check_device_alerts(ctx, state)
         + _check_ro1_feedback(ctx, state, decision)
-        + _check_do1_feedback(ctx, state, decision)
+        + _check_di1_feedback(ctx, state, decision)
         + _check_failsafe_recommendation(ctx, state, decision)
     )

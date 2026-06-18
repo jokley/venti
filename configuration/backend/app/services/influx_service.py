@@ -521,13 +521,13 @@ def get_rssi_data():
     return rssi
 
 
-def get_fan_do1_status():
+def get_fan_di1_status():
     client = get_influxdb_client()
     query = '''
     from(bucket: "jokley_bucket")
       |> range(start: -2h)
       |> filter(fn: (r) => r["device_name"] == "fan")
-      |> filter(fn: (r) => r["_measurement"] == "device_frmpayload_data_DO1_status")
+      |> filter(fn: (r) => r["_measurement"] == "device_frmpayload_data_DI1_status")
       |> last()
     '''
 
