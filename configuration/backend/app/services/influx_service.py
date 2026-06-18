@@ -520,6 +520,39 @@ def get_rssi_data():
 
     return rssi
 
+
+def get_fan_di1_status():
+    client = get_influxdb_client()
+    query = '''
+    from(bucket: "jokley_bucket")
+      |> range(start: -2h)
+      |> filter(fn: (r) => r["device_name"] == "fan")
+      |> filter(fn: (r) => r["_measurement"] == "device_frmpayload_data_DI1_status")
+      |> last()
+    '''
+
+    result = client.query_api().query(query=query)
+
+    for table in result:
+        for record in table.records:
+            raw_value = record.get_value()
+            value = str(raw_value).strip().upper()
+            ok = value in ("H", "HIGH", "TRUE", "ON", "1")
+            age = int(datetime.utcnow().timestamp() - record.get_time().timestamp())
+            return {
+                "enabled": True,
+                "status": raw_value,
+                "ok": ok,
+                "age": age,
+            }
+
+    return {
+        "enabled": True,
+        "status": None,
+        "ok": None,
+        "age": None,
+    }
+
 def get_sensor_age():
     client = get_influxdb_client()
     query = '''
