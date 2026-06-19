@@ -4,6 +4,8 @@ from app.services.venti_service import heizung_cmd, heizung_venti_cmd
 from .control.state_manager import state_manager
 from .heating.heating_decision_engine import HeatingDecisionEngine
 from app.notifications.transitions import TransitionDetector
+from app.notifications.alerts.hardware_engine import check_heizung_hardware_alerts
+from app.notifications.state_registry import alert_state
 from app.events.event_bus import event_bus, EventType, Event
 from app.utils.logger import logger
 
@@ -154,6 +156,12 @@ def heizung_control():
             type=EventType.DECISION_LOG,
             data={"decision": decision, "ctx": ctx}
         ))
+
+        for alert in check_heizung_hardware_alerts(ctx, alert_state.hardware, decision):
+            event_bus.publish(Event(
+                type=EventType.SYSTEM_ALERT,
+                data=alert
+            ))
 
         # 5. TransitionDetector initialisieren
         # Wenn der Prozess mitten in einer aktiven Heiz-/Nachlaufphase startet,
