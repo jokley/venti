@@ -520,6 +520,78 @@ def get_rssi_data():
 
     return rssi
 
+
+def get_fan_di1_status():
+    client = get_influxdb_client()
+    query = '''
+    from(bucket: "jokley_bucket")
+      |> range(start: -2h)
+      |> filter(fn: (r) => r["device_name"] == "fan")
+      |> filter(fn: (r) => r["_measurement"] == "device_frmpayload_data_DI1_status")
+      |> last()
+    '''
+
+    result = client.query_api().query(query=query)
+
+    for table in result:
+        for record in table.records:
+            raw_value = record.get_value()
+            age = int(datetime.utcnow().timestamp() - record.get_time().timestamp())
+            return {
+                "enabled": True,
+                "status": raw_value,
+                "ok": None,
+                "age": age,
+            }
+
+    return {
+        "enabled": True,
+        "status": None,
+        "ok": None,
+        "age": None,
+    }
+
+
+def _get_fan_status(measurement):
+    client = get_influxdb_client()
+    query = f'''
+    from(bucket: "jokley_bucket")
+      |> range(start: -2h)
+      |> filter(fn: (r) => r["device_name"] == "fan")
+      |> filter(fn: (r) => r["_measurement"] == "{measurement}")
+      |> last()
+    '''
+
+    result = client.query_api().query(query=query)
+
+    for table in result:
+        for record in table.records:
+            raw_value = record.get_value()
+            age = int(datetime.utcnow().timestamp() - record.get_time().timestamp())
+            return {
+                "enabled": True,
+                "status": raw_value,
+                "age": age,
+            }
+
+    return {
+        "enabled": True,
+        "status": None,
+        "age": None,
+    }
+
+
+def get_fan_ro1_status():
+    return _get_fan_status("device_frmpayload_data_RO1_status")
+
+
+def get_heizung_ro2_status():
+    return _get_fan_status("device_frmpayload_data_RO2_status")
+
+
+def get_heizung_di2_status():
+    return _get_fan_status("device_frmpayload_data_DI2_status")
+
 def get_sensor_age():
     client = get_influxdb_client()
     query = '''

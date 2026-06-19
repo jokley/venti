@@ -12,6 +12,7 @@ from .control.state_manager import state_manager
 from app.notifications.transitions import TransitionDetector
 from app.notifications.alerts.battery_engine import check_battery_alerts
 from app.notifications.alerts.rssi_engine import check_rssi_alerts
+from app.notifications.alerts.hardware_engine import check_hardware_alerts
 from app.notifications.state_registry import alert_state
 
 from app.notifications.summary.daily_summary import (
@@ -282,6 +283,7 @@ def venti_control():
     for alert in (
         check_battery_alerts(ctx, alert_state.battery)
         + check_rssi_alerts(ctx, alert_state.rssi)
+        + check_hardware_alerts(ctx, alert_state.hardware, decision)
     ):
         event_bus.publish(Event(
             type=EventType.SYSTEM_ALERT,

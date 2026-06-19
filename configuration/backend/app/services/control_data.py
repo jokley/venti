@@ -7,6 +7,10 @@ from .influx_service import (
     get_battery_data,
     get_rssi_data,
     get_sensor_age,
+    get_fan_di1_status,
+    get_fan_ro1_status,
+    get_heizung_ro2_status,
+    get_heizung_di2_status,
     get_fan_runtime_today,
     get_last_auto_start,
     get_fan_runtime_since,
@@ -87,6 +91,18 @@ def build_control_data():
     }
     rssi = get_rssi_data()
     sensor_age = get_sensor_age()
+    fan_di1_status = (
+        get_fan_di1_status()
+        if Config.DI1_CHECK_ENABLED
+        else {"enabled": False, "status": None, "ok": None, "age": None}
+    )
+    fan_ro1_status = get_fan_ro1_status()
+    heizung_ro2_status = get_heizung_ro2_status()
+    heizung_di2_status = (
+        get_heizung_di2_status()
+        if Config.DI2_CHECK_ENABLED
+        else {"enabled": False, "status": None, "age": None}
+    )
     fan_runtime = get_fan_runtime_today()
     auto_start = get_last_auto_start()
     fan_runtime_auto = get_fan_runtime_since(auto_start)
@@ -205,6 +221,12 @@ def build_control_data():
         "battery": battery,
         "rssi": rssi,
         "sensor_age": sensor_age,
+        "fan_di1_status": fan_di1_status,
+        "di1_check_enabled": Config.DI1_CHECK_ENABLED,
+        "fan_ro1_status": fan_ro1_status,
+        "heizung_ro2_status": heizung_ro2_status,
+        "heizung_di2_status": heizung_di2_status,
+        "di2_check_enabled": Config.DI2_CHECK_ENABLED,
 
         # =========================
         # 🧠 FAN RUNTIME
