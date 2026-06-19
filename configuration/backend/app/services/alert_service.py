@@ -10,6 +10,9 @@ INFO_ALERTS = {
     "FAN_RO1_RECOVERY",
     "FAN_RELAY_RECOVERY",
     "FAN_DI1_RECOVERY",
+    "HEIZUNG_RO2_RECOVERY",
+    "HEIZUNG_RO1_FORCED_FAN_RECOVERY",
+    "HEIZUNG_DI2_RECOVERY",
     "PROBE_RECOVERY",
     "OUTDOOR_RECOVERY",
     "RSSI_RECOVER",
@@ -20,6 +23,7 @@ CRITICAL_ALERTS = {
     "PROBE_MISSING",
     "OUTDOOR_MISSING",
     "FAN_DI1_CONTACTOR_FAULT",
+    "HEIZUNG_DI2_CONTACTOR_FAULT",
     "RSSI_CRITICAL",
 }
 WARNING_ALERTS = {
@@ -30,6 +34,8 @@ WARNING_ALERTS = {
     "RSSI_DEGRADED",
     "FAN_RO1_NO_FEEDBACK",
     "FAN_RELAY_NO_FEEDBACK",
+    "HEIZUNG_RO2_NO_FEEDBACK",
+    "HEIZUNG_RO1_FORCED_FAN_NO_FEEDBACK",
     "HARDWARE_FAILSAFE_RECOMMEND_MANUAL_ON",
     "HARDWARE_FAILSAFE_WARN_ONLY",
 }
@@ -44,6 +50,8 @@ def get_alert_group(alert_type):
         return "sensor"
     if alert_type.startswith("FAN"):
         return "fan"
+    if alert_type.startswith("HEIZUNG"):
+        return "heizung"
     if alert_type.startswith("HARDWARE_FAILSAFE"):
         return "failsafe"
     return "system"
@@ -100,6 +108,20 @@ def _add_alert_fields(point, alert):
         point = _add_numeric_field(point, "duration", alert[2])
         point = _add_string_field(point, "status", alert[3])
         point = _add_numeric_field(point, "age", alert[4])
+        if len(alert) >= 7:
+            point = _add_string_field(point, "expected", alert[5])
+            point = _add_string_field(point, "ro1_status", alert[6])
+    elif alert_type in ("HEIZUNG_RO2_NO_FEEDBACK", "HEIZUNG_RO1_FORCED_FAN_NO_FEEDBACK") and len(alert) >= 5:
+        point = _add_numeric_field(point, "duration", alert[2])
+        point = _add_string_field(point, "status", alert[3])
+        point = _add_string_field(point, "expected", alert[4])
+    elif alert_type == "HEIZUNG_DI2_CONTACTOR_FAULT" and len(alert) >= 5:
+        point = _add_numeric_field(point, "duration", alert[2])
+        point = _add_string_field(point, "status", alert[3])
+        point = _add_numeric_field(point, "age", alert[4])
+        if len(alert) >= 7:
+            point = _add_string_field(point, "expected", alert[5])
+            point = _add_string_field(point, "ro2_status", alert[6])
     elif alert_type.startswith("HARDWARE_FAILSAFE") and len(alert) >= 4:
         point = _add_string_field(point, "reason", alert[1])
         point = _add_numeric_field(point, "ts_diff", alert[2])

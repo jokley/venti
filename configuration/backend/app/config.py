@@ -25,6 +25,7 @@ class Config:
 
     PANSTAMP = _env_bool("PANSTAMP", False)
     FAN_DI1_CHECK_ENABLED = _env_bool("FAN_DI1_CHECK_ENABLED", False) and not PANSTAMP
+    HEIZUNG_DI2_CHECK_ENABLED = _env_bool("HEIZUNG_DI2_CHECK_ENABLED", False) and not PANSTAMP
     APPLICATION_ID = os.getenv("APPLICATION_ID")
     DEVICE_ID = os.getenv("DEVICE_ID")
 

@@ -1,5 +1,5 @@
 SENSOR_MISSING_AFTER_SECONDS = 15 * 60
-RELAY_MISMATCH_AFTER_SECONDS = 15 * 60
+HARDWARE_MISMATCH_AFTER_SECONDS = 4 * 60
 DEFAULT_ENDPHASE_TS_MARGIN = 3.0
 
 
@@ -10,6 +10,12 @@ class HardwareAlertState:
         self.ro1_mismatch_alert_active = False
         self.di1_fault_since = None
         self.di1_fault_alert_active = False
+        self.ro2_mismatch_since = None
+        self.ro2_mismatch_alert_active = False
+        self.heizung_ro1_mismatch_since = None
+        self.heizung_ro1_mismatch_alert_active = False
+        self.di2_fault_since = None
+        self.di2_fault_alert_active = False
         self.failsafe_state = None
 
 
@@ -90,7 +96,7 @@ def _check_timed_alert(state, now, since_attr, active_attr, alert_event):
         return []
 
     duration = int(now - getattr(state, since_attr))
-    if duration < RELAY_MISMATCH_AFTER_SECONDS or getattr(state, active_attr):
+    if duration < HARDWARE_MISMATCH_AFTER_SECONDS or getattr(state, active_attr):
         return []
 
     setattr(state, active_attr, True)
@@ -107,9 +113,9 @@ def _check_ro1_feedback(ctx, state, decision):
     now = getattr(ctx, "now", None)
     command = getattr(decision, "command", None)
     ro1_should_be_on = command == "on"
-    ro1_reports_off = not getattr(ctx, "is_fan_on", False)
+    ro1_is_on = bool(getattr(ctx, "is_fan_on", False))
 
-    if not ro1_should_be_on or not ro1_reports_off:
+    if command not in ("on", "off") or ro1_is_on == ro1_should_be_on:
         return _reset_timed_alert(
             state,
             "ro1_mismatch_since",
@@ -128,10 +134,10 @@ def _check_ro1_feedback(ctx, state, decision):
 
 def _check_di1_feedback(ctx, state, decision):
     # DI1 ist die echte Rueckmeldung der Stern-Dreieck-Schuetzkombination:
-    # 12V laufen ueber einen Oeffner. Wenn die Kombination nicht anzieht oder
-    # eine Stoerung oeffnet, ist DI1 false. Nur DI1=true bestaetigt die
-    # Schuetzkette; ein echter mechanischer Luefterausfall braucht separate
-    # Sensorik.
+    # Bei RO1=ON muss DI1=L melden. Bei RO1=OFF muss DI1=H melden.
+    # Andere Kombinationen bedeuten: die Stern-Dreieck-Kombination hat
+    # hardwareseitig nicht passend ein- oder ausgeschaltet. Ein echter
+    # mechanischer Luefterausfall braucht separate Sensorik.
     if decision is None:
         return []
 
@@ -144,14 +150,14 @@ def _check_di1_feedback(ctx, state, decision):
         )
 
     fan_di1_status = getattr(ctx, "fan_di1_status", {}) or {}
-    di1_ok = fan_di1_status.get("ok")
+    di1_status = str(fan_di1_status.get("status") or "").strip().upper()
     di1_age = fan_di1_status.get("age")
     now = getattr(ctx, "now", None)
-    command = getattr(decision, "command", None)
-    fan_should_run = command == "on"
+    ro1_on = bool(getattr(ctx, "is_fan_on", False))
     di1_stale = _is_missing(di1_age)
+    expected_di1 = "L" if ro1_on else "H"
 
-    if not fan_should_run or di1_ok is True:
+    if di1_status == expected_di1:
         return _reset_timed_alert(
             state,
             "di1_fault_since",
@@ -159,7 +165,7 @@ def _check_di1_feedback(ctx, state, decision):
             ("FAN_DI1_RECOVERY", "fan"),
         )
 
-    if di1_ok is None and not di1_stale:
+    if not di1_status and not di1_stale:
         # Keine DI1-Daten im Context und auch kein explizit veralteter Wert:
         # nichts behaupten.
         return []
@@ -175,6 +181,170 @@ def _check_di1_feedback(ctx, state, decision):
             duration,
             fan_di1_status.get("status"),
             di1_age,
+            expected_di1,
+            "ON" if ro1_on else "OFF",
+        ),
+    )
+
+
+def _status_value(status):
+    return str((status or {}).get("status") or "").strip().upper()
+
+
+def _status_age(status):
+    return (status or {}).get("age")
+
+
+def _check_ro2_feedback(ctx, state, decision):
+    if decision is None:
+        return []
+
+    if not getattr(ctx, "heizung_di2_check_enabled", False):
+        return _reset_timed_alert(
+            state,
+            "ro2_mismatch_since",
+            "ro2_mismatch_alert_active",
+            ("HEIZUNG_RO2_RECOVERY", "fan"),
+        )
+
+    now = getattr(ctx, "now", None)
+    command = getattr(decision, "command", None)
+    ro2_should_be_on = command == "on"
+    ro2_status = _status_value(getattr(ctx, "heizung_ro2_status", {}))
+    ro2_is_on = ro2_status == "ON"
+
+    if command not in ("on", "off") or (ro2_status and ro2_is_on == ro2_should_be_on):
+        return _reset_timed_alert(
+            state,
+            "ro2_mismatch_since",
+            "ro2_mismatch_alert_active",
+            ("HEIZUNG_RO2_RECOVERY", "fan"),
+        )
+
+    if not ro2_status and not _is_missing(_status_age(getattr(ctx, "heizung_ro2_status", {}))):
+        return []
+
+    return _check_timed_alert(
+        state,
+        now,
+        "ro2_mismatch_since",
+        "ro2_mismatch_alert_active",
+        lambda duration: (
+            "HEIZUNG_RO2_NO_FEEDBACK",
+            "fan",
+            duration,
+            ro2_status or None,
+            "ON" if ro2_should_be_on else "OFF",
+        ),
+    )
+
+
+def _check_heizung_ro1_feedback(ctx, state, decision):
+    if decision is None:
+        return []
+
+    if not getattr(ctx, "heizung_di2_check_enabled", False):
+        return _reset_timed_alert(
+            state,
+            "heizung_ro1_mismatch_since",
+            "heizung_ro1_mismatch_alert_active",
+            ("HEIZUNG_RO1_FORCED_FAN_RECOVERY", "fan"),
+        )
+
+    # Heizung und Nachlauf erzwingen RO1=Luefter EIN. Wenn die Heizung RO1
+    # nicht mehr erzwingt, uebernimmt wieder der normale venti_control().
+    forced_fan_on = getattr(decision, "reason", None) in (
+        "HEIZUNG_ACTIVE",
+        "HEIZUNG_MANUAL_ON",
+        "HEIZUNG_NACHLAUF",
+    )
+    if not forced_fan_on:
+        return _reset_timed_alert(
+            state,
+            "heizung_ro1_mismatch_since",
+            "heizung_ro1_mismatch_alert_active",
+            ("HEIZUNG_RO1_FORCED_FAN_RECOVERY", "fan"),
+        )
+
+    now = getattr(ctx, "now", None)
+    ro1_status = _status_value(getattr(ctx, "heizung_ro1_status", {}))
+    ro1_is_on = ro1_status == "ON"
+
+    if ro1_status and ro1_is_on:
+        return _reset_timed_alert(
+            state,
+            "heizung_ro1_mismatch_since",
+            "heizung_ro1_mismatch_alert_active",
+            ("HEIZUNG_RO1_FORCED_FAN_RECOVERY", "fan"),
+        )
+
+    if not ro1_status and not _is_missing(_status_age(getattr(ctx, "heizung_ro1_status", {}))):
+        return []
+
+    return _check_timed_alert(
+        state,
+        now,
+        "heizung_ro1_mismatch_since",
+        "heizung_ro1_mismatch_alert_active",
+        lambda duration: (
+            "HEIZUNG_RO1_FORCED_FAN_NO_FEEDBACK",
+            "fan",
+            duration,
+            ro1_status or None,
+            "ON",
+        ),
+    )
+
+
+def _check_di2_feedback(ctx, state, decision):
+    if decision is None:
+        return []
+
+    if not getattr(ctx, "heizung_di2_check_enabled", False):
+        return _reset_timed_alert(
+            state,
+            "di2_fault_since",
+            "di2_fault_alert_active",
+            ("HEIZUNG_DI2_RECOVERY", "fan"),
+        )
+
+    heizung_di2_status = getattr(ctx, "heizung_di2_status", {}) or {}
+    heizung_ro2_status = getattr(ctx, "heizung_ro2_status", {}) or {}
+    di2_status = _status_value(heizung_di2_status)
+    ro2_status = _status_value(heizung_ro2_status)
+    di2_age = _status_age(heizung_di2_status)
+    now = getattr(ctx, "now", None)
+
+    if not ro2_status and not _is_missing(_status_age(heizung_ro2_status)):
+        return []
+
+    ro2_on = ro2_status == "ON"
+    expected_di2 = "L" if ro2_on else "H"
+
+    if di2_status == expected_di2:
+        return _reset_timed_alert(
+            state,
+            "di2_fault_since",
+            "di2_fault_alert_active",
+            ("HEIZUNG_DI2_RECOVERY", "fan"),
+        )
+
+    if not di2_status and not _is_missing(di2_age):
+        return []
+
+    return _check_timed_alert(
+        state,
+        now,
+        "di2_fault_since",
+        "di2_fault_alert_active",
+        lambda duration: (
+            "HEIZUNG_DI2_CONTACTOR_FAULT",
+            "fan",
+            duration,
+            heizung_di2_status.get("status"),
+            di2_age,
+            expected_di2,
+            "ON" if ro2_on else "OFF",
         ),
     )
 
@@ -226,4 +396,12 @@ def check_hardware_alerts(ctx, state, decision=None):
         + _check_ro1_feedback(ctx, state, decision)
         + _check_di1_feedback(ctx, state, decision)
         + _check_failsafe_recommendation(ctx, state, decision)
+    )
+
+
+def check_heizung_hardware_alerts(ctx, state, decision=None):
+    return (
+        _check_heizung_ro1_feedback(ctx, state, decision)
+        + _check_ro2_feedback(ctx, state, decision)
+        + _check_di2_feedback(ctx, state, decision)
     )
