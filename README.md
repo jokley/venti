@@ -141,8 +141,8 @@ Zusaetzlich unterstuetzt der Code optionale Variablen:
 ```text
 PANSTAMP=true
 PANSTAMP_MAX_SENSOR_AGE_SEC=300
-FAN_DI1_CHECK_ENABLED=false
-HEIZUNG_DI2_CHECK_ENABLED=false
+DI1_CHECK_ENABLED=false
+DI2_CHECK_ENABLED=false
 NODE_OUTDOOR00=<panstamp-node-id>
 NODE_PROBE01=<panstamp-node-id>
 NODE_PROBE02=<panstamp-node-id>
@@ -153,13 +153,14 @@ INFLUX_URL=http://172.16.238.16:8086
 INFLUX_BUCKET=jokley_bucket
 ```
 
-`FAN_DI1_CHECK_ENABLED=true` aktiviert die DI1-Pruefung der
+`DI1_CHECK_ENABLED=true` aktiviert die DI1-Pruefung der
 Stern-Dreieck-Schuetzkombination. Standard ist `false`; bei `PANSTAMP=true`
 bleibt die DI1-Pruefung deaktiviert.
 
-`HEIZUNG_DI2_CHECK_ENABLED=true` aktiviert die RO1/RO2/DI2-Pruefung der
-Heizung. Standard ist `false`; bei `PANSTAMP=true` bleibt die Pruefung
-deaktiviert.
+`DI2_CHECK_ENABLED=true` aktiviert die DI2-Pruefung der Heizung.
+Standard ist `false`; bei `PANSTAMP=true` bleibt die DI2-Pruefung
+deaktiviert. RO1/RO2-Relay-Status wird unabhaengig davon geprueft, wenn
+die Rueckmeldung vorhanden ist.
 
 ## Starten
 

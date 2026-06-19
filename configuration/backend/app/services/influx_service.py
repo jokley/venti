@@ -581,7 +581,7 @@ def _get_fan_status(measurement):
     }
 
 
-def get_heizung_ro1_status():
+def get_fan_ro1_status():
     return _get_fan_status("device_frmpayload_data_RO1_status")
 
 

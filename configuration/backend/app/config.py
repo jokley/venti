@@ -24,8 +24,8 @@ class Config:
     INFLUX_TIMEOUT_MS = int(os.getenv('INFLUX_TIMEOUT_MS', 5000))
 
     PANSTAMP = _env_bool("PANSTAMP", False)
-    FAN_DI1_CHECK_ENABLED = _env_bool("FAN_DI1_CHECK_ENABLED", False) and not PANSTAMP
-    HEIZUNG_DI2_CHECK_ENABLED = _env_bool("HEIZUNG_DI2_CHECK_ENABLED", False) and not PANSTAMP
+    DI1_CHECK_ENABLED = _env_bool("DI1_CHECK_ENABLED", False) and not PANSTAMP
+    DI2_CHECK_ENABLED = _env_bool("DI2_CHECK_ENABLED", False) and not PANSTAMP
     APPLICATION_ID = os.getenv("APPLICATION_ID")
     DEVICE_ID = os.getenv("DEVICE_ID")
 
