@@ -7,6 +7,10 @@ from .influx_service import (
     get_battery_data,
     get_rssi_data,
     get_sensor_age,
+    get_fan_di1_status,
+    get_heizung_ro1_status,
+    get_heizung_ro2_status,
+    get_heizung_di2_status,
     get_fan_runtime_today,
     get_last_auto_start,
     get_fan_runtime_since,
@@ -87,6 +91,26 @@ def build_control_data():
     }
     rssi = get_rssi_data()
     sensor_age = get_sensor_age()
+    fan_di1_status = (
+        get_fan_di1_status()
+        if Config.FAN_DI1_CHECK_ENABLED
+        else {"enabled": False, "status": None, "ok": None, "age": None}
+    )
+    heizung_ro1_status = (
+        get_heizung_ro1_status()
+        if Config.HEIZUNG_DI2_CHECK_ENABLED
+        else {"enabled": False, "status": None, "age": None}
+    )
+    heizung_ro2_status = (
+        get_heizung_ro2_status()
+        if Config.HEIZUNG_DI2_CHECK_ENABLED
+        else {"enabled": False, "status": None, "age": None}
+    )
+    heizung_di2_status = (
+        get_heizung_di2_status()
+        if Config.HEIZUNG_DI2_CHECK_ENABLED
+        else {"enabled": False, "status": None, "age": None}
+    )
     fan_runtime = get_fan_runtime_today()
     auto_start = get_last_auto_start()
     fan_runtime_auto = get_fan_runtime_since(auto_start)
@@ -205,6 +229,12 @@ def build_control_data():
         "battery": battery,
         "rssi": rssi,
         "sensor_age": sensor_age,
+        "fan_di1_status": fan_di1_status,
+        "fan_di1_check_enabled": Config.FAN_DI1_CHECK_ENABLED,
+        "heizung_ro1_status": heizung_ro1_status,
+        "heizung_ro2_status": heizung_ro2_status,
+        "heizung_di2_status": heizung_di2_status,
+        "heizung_di2_check_enabled": Config.HEIZUNG_DI2_CHECK_ENABLED,
 
         # =========================
         # 🧠 FAN RUNTIME

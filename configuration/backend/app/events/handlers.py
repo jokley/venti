@@ -6,6 +6,7 @@ from app.notifications.event_message_builder import (
 )
 from app.notifications.notifier import send_notification
 from app.notifications.alerts.alert_message_builder import build_system_alert_message
+from app.services.alert_service import write_system_alert
 from app.utils.logger import logger
 
 INFO_DECISION_REASONS = {
@@ -43,6 +44,7 @@ def handle_system_alert(event: Event):
     try:
         alert = event.data
         msg = build_system_alert_message(alert)
+        write_system_alert(alert, msg)
         send_notification(title=alert[0], message=msg)
     except Exception as e:
         logger.error(f"Error in handle_system_alert: {e}", exc_info=True)

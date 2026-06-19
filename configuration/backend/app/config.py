@@ -3,6 +3,14 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
+def _env_bool(name, default=False):
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in ("1", "true", "yes", "on")
+
+
 class Config:
     SECRET_KEY = os.getenv('SECRET_KEY', 'hi')
     MQTT_BROKER_URL = os.getenv('MQTT_BROKER_URL', '172.16.238.15')
@@ -15,7 +23,9 @@ class Config:
     INFLUX_BUCKET = os.getenv('INFLUX_BUCKET', 'jokley_bucket')
     INFLUX_TIMEOUT_MS = int(os.getenv('INFLUX_TIMEOUT_MS', 5000))
 
-    PANSTAMP = os.getenv("PANSTAMP", "false").lower() == "true"
+    PANSTAMP = _env_bool("PANSTAMP", False)
+    FAN_DI1_CHECK_ENABLED = _env_bool("FAN_DI1_CHECK_ENABLED", False) and not PANSTAMP
+    HEIZUNG_DI2_CHECK_ENABLED = _env_bool("HEIZUNG_DI2_CHECK_ENABLED", False) and not PANSTAMP
     APPLICATION_ID = os.getenv("APPLICATION_ID")
     DEVICE_ID = os.getenv("DEVICE_ID")
 

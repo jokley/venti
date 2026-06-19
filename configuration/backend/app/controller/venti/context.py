@@ -46,6 +46,12 @@ class VentiContext:
         self.battery = d.get("battery", {})
         self.rssi = d.get("rssi", {})
         self.sensor_age = d.get("sensor_age", {})
+        self.fan_di1_status = d.get("fan_di1_status", {})
+        self.fan_di1_check_enabled = d.get("fan_di1_check_enabled", False)
+        self.heizung_ro1_status = d.get("heizung_ro1_status", {})
+        self.heizung_ro2_status = d.get("heizung_ro2_status", {})
+        self.heizung_di2_status = d.get("heizung_di2_status", {})
+        self.heizung_di2_check_enabled = d.get("heizung_di2_check_enabled", False)
         # =========================
         # 💨 FAN RUNTIME
         # =========================
