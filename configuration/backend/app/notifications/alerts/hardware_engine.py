@@ -141,7 +141,7 @@ def _check_di1_feedback(ctx, state, decision):
     if decision is None:
         return []
 
-    if not getattr(ctx, "fan_di1_check_enabled", False):
+    if not getattr(ctx, "di1_check_enabled", False):
         return _reset_timed_alert(
             state,
             "di1_fault_since",
@@ -199,14 +199,6 @@ def _check_ro2_feedback(ctx, state, decision):
     if decision is None:
         return []
 
-    if not getattr(ctx, "heizung_di2_check_enabled", False):
-        return _reset_timed_alert(
-            state,
-            "ro2_mismatch_since",
-            "ro2_mismatch_alert_active",
-            ("HEIZUNG_RO2_RECOVERY", "fan"),
-        )
-
     now = getattr(ctx, "now", None)
     command = getattr(decision, "command", None)
     ro2_should_be_on = command == "on"
@@ -243,14 +235,6 @@ def _check_heizung_ro1_feedback(ctx, state, decision):
     if decision is None:
         return []
 
-    if not getattr(ctx, "heizung_di2_check_enabled", False):
-        return _reset_timed_alert(
-            state,
-            "heizung_ro1_mismatch_since",
-            "heizung_ro1_mismatch_alert_active",
-            ("HEIZUNG_RO1_FORCED_FAN_RECOVERY", "fan"),
-        )
-
     # Heizung und Nachlauf erzwingen RO1=Luefter EIN. Wenn die Heizung RO1
     # nicht mehr erzwingt, uebernimmt wieder der normale venti_control().
     forced_fan_on = getattr(decision, "reason", None) in (
@@ -267,7 +251,7 @@ def _check_heizung_ro1_feedback(ctx, state, decision):
         )
 
     now = getattr(ctx, "now", None)
-    ro1_status = _status_value(getattr(ctx, "heizung_ro1_status", {}))
+    ro1_status = _status_value(getattr(ctx, "fan_ro1_status", {}))
     ro1_is_on = ro1_status == "ON"
 
     if ro1_status and ro1_is_on:
@@ -278,7 +262,7 @@ def _check_heizung_ro1_feedback(ctx, state, decision):
             ("HEIZUNG_RO1_FORCED_FAN_RECOVERY", "fan"),
         )
 
-    if not ro1_status and not _is_missing(_status_age(getattr(ctx, "heizung_ro1_status", {}))):
+    if not ro1_status and not _is_missing(_status_age(getattr(ctx, "fan_ro1_status", {}))):
         return []
 
     return _check_timed_alert(
@@ -300,7 +284,7 @@ def _check_di2_feedback(ctx, state, decision):
     if decision is None:
         return []
 
-    if not getattr(ctx, "heizung_di2_check_enabled", False):
+    if not getattr(ctx, "di2_check_enabled", False):
         return _reset_timed_alert(
             state,
             "di2_fault_since",
